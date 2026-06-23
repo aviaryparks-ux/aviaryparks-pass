@@ -6,7 +6,7 @@ export default function Home() {
     <div style={{ minHeight: '100vh', position: 'relative', overflowX: 'hidden', backgroundColor: '#f0fdf4', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', flexDirection: 'column' }}>
       
       {/* Background Image with Gradient Mask */}
-      <div style={{
+      <div className="mobile-bg-hero" style={{
         position: 'absolute',
         top: 0,
         right: 0,
@@ -35,10 +35,10 @@ export default function Home() {
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1 }}>
         
         {/* HEADER */}
-        <header style={{ padding: '1rem 3rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', zIndex: 10 }}>
+        <header className="header-container" style={{ padding: '1rem 3rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', zIndex: 10 }}>
           
           {/* Hanging Left Logo Tab */}
-          <div style={{ 
+          <div className="logo-container" style={{ 
             position: 'absolute', 
             left: '5rem', 
             top: 0, 
@@ -63,18 +63,18 @@ export default function Home() {
               boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
               zIndex: -1
             }}></div>
-            <img src="/logo.png" alt="Aviary Park Indonesia" style={{ height: '70px', width: 'auto' }} />
+            <img className="logo-img" src="/logo.png" alt="Aviary Park Indonesia" style={{ height: '70px', width: 'auto' }} />
           </div>
         </header>
 
         {/* HERO SECTION */}
-        <main style={{ flex: 1, padding: '1rem 3rem 1.5rem 3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <main className="mobile-px-4 mobile-pt-20" style={{ flex: 1, padding: '1rem 3rem 1.5rem 3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           
-          <div style={{ maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '4rem' }}>
+          <div className="mobile-col mobile-text-center" style={{ maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '4rem' }}>
             {/* Badge removed as per request */}
             
             {/* Headline */}
-            <h1 style={{ fontSize: '3.5rem', fontWeight: '800', lineHeight: 1.1, color: '#14532d', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            <h1 className="mobile-h1" style={{ fontSize: '3.5rem', fontWeight: '800', lineHeight: 1.1, color: '#14532d', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
               Satu Tiket.<br/>
               Petualangan <span style={{ color: '#16a34a' }}>Sepanjang</span><br/>
               <span style={{ color: '#16a34a', position: 'relative' }}>
@@ -84,14 +84,14 @@ export default function Home() {
             </h1>
             
             {/* Subtext */}
-            <p style={{ fontSize: '1rem', color: '#334155', marginBottom: '1.5rem', lineHeight: 1.5, maxWidth: '450px' }}>
+            <p className="mobile-p" style={{ fontSize: '1rem', color: '#334155', marginBottom: '1.5rem', lineHeight: 1.5, maxWidth: '450px' }}>
               Dapatkan akses tak terbatas ke Aviary Park Indonesia.<br/>
               Tanpa kartu fisik, tanpa antrean panjang.<br/>
               Wajah Anda adalah <span style={{ color: '#16a34a', fontWeight: 'bold' }}>kunci masuk Anda.</span>
             </p>
             
             {/* CTA Buttons */}
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+            <div className="header-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
               <Link href="/register" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', backgroundColor: '#059669', color: 'white', fontSize: '0.9rem', fontWeight: 'bold', borderRadius: '3rem', textDecoration: 'none' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
                 Daftar Annual Pass
@@ -103,7 +103,7 @@ export default function Home() {
             </div>
 
             {/* Trust Badges Bar */}
-            <div style={{ 
+            <div className="trust-badges" style={{ 
               backgroundColor: 'white', 
               borderRadius: '0.75rem', 
               padding: '1rem 1.5rem', 
@@ -119,7 +119,7 @@ export default function Home() {
                   <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Data terlindungi</div>
                 </div>
               </div>
-              <div style={{ width: '1px', backgroundColor: '#e2e8f0' }}></div>
+              <div className="trust-badge-divider" style={{ width: '1px', backgroundColor: '#e2e8f0' }}></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ color: '#059669' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="M12 19c-2.5 0-4.5-1.5-5-3.5h10c-.5 2-2.5 3.5-5 3.5Z"/></svg></div>
                 <div>
@@ -127,7 +127,7 @@ export default function Home() {
                   <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Masuk tanpa sentuh</div>
                 </div>
               </div>
-              <div style={{ width: '1px', backgroundColor: '#e2e8f0' }}></div>
+              <div className="trust-badge-divider" style={{ width: '1px', backgroundColor: '#e2e8f0' }}></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ color: '#059669' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
                 <div>
