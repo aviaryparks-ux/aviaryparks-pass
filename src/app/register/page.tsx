@@ -159,6 +159,7 @@ export default function Register() {
         position: 'relative', 
         zIndex: 10, 
         display: 'flex', 
+        flexWrap: 'wrap',
         maxWidth: '1200px', 
         margin: '0 auto', 
         width: '100%',
@@ -168,7 +169,7 @@ export default function Register() {
       }}>
         
         {/* Left Column (Text & Features) */}
-        <div style={{ flex: 1, color: '#0f172a', marginTop: '2rem' }}>
+        <div style={{ flex: '1 1 300px', color: '#0f172a', marginTop: '2rem' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '1rem', color: '#0f172a' }}>
             Daftar <span style={{ color: '#059669' }}>Annual Pass</span>
           </h1>
@@ -271,12 +272,12 @@ export default function Register() {
         </div>
 
         {/* Right Column (Form) */}
-        <div style={{ flex: '0 0 550px' }}>
+        <div style={{ flex: '1 1 500px', minWidth: '300px', width: '100%' }}>
           <form onSubmit={handleSubmit} style={{ 
             backgroundColor: 'rgba(255, 255, 255, 0.95)', 
             backdropFilter: 'blur(10px)',
             borderRadius: '1.5rem', 
-            padding: '2.5rem', 
+            padding: '1.5rem', 
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             display: 'flex',
             flexDirection: 'column',
@@ -304,12 +305,12 @@ export default function Register() {
                   <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>Pastikan nomor KTP yang Anda masukkan benar.</p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>No. WhatsApp</label>
                     <input type="tel" placeholder="08xxxxxxxxxx" required style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} value={primary.phone} onChange={(e) => setPrimary({ ...primary, phone: e.target.value })} />
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: '1 1 200px' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Email</label>
                     <input type="email" placeholder="nama@email.com" required style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} value={primary.email} onChange={(e) => setPrimary({ ...primary, email: e.target.value })} />
                   </div>
