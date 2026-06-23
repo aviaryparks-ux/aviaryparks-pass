@@ -58,7 +58,7 @@ export default function Register() {
 
   const handleMemberChange = (index: number, field: 'name'|'nik'|'category', value: string) => {
     const newMembers = [...members];
-    newMembers[index][field as any] = value;
+    (newMembers[index] as any)[field] = value;
     setMembers(newMembers);
   };
 
