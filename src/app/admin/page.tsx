@@ -17,7 +17,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // System Users State
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES'>('DASHBOARD');
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [newSysUser, setNewSysUser] = useState({ username: '', password: '', role: 'GATE' });
 
