@@ -18,9 +18,10 @@ export default function Payment() {
   useEffect(() => {
     let storedCount = 1;
     let storedPackageId = '';
+    let storedGroupId: string | null = '';
     if (typeof window !== 'undefined') {
       const storedName = localStorage.getItem('tempUserName');
-      const storedGroupId = localStorage.getItem('tempGroupId');
+      storedGroupId = localStorage.getItem('tempGroupId');
       const storedCountStr = localStorage.getItem('tempUserCount');
       const pkgId = localStorage.getItem('tempPackageId');
       if (storedName) setUserName(storedName);
