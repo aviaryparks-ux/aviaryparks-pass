@@ -44,6 +44,15 @@ export default function Dashboard() {
         .single();
 
       if (memberData && !memberErr) {
+        if (memberData.status === 'PENDING_PAYMENT') {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('tempGroupId', memberData.group_id);
+            localStorage.setItem('tempUserName', memberData.name);
+            window.location.href = '/payment';
+          }
+          return;
+        }
+        
         setUser(memberData);
         
         // 2. Tarik Data Kunjungan User Tersebut
@@ -69,32 +78,6 @@ export default function Dashboard() {
 
   if (!user) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8fafc' }}><p>Sesi tidak valid. <Link href="/" style={{color: 'var(--primary-color)'}}>Kembali</Link></p></div>;
-  }
-
-  if (user.status === 'PENDING_PAYMENT') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', color: '#334155', textAlign: 'center', padding: '2rem' }}>
-        <div style={{ background: '#fee2e2', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem', color: '#ef4444' }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-        </div>
-        <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem', color: '#0f172a' }}>Menunggu Pembayaran</h2>
-        <p style={{ fontSize: '1.1rem', marginBottom: '2rem', maxWidth: '500px' }}>
-          Pendaftaran Annual Pass Anda belum selesai. Silakan lakukan pembayaran agar Annual Pass Anda dapat digunakan.
-        </p>
-        <Link 
-          href="/payment"
-          onClick={() => {
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('tempGroupId', user.group_id);
-              localStorage.setItem('tempUserName', user.name);
-            }
-          }}
-          style={{ padding: '1rem 2rem', backgroundColor: '#059669', color: 'white', borderRadius: '2rem', fontWeight: 'bold', fontSize: '1.1rem', textDecoration: 'none' }}
-        >
-          Lanjutkan ke Halaman Pembayaran
-        </Link>
-      </div>
-    );
   }
 
   const activation = new Date(user.activation_date || new Date());
