@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [visitsData, setVisitsData] = useState<any[]>([]);
   const [salesData, setSalesData] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING_PAYMENT'>('ALL');
   
   // Package Management State
   const [packages, setPackages] = useState<any[]>([]);
@@ -338,14 +339,23 @@ export default function AdminDashboard() {
 
       {/* Tabel Data */}
       <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', padding: '2rem', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-          Database Pelanggan Lengkap
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+          <h3 style={{ margin: 0 }}>Database Pelanggan Lengkap</h3>
+          <select 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+          >
+            <option value="ALL">Semua Status</option>
+            <option value="ACTIVE">Aktif (Sudah Bayar)</option>
+            <option value="PENDING_PAYMENT">Menunggu Pembayaran</option>
+          </select>
+        </div>
 
         {loading ? (
           <p>Memuat data...</p>
-        ) : users.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>Belum ada member.</p>
+        ) : users.filter(u => statusFilter === 'ALL' || u.status === statusFilter).length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)' }}>Tidak ada data pelanggan untuk filter ini.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
@@ -362,7 +372,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u, i) => (
+                {users.filter(u => statusFilter === 'ALL' || u.status === statusFilter).map((u, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: u.role === 'PRIMARY' ? 'white' : '#f8fafc' }}>
                     <td style={{ padding: '1rem', fontWeight: u.role === 'PRIMARY' ? 'bold' : 'normal' }}>
                       {u.role === 'PRIMARY' ? '👑 ' : '↳ '}{u.name}
