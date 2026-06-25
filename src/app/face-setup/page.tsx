@@ -62,6 +62,14 @@ export default function FaceSetup() {
   useEffect(() => {
     let storedGroupId = '';
     if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const resultCode = urlParams.get('resultCode');
+      
+      if (resultCode && resultCode !== '00') {
+        window.location.href = '/payment';
+        return;
+      }
+
       storedGroupId = localStorage.getItem('tempGroupId') || '';
       if (storedGroupId) setGroupId(storedGroupId);
     }
