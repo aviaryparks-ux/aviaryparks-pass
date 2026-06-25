@@ -12,10 +12,43 @@ export default function GateScanner() {
   const [identifiedUser, setIdentifiedUser] = useState<any>(null);
   const [identifiedFamily, setIdentifiedFamily] = useState<any[]>([]);
   
+  const [viewModeState, setViewModeState] = useState<'SCANNING' | 'DETAIL'>('SCANNING');
+  const viewModeRef = useRef<'SCANNING' | 'DETAIL'>('SCANNING');
+  const setViewMode = (mode: 'SCANNING' | 'DETAIL') => {
+    viewModeRef.current = mode;
+    setViewModeState(mode);
+  };
+  const [cooldown, setCooldown] = useState(7);
+  const [isCooldownPaused, setIsCooldownPaused] = useState(false);
+  const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const membersRef = useRef<any[]>([]);
   const faceMatcherRef = useRef<faceapi.FaceMatcher | null>(null);
-  const lastScansRef = useRef<Record<string, number>>({}); // Menyimpan waktu scan terakhir per member (anti-spam)
+  const lastScansRef = useRef<Record<string, number>>({}); 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const returnToGate = () => {
+    setViewMode('SCANNING');
+    setGateStatus('idle');
+    setIdentifiedUser(null);
+    setIdentifiedFamily([]);
+    setStatusMsg('Sistem siap. Menunggu pengunjung...');
+  };
+
+  useEffect(() => {
+    if (viewModeState === 'DETAIL') {
+      if (!isCooldownPaused && cooldown > 0) {
+        cooldownTimerRef.current = setTimeout(() => {
+          setCooldown(prev => prev - 1);
+        }, 1000);
+      } else if (cooldown === 0 && !isCooldownPaused) {
+        returnToGate();
+      }
+    }
+    return () => {
+      if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+    };
+  }, [viewModeState, cooldown, isCooldownPaused]);
 
   useEffect(() => {
     const initScanner = async () => {
@@ -99,6 +132,7 @@ export default function GateScanner() {
 
     // Scan setiap 500ms agar performa komputer tidak berat
     intervalRef.current = setInterval(async () => {
+      if (viewModeRef.current === 'DETAIL') return; // Pause scanning if in detail mode
       if (!videoRef.current || !faceMatcherRef.current) return;
       if (videoRef.current.paused || videoRef.current.ended) return;
 
@@ -149,6 +183,10 @@ export default function GateScanner() {
     setGateStatus('success');
     setIdentifiedUser(member);
     setIdentifiedFamily(membersRef.current.filter(m => m.group_id === member.group_id && m.id !== member.id));
+
+    setViewMode('DETAIL');
+    setCooldown(7);
+    setIsCooldownPaused(false);
 
     // Simpan ke tabel visits secara diam-diam (background)
     await supabase.from('visits').insert([{
@@ -269,13 +307,46 @@ export default function GateScanner() {
           </div>
         </div>
 
-        {/* Detail ID Card & Keluarga (Muncul jika sukses) */}
-        {gateStatus === 'success' && identifiedUser && (
-          <div style={{ padding: '1.5rem', backgroundColor: '#ffffff', width: '100%', borderBottom: `1px solid ${borderColor}40` }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>
-              ID Card & Detail Rombongan
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem' }}>
+        {/* Detail ID Card & Keluarga dihilangkan dari sini, dipindah ke overlay penuh */}
+      </div>
+
+      {/* Detail Overlay Penuh */}
+      {viewModeState === 'DETAIL' && identifiedUser && (
+        <div 
+          style={{ 
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+            backgroundColor: 'rgba(248, 250, 252, 0.95)', zIndex: 100,
+            backdropFilter: 'blur(10px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            padding: '2rem', overflowY: 'auto'
+          }}
+          onMouseDown={() => setIsCooldownPaused(true)}
+          onMouseUp={() => setIsCooldownPaused(false)}
+          onMouseLeave={() => setIsCooldownPaused(false)}
+          onTouchStart={() => setIsCooldownPaused(true)}
+          onTouchEnd={() => setIsCooldownPaused(false)}
+        >
+          {/* Header internal for Detail */}
+          <div style={{ width: '100%', maxWidth: '850px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', marginTop: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: '50px', height: '50px', backgroundColor: '#10b981', color: 'white', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.5rem', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }}>✅</div>
+              <h2 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>Akses Diberikan</h2>
+            </div>
+            <button 
+              onClick={returnToGate}
+              style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(16,185,129,0.2)', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              Kembali ke Gate 
+              <span style={{ backgroundColor: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.8rem' }}>{cooldown}s</span>
+            </button>
+          </div>
+
+          <div style={{ width: '100%', maxWidth: '850px', backgroundColor: 'white', borderRadius: '1rem', padding: '2rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
+            <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '2rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
+              {isCooldownPaused ? 'Waktu dijeda. Lepaskan untuk melanjutkan.' : 'Tahan (Hold) layar ini untuk menghentikan waktu mundur.'}
+            </p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
               
               {/* ID Card Virtual */}
               <div style={{ 
@@ -351,7 +422,8 @@ export default function GateScanner() {
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {/* Camera Feed */}
         <div style={{ position: 'relative', width: '100%', backgroundColor: '#e2e8f0', minHeight: '450px', borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
