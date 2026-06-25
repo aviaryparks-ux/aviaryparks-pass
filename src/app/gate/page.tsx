@@ -349,40 +349,42 @@ export default function GateScanner() {
               
               {/* ID Card Virtual */}
               <div style={{ 
-                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
+                background: 'url(\'/hero-new.jpg\') center right / cover no-repeat, linear-gradient(135deg, #064e3b 0%, #065f46 100%)', 
+                backgroundBlendMode: 'overlay',
                 padding: '1.5rem', 
-                borderRadius: '1rem', 
+                borderRadius: '1.2rem', 
                 color: 'white',
-                boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.3)',
+                boxShadow: '0 15px 25px -5px rgba(6, 78, 59, 0.4)',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.1)'
               }}>
-                <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.1 }}>
-                  <svg width="150" height="150" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg>
+                <div style={{ position: 'absolute', bottom: '-30px', right: '-20px', opacity: 0.15 }}>
+                  <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor"><path d="M22 16c-4.64 0-8.94-1.85-12.06-5-3.13-3.12-4.99-7.43-4.99-12.07 0-.55-.45-1-1-1s-1 .45-1 1c0 5.17 2.05 10.05 5.56 13.56s8.39 5.57 13.56 5.57c.55 0 1-.45 1-1s-.45-.93-1.07-.93z"/></svg>
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}>
                   <div>
-                    <h4 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>Aviary Park</h4>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>Annual Pass</h3>
+                    <img src="/logo.png" alt="Aviary Park" style={{ height: '35px', marginBottom: '0.5rem', filter: 'brightness(0) invert(1)' }} />
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', letterSpacing: '1px' }}>ANNUAL PASS</h3>
                   </div>
-                  <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.3rem 0.8rem', borderRadius: '2rem', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.8rem', fontWeight: 'bold', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.3)' }}>
                     {identifiedUser.role}
                   </div>
                 </div>
 
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9 }}>Nama Pengunjung</p>
-                  <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{identifiedUser.name}</p>
+                <div style={{ position: 'relative', zIndex: 1, marginTop: '2rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '1px' }}>Nama Pengunjung</p>
+                  <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 'bold', marginBottom: '1rem', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{identifiedUser.name}</p>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.9 }}>NIK</p>
-                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>{identifiedUser.nik || '-'}</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
+                      <p style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>{identifiedUser.nik || '-'}</p>
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.9 }}>Sisa Masa Aktif</p>
-                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>
+                      <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8, textTransform: 'uppercase' }}>Sisa Masa Aktif</p>
+                      <p style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
                         {identifiedUser.activation_date ? (() => {
                           const actDate = new Date(identifiedUser.activation_date);
                           const expDate = new Date(actDate);
@@ -395,8 +397,8 @@ export default function GateScanner() {
                   </div>
 
                   <div>
-                    <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.9 }}>Alamat</p>
-                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8, textTransform: 'uppercase' }}>Alamat</p>
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {identifiedUser.address || '-'}
                     </p>
                   </div>
