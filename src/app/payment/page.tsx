@@ -33,6 +33,24 @@ export default function Payment() {
     }
 
     const fetchPrice = async () => {
+      let activeGroupId = storedGroupId;
+      if (!activeGroupId && typeof window !== 'undefined') {
+        activeGroupId = localStorage.getItem('tempGroupId');
+      }
+
+      let actualUserCount = storedCount;
+
+      if (activeGroupId) {
+         const { data: membersData } = await supabase.from('members').select('id').eq('group_id', activeGroupId);
+         if (membersData && membersData.length > 0) {
+            actualUserCount = membersData.length;
+            setUserCount(actualUserCount);
+            if (typeof window !== 'undefined') {
+               localStorage.setItem('tempUserCount', actualUserCount.toString());
+            }
+         }
+      }
+
       if (storedPackageId) {
         const { data, error } = await supabase
           .from('ticket_packages')
@@ -44,12 +62,27 @@ export default function Payment() {
           setTicketPrice(Number(data.price));
           setPackageName(data.name);
         } else {
-          setTicketPrice(150000 * storedCount);
+          setTicketPrice(150000 * actualUserCount);
           setPackageName('Harga Normal');
         }
       } else {
-        setTicketPrice(150000 * storedCount);
-        setPackageName('Harga Normal');
+        // Coba deteksi otomatis paket berdasarkan jumlah anggota jika localStorage hilang
+        const { data: pkgData } = await supabase
+          .from('ticket_packages')
+          .select('*')
+          .eq('is_active', true)
+          .lte('min_qty', actualUserCount)
+          .gte('max_qty', actualUserCount)
+          .limit(1)
+          .single();
+        
+        if (pkgData) {
+          setTicketPrice(Number(pkgData.price));
+          setPackageName(pkgData.name);
+        } else {
+          setTicketPrice(150000 * actualUserCount);
+          setPackageName('Harga Normal');
+        }
       }
       setFetchingPrice(false);
     };
