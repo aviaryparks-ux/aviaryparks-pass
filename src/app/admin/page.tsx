@@ -109,12 +109,22 @@ export default function AdminDashboard() {
 
     // 4. Aggregate Sales Data
     if (membersData) {
-      const salesCounts: Record<string, number> = {};
+      const salesCounts: Record<string, { Lunas: number; BelumLunas: number }> = {};
       membersData.forEach(m => {
         const date = new Date(m.created_at).toLocaleDateString('id-ID');
-        salesCounts[date] = (salesCounts[date] || 0) + 1;
+        if (!salesCounts[date]) salesCounts[date] = { Lunas: 0, BelumLunas: 0 };
+        
+        if (m.status === 'ACTIVE') {
+          salesCounts[date].Lunas += 1;
+        } else {
+          salesCounts[date].BelumLunas += 1;
+        }
       });
-      const chartSData = Object.keys(salesCounts).map(date => ({ date, Pendaftaran: salesCounts[date] }));
+      const chartSData = Object.keys(salesCounts).map(date => ({ 
+        date, 
+        Lunas: salesCounts[date].Lunas,
+        BelumLunas: salesCounts[date].BelumLunas
+      }));
       setSalesData(chartSData);
     }
 
@@ -317,7 +327,8 @@ export default function AdminDashboard() {
               <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: 'var(--shadow-md)' }} />
-              <Bar dataKey="Pendaftaran" fill="var(--primary-color)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Lunas" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} name="Sudah Lunas" />
+              <Bar dataKey="BelumLunas" stackId="a" fill="#fca5a5" radius={[4, 4, 0, 0]} name="Belum Bayar" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -381,7 +392,10 @@ export default function AdminDashboard() {
                     <td style={{ padding: '1rem', fontSize: '0.75rem' }}>{u.role}</td>
                     <td style={{ padding: '1rem' }}>
                       <div>{u.email}</div>
-                      <div style={{ color: 'var(--text-secondary)' }}>{u.phone}</div>
+                      <a href={`https://wa.me/${u.phone?.replace(/\D/g, '') || ''}`} target="_blank" rel="noopener noreferrer" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none', fontSize: '0.85rem', marginTop: '0.25rem', fontWeight: '500' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        {u.phone}
+                      </a>
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{ backgroundColor: u.status === 'ACTIVE' ? '#10b981' : '#f59e0b', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>
