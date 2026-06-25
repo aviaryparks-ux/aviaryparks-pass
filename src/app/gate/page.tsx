@@ -308,7 +308,6 @@ export default function GateScanner() {
         </div>
 
         {/* Detail ID Card & Keluarga dihilangkan dari sini, dipindah ke overlay penuh */}
-      </div>
 
       {/* Detail Overlay Penuh */}
       {viewModeState === 'DETAIL' && identifiedUser && (
