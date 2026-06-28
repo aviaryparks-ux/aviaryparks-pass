@@ -42,13 +42,9 @@ export async function POST(request: Request) {
           
         // Simulate email sending on local dev
         try {
-          const { data: member } = await supabaseAdmin.from('members').select('email, name, package_id').eq('group_id', groupId).eq('role', 'PRIMARY').single();
+          const { data: member } = await supabaseAdmin.from('members').select('email, name').eq('group_id', groupId).eq('role', 'PRIMARY').single();
           if (member && member.email) {
-            let packageName = 'Annual Pass';
-            if (member.package_id) {
-              const { data: pkg } = await supabaseAdmin.from('ticket_packages').select('name').eq('id', member.package_id).single();
-              if (pkg) packageName = pkg.name;
-            }
+            const packageName = 'Tiket Aviary Park';
             await sendPaymentReceiptEmail(member.email, member.name, groupId, packageName);
           }
         } catch (err) {
