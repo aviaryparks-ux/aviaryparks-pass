@@ -303,10 +303,7 @@ export default function GateScanner() {
           </div>
         </div>
 
-        <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a', backgroundColor: 'rgba(255,255,255,0.9)', textDecoration: 'none', border: '1px solid #16a34a', padding: '0.6rem 1.2rem', borderRadius: '2rem', fontSize: '0.9rem', fontWeight: '600', backdropFilter: 'blur(4px)' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-          Kembali ke Admin
-        </Link>
+
       </div>
 
       {/* Main Scanner Container */}
