@@ -5,7 +5,9 @@ import { sendVisitNotificationEmail } from '@/lib/email';
 export async function POST(request: NextRequest) {
   try {
     const { member_id, location } = await request.json();
-    const { data, error } = await supabaseAdmin.from('visits').insert([{ member_id, location }]).select();
+    // The database table only has id, member_id, status, visited_at.
+    // Do not insert 'location' as it does not exist in the schema.
+    const { data, error } = await supabaseAdmin.from('visits').insert([{ member_id, status: 'SUCCESS' }]).select();
     if (error) throw error;
 
     // Send email (MUST BE AWAITED)
