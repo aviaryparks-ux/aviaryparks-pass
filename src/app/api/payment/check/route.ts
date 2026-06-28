@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendPaymentReceiptEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -38,8 +39,21 @@ export async function POST(request: Request) {
           .update({ status: 'SUCCESS' })
           .eq('group_id', groupId)
           .eq('status', 'PENDING');
-        
-        
+          
+        // Simulate email sending on local dev
+        try {
+          const { data: member } = await supabaseAdmin.from('members').select('email, name, package_id').eq('group_id', groupId).eq('role', 'PRIMARY').single();
+          if (member && member.email) {
+            let packageName = 'Annual Pass';
+            if (member.package_id) {
+              const { data: pkg } = await supabaseAdmin.from('ticket_packages').select('name').eq('id', member.package_id).single();
+              if (pkg) packageName = pkg.name;
+            }
+            await sendPaymentReceiptEmail(member.email, member.name, groupId, packageName);
+          }
+        } catch (err) {
+          console.error('Failed to send simulated email:', err);
+        }
         return NextResponse.json({ success: true, status: 'ACTIVE', simulated: true });
       }
 
