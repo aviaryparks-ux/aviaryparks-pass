@@ -39,7 +39,8 @@ export async function POST(request: Request) {
       await supabaseAdmin.from('transactions').update({ status: 'SUCCESS' }).eq('merchant_order_id', merchantOrderId);
 
       // Parse groupId from uniqueOrderId (format: groupId-timestamp)
-      const actualGroupId = merchantOrderId.split('-')[0];
+      // Since groupId is a UUID (contains dashes), we must take the first 5 segments
+      const actualGroupId = merchantOrderId.split('-').slice(0, 5).join('-');
 
       // Update member status in Supabase using Admin client to bypass RLS
       // Hanya update anggota yang statusnya PENDING_PAYMENT (supaya ACTIVE yg lama tidak tertimpa tgl aktivasinya)
