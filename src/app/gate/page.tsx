@@ -421,10 +421,10 @@ export default function GateScanner() {
             {isCooldownPaused ? 'Waktu dijeda. Lepaskan untuk melanjutkan.' : 'Tahan (Hold) layar ini untuk menghentikan waktu mundur.'}
           </p>
           
-          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'stretch', gap: '2rem', width: '100%', maxWidth: '1000px', margin: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '2rem', width: '100%', maxWidth: '1000px', margin: 'auto' }}>
             
             {/* Bagian Kiri: ID Card Virtual */}
-            <div style={{ perspective: '1000px', flex: '1 1 50%', maxWidth: '500px', minWidth: '300px', containerType: 'inline-size', animation: 'slideUpBounce 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+            <div style={{ perspective: '1000px', flex: '1 1 55%', maxWidth: '500px', minWidth: '300px', aspectRatio: '1.58 / 1', containerType: 'inline-size', animation: 'slideUpBounce 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
               <div style={{ 
                 position: 'relative', width: '100%', height: '100%',
                 background: 'url(\'/hornbill-card-bg.png\') center right / cover no-repeat, #064e3b', 
