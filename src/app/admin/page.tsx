@@ -339,14 +339,19 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!newSysUser.username || !newSysUser.password) return;
     
-    const { error } = await supabase.from('system_users').insert([{
-      username: newSysUser.username,
-      password: newSysUser.password,
-      role: newSysUser.role
-    }]);
-
-    if (error) {
-      toast.error('Gagal menambah user: ' + error.message);
+    const res = await fetch('/api/admin/system_users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: newSysUser.username,
+        password: newSysUser.password,
+        role: newSysUser.role
+      })
+    });
+    
+    if (!res.ok) {
+      toast.error('Gagal menambah akun admin!');
+      return;
     } else {
       setNewSysUser({ username: '', password: '', role: 'GATE' });
       toast.success('User berhasil ditambahkan!');

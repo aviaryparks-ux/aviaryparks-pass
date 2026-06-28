@@ -44,18 +44,20 @@ export default function EventsAdminPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.from('events').insert([
-        {
+      const res = await fetch('/api/admin/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           title: formData.title,
           description: formData.description,
           content: formData.content,
           event_date: formData.event_date,
           image_url: formData.image_url,
           status: formData.status
-        }
-      ]);
+        })
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error('Gagal menambah acara');
       
       toast.success('Event berhasil ditambahkan!');
       setShowForm(false);
@@ -72,8 +74,10 @@ export default function EventsAdminPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Hapus event ini?')) return;
     try {
-      const { error } = await supabase.from('events').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch('/api/admin/events?id=' + id, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Gagal menghapus acara');
       fetchEvents();
     } catch (error: any) {
       toast.error('Gagal menghapus event: ' + error.message);
