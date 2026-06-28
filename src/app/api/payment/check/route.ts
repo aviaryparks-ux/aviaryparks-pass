@@ -43,9 +43,12 @@ export async function POST(request: Request) {
         // Simulate email sending on local dev
         try {
           const { data: member } = await supabaseAdmin.from('members').select('email, name').eq('group_id', groupId).eq('role', 'PRIMARY').single();
+          const { data: trx } = await supabaseAdmin.from('transactions').select('amount, package_name').eq('group_id', groupId).order('created_at', { ascending: false }).limit(1).single();
+          
           if (member && member.email) {
-            const packageName = 'Tiket Aviary Park';
-            await sendPaymentReceiptEmail(member.email, member.name, groupId, packageName);
+            const packageName = trx?.package_name || 'Tiket Aviary Park';
+            const amount = trx?.amount || 0;
+            await sendPaymentReceiptEmail(member.email, member.name, groupId, packageName, amount);
           }
         } catch (err) {
           console.error('Failed to send simulated email:', err);
