@@ -239,22 +239,26 @@ export default function GateScanner() {
   let borderColor = '#94a3b8';
   let bgColor = '#f8fafc';
   let textColor = '#334155';
-  let icon = '⏳';
-  
+  let icon = null;
   if (gateStatus === 'success') {
-    borderColor = '#22c55e'; // Green
-    bgColor = '#f0fdf4';
+    borderColor = '#10b981'; // Green
+    bgColor = '#dcfce7';
     textColor = '#16a34a';
-    icon = '✅';
+    icon = (
+      <svg className="animated-check" width="32" height="32" viewBox="0 0 52 52">
+        <circle className="check-circle" cx="26" cy="26" r="25" fill="none" stroke="currentColor" strokeWidth="4" />
+        <path className="check-path" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7 7 16-16" />
+      </svg>
+    );
   } else if (gateStatus === 'denied') {
     borderColor = '#ef4444'; // Red
     bgColor = '#fef2f2';
     textColor = '#dc2626';
-    icon = '❌';
+    icon = <span style={{ fontSize: '1.8rem' }}>❌</span>;
   } else if (gateStatus === 'loading') {
-    icon = '⚙️';
+    icon = <span style={{ fontSize: '1.8rem' }}>⚙️</span>;
   } else {
-    icon = '👁️';
+    icon = <span style={{ fontSize: '1.8rem' }}>👁️</span>;
   }
 
   return (
@@ -274,6 +278,19 @@ export default function GateScanner() {
           0% { border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
           50% { border-color: rgba(16, 185, 129, 1); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
           100% { border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        @keyframes strokeDraw {
+          100% { stroke-dashoffset: 0; }
+        }
+        .animated-check .check-circle {
+          stroke-dasharray: 166;
+          stroke-dashoffset: 166;
+          animation: strokeDraw 0.5s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        .animated-check .check-path {
+          stroke-dasharray: 48;
+          stroke-dashoffset: 48;
+          animation: strokeDraw 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
         }
       `}} />
       
@@ -344,7 +361,7 @@ export default function GateScanner() {
         
         {/* Status Banner */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: bgColor, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.8rem', flexShrink: 0, border: `2px solid ${borderColor}40` }}>
+          <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: bgColor, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0, border: `2px solid ${borderColor}40` }}>
             {icon}
           </div>
           <div>
@@ -508,14 +525,21 @@ export default function GateScanner() {
       )}
 
         {/* Camera Feed */}
-        <div style={{ position: 'relative', width: '100%', backgroundColor: '#e2e8f0', flex: 1, borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: '100%', backgroundColor: '#0f172a', flex: 1, borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <video 
             ref={videoRef} 
             onPlay={handleVideoPlay}
             autoPlay 
             muted 
             playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover', 
+              position: 'absolute', 
+              top: 0, left: 0,
+              transform: 'scaleX(-1)' // Mirror effect to prevent confusion
+            }}
           />
           
           {/* Laser Scanning Animation */}
