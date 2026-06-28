@@ -387,8 +387,8 @@ export default function GateScanner() {
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
             backgroundColor: 'rgba(248, 250, 252, 0.95)', zIndex: 100,
             backdropFilter: 'blur(10px)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '1rem', overflowY: 'auto',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            padding: '2rem 1rem', overflowY: 'auto',
             animation: 'fadeIn 0.4s ease-out'
           }}
           onMouseDown={() => setIsCooldownPaused(true)}
@@ -417,14 +417,14 @@ export default function GateScanner() {
             </button>
           </div>
 
-          <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '1rem', fontSize: '0.9rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
+          <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '1.5rem', fontSize: '0.9rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
             {isCooldownPaused ? 'Waktu dijeda. Lepaskan untuk melanjutkan.' : 'Tahan (Hold) layar ini untuk menghentikan waktu mundur.'}
           </p>
           
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '1.5rem', width: '100%', maxWidth: '1000px' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'stretch', gap: '2rem', width: '100%', maxWidth: '1000px', margin: 'auto' }}>
             
             {/* Bagian Kiri: ID Card Virtual */}
-            <div style={{ perspective: '1000px', width: '100%', maxWidth: '480px', aspectRatio: '1.58 / 1', containerType: 'inline-size', animation: 'slideUpBounce 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+            <div style={{ perspective: '1000px', flex: '1 1 50%', maxWidth: '500px', minWidth: '300px', containerType: 'inline-size', animation: 'slideUpBounce 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
               <div style={{ 
                 position: 'relative', width: '100%', height: '100%',
                 background: 'url(\'/hornbill-card-bg.png\') center right / cover no-repeat, #064e3b', 
@@ -483,7 +483,7 @@ export default function GateScanner() {
             </div>
 
             {/* Bagian Kanan: Info Paket & Rombongan */}
-            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.25rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '350px', maxHeight: '480px', overflowY: 'auto', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)', animation: 'slideInRight 0.6s ease-out 0.2s both' }}>
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.25rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flex: '1 1 40%', maxWidth: '380px', minWidth: '280px', maxHeight: '60vh', overflowY: 'auto', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)', animation: 'slideInRight 0.6s ease-out 0.2s both' }}>
               
               {/* Info Paket Tiket */}
               <div style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
