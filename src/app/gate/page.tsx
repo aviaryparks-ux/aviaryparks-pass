@@ -63,10 +63,12 @@ export default function GateScanner() {
         ]);
 
         // 2. Ambil data wajah dari Supabase (Ambil semua agar bisa lihat data keluarga)
-        const [membersRes, packagesRes] = await Promise.all([
-          supabase.from('members').select('*'),
-          supabase.from('ticket_packages').select('*')
-        ]);
+        const [mFetch, pFetch] = await Promise.all([
+            fetch('/api/admin/members'),
+            fetch('/api/public/packages')
+          ]);
+          const membersRes = await mFetch.json();
+          const packagesRes = await pFetch.json();
         
         if (packagesRes.data) {
           setPackages(packagesRes.data);
@@ -84,7 +86,7 @@ export default function GateScanner() {
         membersRef.current = data;
 
         // 3. Persiapkan FaceMatcher hanya untuk yang punya data wajah
-        const membersWithFaces = data.filter(m => m.face_descriptor);
+        const membersWithFaces = data.filter((m: any) => m.face_descriptor);
         
         if (membersWithFaces.length === 0) {
           setStatusMsg('Tidak ada biometrik tersimpan di database.');
@@ -92,7 +94,7 @@ export default function GateScanner() {
           return;
         }
 
-        const labeledDescriptors = membersWithFaces.map(member => {
+        const labeledDescriptors = membersWithFaces.map((member: any) => {
           // face_descriptor disimpan sebagai array di JSON, kita ubah kembali ke Float32Array
           const descArray = new Float32Array(member.face_descriptor);
           return new faceapi.LabeledFaceDescriptors(member.id, [descArray]);

@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
-  const isGateRoute = pathname.startsWith('/gate');
+  const isGateRoute = pathname.startsWith('/gate') || pathname.startsWith('/api/gate');
 
   if (isAdminRoute || isGateRoute) {
     const token = request.cookies.get('system_token')?.value;
@@ -51,5 +51,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/gate/:path*', '/api/admin/:path*'],
+  matcher: ['/admin/:path*', '/gate/:path*', '/api/admin/:path*', '/api/gate/:path*'],
 };

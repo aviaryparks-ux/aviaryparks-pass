@@ -41,7 +41,9 @@ export default function AddMemberPage() {
       }));
 
       // Insert semua new member sekaligus
-      const { error } = await supabase.from('members').insert(membersToInsert);
+      const res = await fetch('/api/visitor/members', { method: 'POST', body: JSON.stringify(membersToInsert) });
+      const json = await res.json();
+      const error = json.error ? new Error(json.error) : null;
 
       if (error) {
         toast.error('Gagal menambahkan anggota: ' + error.message);

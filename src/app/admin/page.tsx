@@ -173,25 +173,27 @@ export default function AdminDashboard() {
 
   async function fetchTransactions() {
     try {
-      let query = supabase.from('transactions').select('*').order('created_at', { ascending: false });
+      const tRes = await fetch('/api/admin/transactions');
+      const tJson = await tRes.json();
+      let data = tJson.data || [];
+      const error = null;
       
       const now = new Date();
       if (trxFilter === 'TODAY') {
         now.setHours(0, 0, 0, 0);
-        query = query.gte('created_at', now.toISOString());
+        data = data.filter((t: any) => new Date(t.created_at) >= now);
       } else if (trxFilter === 'WEEK') {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        query = query.gte('created_at', weekAgo.toISOString());
+        data = data.filter((t: any) => new Date(t.created_at) >= weekAgo);
       } else if (trxFilter === 'MONTH') {
         const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
-        query = query.gte('created_at', monthAgo.toISOString());
+        data = data.filter((t: any) => new Date(t.created_at) >= monthAgo);
       } else if (trxFilter === 'YEAR') {
         const yearAgo = new Date(now.getFullYear(), 0, 1);
-        query = query.gte('created_at', yearAgo.toISOString());
+        data = data.filter((t: any) => new Date(t.created_at) >= yearAgo);
       }
 
-      const { data, error } = await query;
       if (data && !error) setTransactions(data);
     } catch (e) {
       console.log('Transactions table might not exist yet.', e);
@@ -199,12 +201,12 @@ export default function AdminDashboard() {
   }
 
   async function fetchSchedules() {
-    const { data } = await supabase.from('schedules').select('*').order('start_time', { ascending: true });
+    const res = await fetch('/api/admin/schedules'); const json = await res.json(); const data = json.data;
     if (data) setSchedules(data);
   }
 
   async function fetchEvents() {
-    const { data } = await supabase.from('events').select('*').order('event_date', { ascending: false });
+    const res = await fetch('/api/admin/events'); const json = await res.json(); const data = json.data;
     if (data) setEvents(data);
   }
 
@@ -321,7 +323,7 @@ export default function AdminDashboard() {
   };
 
   async function fetchSystemUsers() {
-    const { data, error } = await supabase.from('system_users').select('*').order('created_at', { ascending: false });
+    const res = await fetch('/api/admin/system_users'); const json = await res.json(); const { data, error } = json;
     if (data && !error) setSystemUsers(data);
   }
 
@@ -352,28 +354,28 @@ export default function AdminDashboard() {
   };
 
   async function fetchPackages() {
-    const { data } = await supabase.from('ticket_packages').select('*').order('min_qty', { ascending: true });
+    const res = await fetch('/api/public/packages'); const json = await res.json(); const data = json.data;
     if (data) setPackages(data);
   }
 
   async function fetchData() {
     // 1. Fetch Users
-    const { data: membersData } = await supabase.from('members').select('*').order('created_at', { ascending: false });
+    const resM = await fetch('/api/admin/members'); const jsonM = await resM.json(); const membersData = jsonM.data;
     if (membersData) {
-      const primaries = membersData.filter(m => m.role === 'PRIMARY');
-      const dependents = membersData.filter(m => m.role !== 'PRIMARY');
+      const primaries = membersData.filter((m: any) => m.role === 'PRIMARY');
+      const dependents = membersData.filter((m: any) => m.role !== 'PRIMARY');
       
       let groupedUsers: any[] = [];
       
       // Push primary then their dependents
-      primaries.forEach(p => {
+      primaries.forEach((p: any) => {
         groupedUsers.push(p);
-        const related = dependents.filter(d => d.group_id === p.group_id);
+        const related = dependents.filter((d: any) => d.group_id === p.group_id);
         groupedUsers.push(...related);
       });
       
       // Push any dependents that somehow don't have a primary in the fetched data (orphan check)
-      const orphaned = dependents.filter(d => !primaries.find(p => p.group_id === d.group_id));
+      const orphaned = dependents.filter((d: any) => !primaries.find((p: any) => p.group_id === d.group_id));
       groupedUsers.push(...orphaned);
       
       setUsers(groupedUsers);
@@ -383,7 +385,7 @@ export default function AdminDashboard() {
     await fetchPackages();
 
     // 3. Fetch Visits & Aggregate for Chart
-    const { data: vData } = await supabase.from('visits').select('visited_at');
+    const vRes = await fetch('/api/admin/visits'); const vJson = await vRes.json(); const vData = vJson.data;
     if (vData) setRawVisits(vData);
 
     setLoading(false);

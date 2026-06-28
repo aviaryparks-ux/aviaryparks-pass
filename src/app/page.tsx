@@ -4,7 +4,7 @@ import LanguageSelector from './_components/LanguageSelector';
 
 export default function Home() {
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', overflowX: 'hidden', backgroundColor: '#f0fdf4', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', position: 'relative', overflow: 'hidden', backgroundColor: '#f0fdf4', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', flexDirection: 'column' }}>
       
       {/* Background Image with Gradient Mask */}
       <div className="mobile-bg-hero" style={{
@@ -71,13 +71,13 @@ export default function Home() {
         </header>
 
         {/* HERO SECTION */}
-        <main className="mobile-px-4 mobile-pt-20" style={{ flex: 1, padding: '1rem 3rem 1.5rem 3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <main className="mobile-px-4 mobile-pt-20" style={{ flex: 1, padding: '0.5rem 3rem 1rem 3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           
-          <div className="mobile-col mobile-text-center" style={{ maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '4rem' }}>
+          <div className="mobile-col mobile-text-center" style={{ maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '0' }}>
             {/* Badge removed as per request */}
             
             {/* Headline */}
-            <h1 className="mobile-h1" style={{ fontSize: '3.5rem', fontWeight: '800', lineHeight: 1.1, color: '#14532d', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            <h1 className="mobile-h1" style={{ fontSize: '3rem', fontWeight: '800', lineHeight: 1.1, color: '#14532d', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>
               Satu Tiket.<br/>
               Petualangan <span style={{ color: '#16a34a' }}>Sepanjang</span><br/>
               <span style={{ color: '#16a34a', position: 'relative' }}>
@@ -87,19 +87,19 @@ export default function Home() {
             </h1>
             
             {/* Subtext */}
-            <p className="mobile-p" style={{ fontSize: '1rem', color: '#334155', marginBottom: '1.5rem', lineHeight: 1.5, maxWidth: '450px' }}>
+            <p className="mobile-p" style={{ fontSize: '0.95rem', color: '#334155', marginBottom: '1rem', lineHeight: 1.5, maxWidth: '450px' }}>
               Dapatkan akses tak terbatas ke Aviary Park Indonesia.<br/>
               Tanpa kartu fisik, tanpa antrean panjang.<br/>
               Wajah Anda adalah <span style={{ color: '#16a34a', fontWeight: 'bold' }}>kunci masuk Anda.</span>
             </p>
             
             {/* CTA Buttons */}
-            <div className="header-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
-              <Link href="/register" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', backgroundColor: '#059669', color: 'white', fontSize: '0.9rem', fontWeight: 'bold', borderRadius: '3rem', textDecoration: 'none' }}>
+            <div className="header-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+              <Link href="/register" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem', backgroundColor: '#059669', color: 'white', fontSize: '0.9rem', fontWeight: 'bold', borderRadius: '3rem', textDecoration: 'none' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
                 Daftar Annual Pass
               </Link>
-              <Link href="/login" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', backgroundColor: 'white', color: '#0f172a', fontSize: '0.9rem', fontWeight: 'bold', borderRadius: '3rem', textDecoration: 'none', border: '1px solid #e2e8f0' }}>
+              <Link href="/login" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem', backgroundColor: 'white', color: '#0f172a', fontSize: '0.9rem', fontWeight: 'bold', borderRadius: '3rem', textDecoration: 'none', border: '1px solid #e2e8f0' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
                 Masuk ke Dasbor
               </Link>
@@ -109,9 +109,9 @@ export default function Home() {
             <div className="trust-badges" style={{ 
               backgroundColor: 'white', 
               borderRadius: '0.75rem', 
-              padding: '1rem 1.5rem', 
+              padding: '0.75rem 1rem', 
               display: 'inline-flex', 
-              gap: '2rem', 
+              gap: '1.5rem', 
               border: '1px solid #f1f5f9',
               alignSelf: 'flex-start'
             }}>
@@ -142,7 +142,7 @@ export default function Home() {
           </div>
 
           {/* BOTTOM FEATURE CARDS */}
-          <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', paddingBottom: '0.5rem', paddingTop: '3rem' }}>
+          <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>
             <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid #f1f5f9' }}>
               <div style={{ background: '#f0fdf4', padding: '0.5rem', borderRadius: '0.5rem', color: '#059669' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M16 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>

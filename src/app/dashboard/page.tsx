@@ -137,6 +137,15 @@ export default function Dashboard() {
             .eq('group_id', memberData.group_id);
             
           if (familyData) {
+            const hasMissingFace = familyData.some(m => !m.face_descriptor && m.status === 'ACTIVE');
+            
+            if (hasMissingFace) {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/face-setup';
+              }
+              return; // Keep loading=true so dashboard doesn't flash
+            }
+
             setFamilyMembers(familyData);
             
             const memberIds = familyData.map(m => m.id);
@@ -151,9 +160,10 @@ export default function Dashboard() {
             }
           }
         }
+        setLoading(false); // Done loading for happy path
       } catch (err) {
         console.error("Dashboard fetch error", err);
-      } finally {
+        // Only set loading to false if we are not redirecting
         setLoading(false);
       }
     };

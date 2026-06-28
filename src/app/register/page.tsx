@@ -38,7 +38,9 @@ export default function Register() {
 
   useEffect(() => {
     const fetchPackages = async () => {
-      const { data } = await supabase.from('ticket_packages').select('*').eq('is_active', true).order('min_qty', { ascending: true });
+      const res = await fetch('/api/public/packages');
+      const json = await res.json();
+      const data = json.data;
       if (data) setPackages(data);
     };
     fetchPackages();

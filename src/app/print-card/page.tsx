@@ -11,7 +11,9 @@ export default function PrintCard() {
       const urlParams = new URLSearchParams(window.location.search);
       const storedId = urlParams.get('id') || localStorage.getItem('tempUserId');
       if (storedId) {
-        const { data } = await supabase.from('members').select('*').eq('id', storedId).single();
+        const res = await fetch('/api/visitor/members?id=' + storedId + '&single=true');
+        const json = await res.json();
+        const data = json.data;
         if (data) {
           setUser(data);
           // Otomatis memicu kotak dialog Print saat data sudah siap
