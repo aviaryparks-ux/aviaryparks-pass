@@ -346,7 +346,7 @@ export default function GateScanner() {
         display: 'flex', 
         flexDirection: 'column',
         width: '100%', 
-        maxWidth: '900px', 
+        maxWidth: '750px', 
         backgroundColor: 'rgba(255, 255, 255, 0.95)', 
         borderRadius: '1.5rem', 
         overflow: 'hidden',
@@ -525,7 +525,7 @@ export default function GateScanner() {
       )}
 
         {/* Camera Feed */}
-        <div style={{ position: 'relative', width: '100%', backgroundColor: '#0f172a', flex: 1, borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: '100%', backgroundColor: '#000', flex: 1, borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <video 
             ref={videoRef} 
             onPlay={handleVideoPlay}
@@ -535,7 +535,7 @@ export default function GateScanner() {
             style={{ 
               width: '100%', 
               height: '100%', 
-              objectFit: 'cover', 
+              objectFit: 'contain', 
               position: 'absolute', 
               top: 0, left: 0,
               transform: 'scaleX(-1)' // Mirror effect to prevent confusion
