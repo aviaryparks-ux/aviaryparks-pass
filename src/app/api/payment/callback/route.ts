@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendPaymentReceiptEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -57,6 +58,18 @@ export async function POST(request: Request) {
         console.error('Failed to update member status in Supabase:', error);
         return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
       }
+
+      // Send email asynchronously
+      supabaseAdmin.from('members').select('email, name, package_id').eq('group_id', actualGroupId).eq('role', 'PRIMARY').single().then(async ({ data: member }) => {
+        if (member && member.email) {
+          let packageName = 'Annual Pass';
+          if (member.package_id) {
+            const { data: pkg } = await supabaseAdmin.from('ticket_packages').select('name').eq('id', member.package_id).single();
+            if (pkg) packageName = pkg.name;
+          }
+          sendPaymentReceiptEmail(member.email, member.name, actualGroupId, packageName);
+        }
+      });
 
     } else {
       console.log(`Payment Failed or Pending for order: ${merchantOrderId}, ResultCode: ${resultCode}`);
