@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Leaf, Bird, Feather } from 'lucide-react';
+import LanguageSelector from './_components/LanguageSelector';
 
 export default function Home() {
   return (
@@ -35,7 +36,9 @@ export default function Home() {
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1 }}>
         
         {/* HEADER */}
-        <header className="header-container" style={{ padding: '1rem 3rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', zIndex: 10 }}>
+        <header className="header-container" style={{ padding: '1rem 3rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', zIndex: 10, gap: '1rem' }}>
+          
+          <LanguageSelector />
           
           {/* Hanging Left Logo Tab */}
           <div className="logo-container" style={{ 

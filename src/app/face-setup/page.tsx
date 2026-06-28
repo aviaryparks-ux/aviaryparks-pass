@@ -27,9 +27,10 @@ export default function FaceSetup() {
       .order('created_at', { ascending: true });
 
     if (data && !error && data.length > 0) {
-      // Periksa apakah pembayaran sudah lunas (status ACTIVE)
-      const isPaid = data[0].status === 'ACTIVE';
-      if (!isPaid) {
+      // Periksa apakah ada anggota yang masih PENDING_PAYMENT
+      const hasPending = data.some(m => m.status === 'PENDING_PAYMENT');
+      
+      if (hasPending) {
         // Coba periksa ke Duitku secara langsung sebagai fallback jika webhook lambat/gagal
         try {
           const res = await fetch('/api/payment/check', {
@@ -40,6 +41,8 @@ export default function FaceSetup() {
           const result = await res.json();
           if (result.success && result.status === 'ACTIVE') {
             setPaymentPending(false);
+            
+            // Karena status di database mungkin belum terupdate di sisi klien, kita asumsikan semua bisa direkam
             const withoutFace = data.filter(m => m.face_descriptor === null);
             setPendingMembers(withoutFace);
             return;
@@ -140,14 +143,27 @@ export default function FaceSetup() {
         
         setMessage(`Menyimpan biometrik ${currentMember.name}...`);
         
-        const { error } = await supabase
-          .from('members')
-          .update({ face_descriptor: descriptorArray })
-          .eq('id', currentMember.id);
+        try {
+          const response = await fetch('/api/face/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              memberId: currentMember.id,
+              descriptorArray: descriptorArray
+            })
+          });
+          
+          const result = await response.json();
 
-        if (error) {
-          console.error(error);
-          setMessage('Gagal menyimpan wajah ke database.');
+          if (!result.success) {
+            console.error(result.error);
+            setMessage('Gagal menyimpan wajah ke database.');
+            setIsDetecting(false);
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+          setMessage('Terjadi kesalahan jaringan saat menyimpan wajah.');
           setIsDetecting(false);
           return;
         }

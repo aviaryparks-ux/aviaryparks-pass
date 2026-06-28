@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: Request) {
   try {
@@ -10,50 +10,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing groupId' }, { status: 400 });
     }
 
-    const merchantCode = process.env.NEXT_PUBLIC_DUITKU_MERCHANT_CODE || '';
-    const merchantKey = process.env.DUITKU_MERCHANT_KEY || '';
-    const isSandbox = process.env.DUITKU_ENV === 'sandbox';
+    const { data: pendingMembers, error } = await supabaseAdmin
+      .from('members')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('status', 'PENDING_PAYMENT');
 
-    // Signature: MD5(merchantCode + merchantOrderId + merchantKey)
-    const signatureString = `${merchantCode}${groupId}${merchantKey}`;
-    const signature = crypto.createHash('md5').update(signatureString).digest('hex');
-
-    const endpoint = isSandbox
-      ? 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus'
-      : 'https://passport.duitku.com/webapi/api/merchant/transactionStatus';
-
-    const payload = {
-      merchantCode,
-      merchantOrderId: groupId,
-      signature
-    };
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-
-    if (data.statusCode === '00') {
-      // Payment is success, update DB
-      const { error } = await supabase
-        .from('members')
-        .update({ 
-          status: 'ACTIVE',
-          activation_date: new Date().toISOString()
-        })
-        .eq('group_id', groupId);
-
-      if (error) {
-        return NextResponse.json({ success: false, error: 'Failed to update database' }, { status: 500 });
-      }
-
-      return NextResponse.json({ success: true, status: 'ACTIVE' });
+    if (error) {
+      return NextResponse.json({ success: false, error: 'Database error' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, status: 'PENDING' });
+    if (pendingMembers && pendingMembers.length > 0) {
+      // SIMULASI WEBHOOK UNTUK LOCALHOST
+      // Karena Duitku tidak bisa mengirim callback ke localhost, kita simulasikan sukses
+      if (process.env.NODE_ENV === 'development') {
+        await supabaseAdmin
+          .from('members')
+          .update({ 
+            status: 'ACTIVE',
+            activation_date: new Date().toISOString()
+          })
+          .eq('group_id', groupId)
+          .eq('status', 'PENDING_PAYMENT');
+          
+        await supabaseAdmin
+          .from('transactions')
+          .update({ status: 'SUCCESS' })
+          .eq('group_id', groupId)
+          .eq('status', 'PENDING');
+        
+        
+        return NextResponse.json({ success: true, status: 'ACTIVE', simulated: true });
+      }
+
+      return NextResponse.json({ success: true, status: 'PENDING' });
+    }
+
+    return NextResponse.json({ success: true, status: 'ACTIVE' });
 
   } catch (error: any) {
     console.error('Check Status Error:', error);

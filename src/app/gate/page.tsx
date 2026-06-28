@@ -18,8 +18,10 @@ export default function GateScanner() {
     viewModeRef.current = mode;
     setViewModeState(mode);
   };
-  const [cooldown, setCooldown] = useState(7);
+  const [cooldown, setCooldown] = useState(0);
   const [isCooldownPaused, setIsCooldownPaused] = useState(false);
+  
+  const [packages, setPackages] = useState<any[]>([]);
   const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const membersRef = useRef<any[]>([]);
@@ -61,9 +63,17 @@ export default function GateScanner() {
         ]);
 
         // 2. Ambil data wajah dari Supabase (Ambil semua agar bisa lihat data keluarga)
-        const { data, error } = await supabase
-          .from('members')
-          .select('*');
+        const [membersRes, packagesRes] = await Promise.all([
+          supabase.from('members').select('*'),
+          supabase.from('ticket_packages').select('*')
+        ]);
+        
+        if (packagesRes.data) {
+          setPackages(packagesRes.data);
+        }
+
+        const data = membersRes.data;
+        const error = membersRes.error;
 
         if (error || !data || data.length === 0) {
           setStatusMsg('Tidak ada data pengunjung di database. Silakan daftarkan terlebih dahulu.');
@@ -159,7 +169,8 @@ export default function GateScanner() {
     if (!member) return;
 
     // Cek Status Keaktifan
-    if (member.status !== 'ACTIVE') {
+    const isValidStatus = member.status === 'ACTIVE' || member.status?.toLowerCase() === 'primary' || member.role?.toUpperCase() === 'PRIMARY';
+    if (!isValidStatus) {
       setStatusMsg(`Akses Ditolak: Tiket ${member.name} belum dibayar / kadaluarsa.`);
       setGateStatus('denied');
       setIdentifiedUser(member);
@@ -188,11 +199,34 @@ export default function GateScanner() {
     setCooldown(7);
     setIsCooldownPaused(false);
 
-    // Simpan ke tabel visits secara diam-diam (background)
-    await supabase.from('visits').insert([{
-      member_id: member.id,
-      status: 'SUCCESS'
-    }]);
+    // Cek apakah sudah berkunjung hari ini
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const { data: existingVisits, error: fetchErr } = await supabase
+      .from('visits')
+      .select('id')
+      .eq('member_id', member.id)
+      .gte('visited_at', today.toISOString())
+      .limit(1);
+
+    if (fetchErr) {
+      console.error("Failed to check existing visits:", fetchErr);
+    }
+
+    if (!existingVisits || existingVisits.length === 0) {
+      // Simpan ke tabel visits secara diam-diam (background)
+      const { error: visitErr } = await supabase.from('visits').insert([{
+        member_id: member.id,
+        status: 'SUCCESS'
+      }]);
+      
+      if (visitErr) {
+        console.error("Failed to insert visit:", visitErr);
+      }
+    } else {
+      console.log(`Visit for ${member.name} already recorded today, skipping insert.`);
+    }
   };
 
   const handleUnknown = () => {
@@ -340,87 +374,116 @@ export default function GateScanner() {
             </button>
           </div>
 
-          <div style={{ width: '100%', maxWidth: '850px', backgroundColor: 'white', borderRadius: '1rem', padding: '2rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-            <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '2rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
-              {isCooldownPaused ? 'Waktu dijeda. Lepaskan untuk melanjutkan.' : 'Tahan (Hold) layar ini untuk menghentikan waktu mundur.'}
-            </p>
+          <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '1.5rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
+            {isCooldownPaused ? 'Waktu dijeda. Lepaskan untuk melanjutkan.' : 'Tahan (Hold) layar ini untuk menghentikan waktu mundur.'}
+          </p>
+          
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2rem', width: '100%', maxWidth: '1050px' }}>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-              
-              {/* ID Card Virtual */}
+            {/* Bagian Kiri: ID Card Virtual */}
+            <div style={{ perspective: '1000px', width: '100%', maxWidth: '550px', aspectRatio: '1.58 / 1', containerType: 'inline-size' }}>
               <div style={{ 
-                background: 'url(\'/hero-new.jpg\') center right / cover no-repeat, linear-gradient(135deg, #064e3b 0%, #065f46 100%)', 
-                backgroundBlendMode: 'overlay',
-                padding: '1.5rem', 
-                borderRadius: '1.2rem', 
+                position: 'relative', width: '100%', height: '100%',
+                background: 'url(\'/hornbill-card-bg.png\') center right / cover no-repeat, #064e3b', 
+                borderRadius: '4cqi', 
                 color: 'white',
-                boxShadow: '0 15px 25px -5px rgba(6, 78, 59, 0.4)',
-                position: 'relative',
+                boxShadow: '0 15px 35px -5px rgba(6, 78, 59, 0.4)',
                 overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.1)'
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                padding: '5cqi',
               }}>
-                <div style={{ position: 'absolute', bottom: '-30px', right: '-20px', opacity: 0.15 }}>
-                  <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor"><path d="M22 16c-4.64 0-8.94-1.85-12.06-5-3.13-3.12-4.99-7.43-4.99-12.07 0-.55-.45-1-1-1s-1 .45-1 1c0 5.17 2.05 10.05 5.56 13.56s8.39 5.57 13.56 5.57c.55 0 1-.45 1-1s-.45-.93-1.07-.93z"/></svg>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}>
-                  <div>
-                    <img src="/logo.png" alt="Aviary Park" style={{ height: '35px', marginBottom: '0.5rem', filter: 'brightness(0) invert(1)' }} />
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', letterSpacing: '1px' }}>ANNUAL PASS</h3>
+                {/* Header Card */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2cqi' }}>
+                    <img src="/logo.png" alt="Aviary Park" style={{ height: '9cqi' }} />
+                    <div style={{ height: '6cqi', width: '1px', backgroundColor: 'rgba(255,255,255,0.4)' }}></div>
+                    <span style={{ fontSize: '2.5cqi', opacity: 0.9, fontWeight: '500' }}>Annual Pass Aktif</span>
                   </div>
-                  <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.8rem', fontWeight: 'bold', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.3)' }}>
-                    {identifiedUser.role}
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '1cqi 3cqi', borderRadius: '5cqi', fontSize: '2.2cqi', fontWeight: 'bold', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    {identifiedUser.role.toLowerCase() === 'primary' ? 'ACTIVE' : identifiedUser.role}
                   </div>
                 </div>
 
-                <div style={{ position: 'relative', zIndex: 1, marginTop: '2rem' }}>
-                  <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '1px' }}>Nama Pengunjung</p>
-                  <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 'bold', marginBottom: '1rem', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{identifiedUser.name}</p>
+                {/* Main Content */}
+                <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', paddingBottom: '1cqi', maxWidth: '70%' }}>
+                  <h3 style={{ margin: 0, fontSize: '6cqi', fontWeight: '800', lineHeight: '1.1', textShadow: '0 2px 4px rgba(0,0,0,0.5)', marginBottom: '3cqi' }}>
+                    Aviary Park<br/>Annual Pass
+                  </h3>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ marginBottom: '3cqi' }}>
+                    <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>Nama Pengunjung</p>
+                    <p style={{ margin: 0, fontSize: '4cqi', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{identifiedUser.name}</p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '5cqi' }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
-                      <p style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>{identifiedUser.nik || '-'}</p>
-                    </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8, textTransform: 'uppercase' }}>Sisa Masa Aktif</p>
-                      <p style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
+                      <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>Berlaku hingga</p>
+                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold', color: '#facc15' }}>
                         {identifiedUser.activation_date ? (() => {
                           const actDate = new Date(identifiedUser.activation_date);
                           const expDate = new Date(actDate);
                           expDate.setFullYear(expDate.getFullYear() + 1);
-                          const diff = Math.ceil((expDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                          return diff > 0 ? `${diff} Hari Lagi` : 'Kedaluwarsa';
+                          return expDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
                         })() : '-'}
                       </p>
                     </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
+                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>{identifiedUser.nik || '-'}</p>
+                    </div>
                   </div>
+                </div>
+              </div>
+            </div>
 
+            {/* Bagian Kanan: Info Paket & Rombongan */}
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.5rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '380px', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)' }}>
+              
+              {/* Info Paket Tiket */}
+              <div style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
+                <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Paket Tiket Terdaftar</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ backgroundColor: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '0.5rem' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
+                  </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8, textTransform: 'uppercase' }}>Alamat</p>
-                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {identifiedUser.address || '-'}
-                    </p>
+                    <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: 'bold' }}>
+                      {(() => {
+                        const userCount = identifiedFamily.length + 1;
+                        const matchedPackage = packages.find(p => p.min_qty <= userCount && p.max_qty >= userCount);
+                        return matchedPackage ? matchedPackage.name : 'Annual Pass - All Access';
+                      })()}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#10b981', fontWeight: '600' }}>Valid & Aktif</p>
                   </div>
                 </div>
               </div>
 
               {/* Rombongan */}
-              <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-                <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Anggota Keluarga Lainnya</p>
-                {identifiedFamily.length > 0 ? (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', flex: 1 }}>
+              <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Anggota Keluarga / Rombongan</p>
+              
+              {identifiedFamily.length > 0 ? (
+                <>
+                  <p style={{ fontSize: '0.8rem', color: '#eab308', backgroundColor: '#fefce8', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #fef08a', marginBottom: '1rem' }}>
+                    ⚠️ Anggota rombongan harus melakukan scan wajah <b>satu per satu</b> secara bergantian.
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', flex: 1, maxHeight: '200px' }}>
                     {identifiedFamily.map(fam => (
-                      <li key={fam.id} style={{ fontSize: '0.9rem', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #cbd5e1', paddingBottom: '0.25rem' }}>
-                        <span style={{ fontWeight: '500' }}>{fam.name}</span>
-                        <span style={{ fontSize: '0.7rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '0.15rem 0.4rem', borderRadius: '1rem', fontWeight: 'bold' }}>{fam.role}</span>
+                      <li key={fam.id} style={{ fontSize: '0.95rem', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #f1f5f9' }}>
+                        <span style={{ fontWeight: '600' }}>{fam.name}</span>
+                        <span style={{ fontSize: '0.7rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '0.2rem 0.5rem', borderRadius: '1rem', fontWeight: 'bold', textTransform: 'uppercase' }}>{fam.role}</span>
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic', flex: 1, display: 'flex', alignItems: 'center' }}>Tidak ada rombongan terdaftar.</p>
-                )}
-              </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, backgroundColor: '#f8fafc', borderRadius: '0.5rem', padding: '1rem' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.5rem' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  <p style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>Tidak ada rombongan terdaftar.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

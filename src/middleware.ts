@@ -5,9 +5,12 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Protect Admin Route
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     const isAdmin = request.cookies.get('auth_admin')?.value === 'true';
     if (!isAdmin) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       return NextResponse.redirect(new URL('/system-login?callbackUrl=/admin', request.url));
     }
   }
@@ -24,5 +27,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/gate/:path*'],
+  matcher: ['/admin/:path*', '/gate/:path*', '/api/admin/:path*'],
 };

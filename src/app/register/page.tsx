@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { validateNikFormat, checkNikDuplicate } from '@/lib/nikValidator';
 import { Infinity, ScanFace, Tag, Gift, User, Users, Plus, ChevronRight, Info, Lock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import LanguageSelector from '../_components/LanguageSelector';
 
 const generateUUID = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -16,6 +18,17 @@ const generateUUID = () => {
 export default function Register() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  // OTP verification state
+  const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [otpValue, setOtpValue] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // NIK validation errors: key = 'primary' | 'member-0' | 'member-1' etc
+  const [nikErrors, setNikErrors] = useState<Record<string, string>>({});
+  const [nikChecking, setNikChecking] = useState<Record<string, boolean>>({});
   
   const [primary, setPrimary] = useState({ name: '', nik: '', phone: '', email: '', address: '' });
   const [members, setMembers] = useState<{name: string, nik: string, category: 'DEWASA' | 'ANAK'}[]>([]);
@@ -62,6 +75,32 @@ export default function Register() {
     setMembers(newMembers);
   };
 
+  const validateNikOnBlur = async (key: string, nik: string) => {
+    if (!nik) return;
+    // Format check
+    const formatResult = validateNikFormat(nik);
+    if (!formatResult.valid) {
+      setNikErrors(prev => ({ ...prev, [key]: formatResult.error! }));
+      return;
+    }
+    // Duplicate check
+    setNikChecking(prev => ({ ...prev, [key]: true }));
+    const isDuplicate = await checkNikDuplicate(nik);
+    setNikChecking(prev => ({ ...prev, [key]: false }));
+    if (isDuplicate) {
+      setNikErrors(prev => ({ ...prev, [key]: 'NIK ini sudah terdaftar dalam sistem.' }));
+    } else {
+      setNikErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  };
+
+  const handleNikChange = (key: string, value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 16);
+    // Clear error on change
+    setNikErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
+    return digits;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -72,15 +111,80 @@ export default function Register() {
         setIsLoading(false);
         return;
       }
-      
+
+      // Validate all NIKs before sending OTP
+      const allNiks: { key: string; nik: string }[] = [
+        { key: 'primary', nik: primary.nik },
+        ...members.filter(m => m.category === 'DEWASA').map((m, i) => ({ key: `member-${i}`, nik: m.nik }))
+      ];
+
+      const newErrors: Record<string, string> = {};
+      for (const { key, nik } of allNiks) {
+        const fmt = validateNikFormat(nik);
+        if (!fmt.valid) { newErrors[key] = fmt.error!; continue; }
+        const dup = await checkNikDuplicate(nik);
+        if (dup) newErrors[key] = 'NIK ini sudah terdaftar dalam sistem.';
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setNikErrors(newErrors);
+        setIsLoading(false);
+        return;
+      }
+
+      // Kirim OTP ke email, jangan insert ke DB dulu
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: primary.email }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || 'Gagal mengirim kode verifikasi.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Tampilkan step OTP
+      setStep('otp');
+      setResendCooldown(60);
+      const timer = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) { clearInterval(timer); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan koneksi.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpValue.length !== 6) {
+      setOtpError('Masukkan 6 digit kode OTP.');
+      return;
+    }
+    if (!selectedPkg) {
+      setOtpError('Paket tiket belum dipilih.');
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError('');
+
+    try {
+      // Siapkan data untuk insert di backend
       const groupId = generateUUID();
-      
       const insertData = [
-        { 
-          name: primary.name, 
+        {
+          name: primary.name,
           nik: primary.nik,
-          phone: primary.phone, 
-          email: primary.email, 
+          phone: primary.phone,
+          email: primary.email,
           address: primary.address,
           status: 'PENDING_PAYMENT',
           group_id: groupId,
@@ -98,35 +202,181 @@ export default function Register() {
         }))
       ];
 
-      const { data, error } = await supabase
-        .from('members')
-        .insert(insertData)
-        .select();
+      // Verifikasi OTP & Insert via Backend
+      const res = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: primary.email, otp: otpValue, insertData }),
+      });
 
-      if (error) {
-        console.error("Supabase Error:", error);
-        alert(`Gagal mendaftar ke database.\n\nPesan: ${error.message}\nDetail: ${error.details}\nPetunjuk: ${error.hint}`);
-        setIsLoading(false);
+      const result = await res.json();
+      if (!res.ok) {
+        setOtpError(result.error || 'Terjadi kesalahan saat memverifikasi.');
+        setOtpLoading(false);
         return;
       }
 
-      if (data && data.length > 0) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('tempGroupId', groupId);
-          localStorage.setItem('tempUserCount', insertData.length.toString());
-          localStorage.setItem('tempUserName', primary.name);
-          localStorage.setItem('tempPackageId', selectedPkg.id);
-        }
-        router.push('/payment');
+      // Berhasil diverifikasi dan disimpan
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('tempUserId'); // Hapus sesi lama jika ada
+        localStorage.setItem('tempGroupId', groupId);
+        localStorage.setItem('tempUserCount', insertData.length.toString());
+        localStorage.setItem('tempUserName', primary.name);
+        localStorage.setItem('tempPackageId', selectedPkg.id);
       }
+      router.push('/payment');
+      
     } catch (err) {
       console.error(err);
-      setIsLoading(false);
+      setOtpError('Terjadi kesalahan koneksi.');
+      setOtpLoading(false);
     }
   };
 
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setOtpError('');
+    setOtpValue('');
+    const res = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: primary.email }),
+    });
+    if (res.ok) {
+      setResendCooldown(60);
+      const timer = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) { clearInterval(timer); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f0fdf4', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+
+      {/* OTP Verification Modal */}
+      {step === 'otp' && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '24px',
+            padding: '2.5rem 2rem',
+            maxWidth: '420px',
+            width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            textAlign: 'center'
+          }}>
+            {/* Icon */}
+            <div style={{ width: '64px', height: '64px', backgroundColor: '#e6f4ea', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 1.25rem' }}>
+              <span style={{ fontSize: '2rem' }}>📧</span>
+            </div>
+
+            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#064e3b', marginBottom: '0.5rem' }}>
+              Verifikasi Email
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
+              Kode OTP 6 digit telah dikirim ke:
+            </p>
+            <p style={{ color: '#059669', fontWeight: '700', fontSize: '0.95rem', marginBottom: '1.75rem' }}>
+              {primary.email}
+            </p>
+
+            {/* OTP Input */}
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="_ _ _ _ _ _"
+              value={otpValue}
+              onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, ''))}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '2rem',
+                fontWeight: '800',
+                textAlign: 'center',
+                letterSpacing: '0.75rem',
+                borderRadius: '12px',
+                border: otpError ? '2px solid #ef4444' : '2px solid #e2e8f0',
+                outline: 'none',
+                marginBottom: '0.75rem',
+                boxSizing: 'border-box',
+                color: '#064e3b'
+              }}
+            />
+
+            {otpError && (
+              <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>{otpError}</p>
+            )}
+
+            {/* Verify Button */}
+            <style>{`
+              @keyframes shimmer-otp {
+                0% { background-position: -200% center; }
+                100% { background-position: 200% center; }
+              }
+              .otp-btn {
+                background: linear-gradient(90deg, #059669, #34d399, #059669);
+                background-size: 200% auto;
+                animation: shimmer-otp 3s linear infinite;
+              }
+              .otp-btn:hover { transform: scale(1.02); }
+            `}</style>
+            <button
+              onClick={handleVerifyOtp}
+              disabled={otpLoading || otpValue.length !== 6}
+              className={!otpLoading && otpValue.length === 6 ? 'otp-btn' : ''}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '1rem',
+                fontWeight: '700',
+                color: 'white',
+                backgroundColor: (otpLoading || otpValue.length !== 6) ? '#94a3b8' : '#059669',
+                border: 'none',
+                borderRadius: '32px',
+                cursor: (otpLoading || otpValue.length !== 6) ? 'not-allowed' : 'pointer',
+                marginBottom: '1rem',
+                transition: 'all 0.2s'
+              }}
+            >
+              {otpLoading ? 'Memverifikasi...' : '✓ Verifikasi & Lanjutkan'}
+            </button>
+
+            {/* Resend & Back */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => { setStep('form'); setOtpValue(''); setOtpError(''); }}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                ← Ubah Email
+              </button>
+              <button
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0}
+                style={{ background: 'none', border: 'none', color: resendCooldown > 0 ? '#94a3b8' : '#059669', fontSize: '0.85rem', cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer', fontWeight: '600' }}
+              >
+                {resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : 'Kirim Ulang OTP'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Header with Language Selector */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, padding: '1rem 2rem', display: 'flex', justifyContent: 'flex-end', zIndex: 100 }}>
+        <LanguageSelector />
+      </div>
+
       {/* Background Image */}
       <div style={{
         position: 'fixed',
@@ -301,8 +551,26 @@ export default function Register() {
                 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Nomor KTP (NIK)</label>
-                  <input type="text" placeholder="Masukkan 16 digit nomor KTP" required style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} value={primary.nik} onChange={(e) => setPrimary({ ...primary, nik: e.target.value })} />
-                  <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>Pastikan nomor KTP yang Anda masukkan benar.</p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Masukkan 16 digit nomor KTP"
+                    required
+                    maxLength={16}
+                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: nikErrors['primary'] ? '1.5px solid #ef4444' : '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669', boxSizing: 'border-box' }}
+                    value={primary.nik}
+                    onChange={(e) => setPrimary({ ...primary, nik: handleNikChange('primary', e.target.value) })}
+                    onBlur={() => validateNikOnBlur('primary', primary.nik)}
+                  />
+                  {nikErrors['primary'] ? (
+                    <p style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '0.4rem' }}>⚠ {nikErrors['primary']}</p>
+                  ) : nikChecking['primary'] ? (
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>Memeriksa NIK...</p>
+                  ) : primary.nik.length === 16 ? (
+                    <p style={{ fontSize: '0.8rem', color: '#059669', marginTop: '0.4rem' }}>✓ Format NIK valid</p>
+                  ) : (
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>Pastikan nomor KTP yang Anda masukkan benar ({primary.nik.length}/16).</p>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -367,7 +635,23 @@ export default function Register() {
                       </div>
                       <div style={{ flex: '1 1 150px' }}>
                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>NIK KTP {m.category === 'ANAK' && '(Opsional)'}</label>
-                        <input type="text" placeholder="16 Digit NIK" required={m.category === 'DEWASA'} style={{ width: '100%', padding: '0.7rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} value={m.nik} onChange={(e) => handleMemberChange(i, 'nik', e.target.value)} />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="16 Digit NIK"
+                          required={m.category === 'DEWASA'}
+                          maxLength={16}
+                          style={{ width: '100%', padding: '0.7rem', borderRadius: '0.5rem', border: nikErrors[`member-${i}`] ? '1.5px solid #ef4444' : '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                          value={m.nik}
+                          onChange={(e) => handleMemberChange(i, 'nik', handleNikChange(`member-${i}`, e.target.value))}
+                          onBlur={() => m.category === 'DEWASA' && m.nik && validateNikOnBlur(`member-${i}`, m.nik)}
+                        />
+                        {nikErrors[`member-${i}`] && (
+                          <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem' }}>⚠ {nikErrors[`member-${i}`]}</p>
+                        )}
+                        {nikChecking[`member-${i}`] && (
+                          <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>Memeriksa...</p>
+                        )}
                       </div>
                       <button type="button" onClick={() => removeMember(i)} style={{ padding: '0.7rem', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
                     </div>
