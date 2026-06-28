@@ -247,7 +247,7 @@ export default function DashboardTab({
               {t('print_download') || 'Cetak / Unduh'}
             </Link>
             <button 
-              onClick={() => toast.success(t('extension_info') || 'Masa aktif Anda masih berlaku cukup lama!', { duration: 5000 })}
+              onClick={() => toast.success('Perpanjangan Annual Pass hanya dapat dilakukan 30 hari sebelum masa aktif berakhir.', { duration: 5000, icon: 'ℹ️' })}
               style={{ flex: 1, padding: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', fontWeight: 'bold', color: '#059669', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', animation: 'pulseButton 2s infinite' }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
