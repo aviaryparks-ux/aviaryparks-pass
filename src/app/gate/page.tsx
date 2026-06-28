@@ -452,7 +452,9 @@ export default function GateScanner() {
                     <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: 'bold' }}>
                       {(() => {
                         const userCount = identifiedFamily.length + 1;
-                        const matchedPackage = packages.find(p => p.min_qty <= userCount && p.max_qty >= userCount);
+                        const matchedPackage = packages
+                          .filter(p => p.min_qty <= userCount && p.max_qty >= userCount)
+                          .sort((a, b) => (a.max_qty - a.min_qty) - (b.max_qty - b.min_qty))[0];
                         return matchedPackage ? matchedPackage.name : 'Annual Pass - All Access';
                       })()}
                     </h4>
