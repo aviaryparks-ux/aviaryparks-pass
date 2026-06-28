@@ -61,6 +61,10 @@ export const sendPaymentReceiptEmail = async (to: string, name: string, groupId:
             <strong>Tim Aviary Park</strong>
           </p>
         </div>
+      `,
+    });
+    console.log('Payment receipt email sent to', to);
+  } catch (error) {
     console.error('Error sending payment email:', error);
   }
 };
