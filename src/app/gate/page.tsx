@@ -259,10 +259,23 @@ export default function GateScanner() {
 
   return (
     <div style={{ 
-      display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', 
+      display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100vh', overflow: 'hidden',
       background: `url('/hero-new.jpg') center center / cover no-repeat`,
       position: 'relative'
     }}>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes scanline {
+          0% { top: 0%; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        @keyframes pulseBorder {
+          0% { border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+          50% { border-color: rgba(16, 185, 129, 1); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+          100% { border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+      `}} />
       
       {/* Header Panel */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '1.5rem 3rem', zIndex: 10 }}>
@@ -316,15 +329,16 @@ export default function GateScanner() {
         display: 'flex', 
         flexDirection: 'column',
         width: '100%', 
-        maxWidth: '850px', 
+        maxWidth: '900px', 
         backgroundColor: 'rgba(255, 255, 255, 0.95)', 
         borderRadius: '1.5rem', 
         overflow: 'hidden',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         backdropFilter: 'blur(10px)',
         padding: '1.5rem',
-        marginTop: '1rem',
-        marginBottom: '2rem',
+        marginTop: '0.5rem',
+        marginBottom: '1rem',
+        flex: 1,
         zIndex: 10
       }}>
         
@@ -494,7 +508,7 @@ export default function GateScanner() {
       )}
 
         {/* Camera Feed */}
-        <div style={{ position: 'relative', width: '100%', backgroundColor: '#e2e8f0', minHeight: '450px', borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: '100%', backgroundColor: '#e2e8f0', flex: 1, borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <video 
             ref={videoRef} 
             onPlay={handleVideoPlay}
@@ -504,26 +518,42 @@ export default function GateScanner() {
             style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
           />
           
+          {/* Laser Scanning Animation */}
+          {gateStatus !== 'success' && (
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              width: '100%',
+              height: '4px',
+              backgroundColor: '#10b981',
+              boxShadow: '0 0 15px #10b981, 0 0 30px #10b981',
+              animation: 'scanline 2.5s linear infinite',
+              zIndex: 2
+            }}></div>
+          )}
+
           {/* Overlay Targeting Reticle */}
           <div style={{
             position: 'absolute',
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: '220px',
-            height: '320px',
-            border: `3px solid ${borderColor}`,
+            width: 'min(60vw, 300px)',
+            height: 'min(70vh, 380px)',
+            border: `4px solid ${borderColor}`,
             borderRadius: '50%',
             pointerEvents: 'none',
-            boxShadow: '0 0 0 2000px rgba(0,0,0,0.4)',
-            transition: 'border-color 0.3s ease'
+            boxShadow: '0 0 0 2000px rgba(0,0,0,0.5)',
+            transition: 'border-color 0.3s ease',
+            animation: gateStatus === 'idle' || gateStatus === 'loading' ? 'pulseBorder 2s infinite' : 'none',
+            zIndex: 1
           }}></div>
 
           {/* Corner Brackets */}
-          <div style={{ position: 'absolute', top: '20px', left: '20px', width: '40px', height: '40px', borderTop: '4px solid rgba(255,255,255,0.7)', borderLeft: '4px solid rgba(255,255,255,0.7)', borderRadius: '8px 0 0 0' }}></div>
-          <div style={{ position: 'absolute', top: '20px', right: '20px', width: '40px', height: '40px', borderTop: '4px solid rgba(255,255,255,0.7)', borderRight: '4px solid rgba(255,255,255,0.7)', borderRadius: '0 8px 0 0' }}></div>
-          <div style={{ position: 'absolute', bottom: '20px', left: '20px', width: '40px', height: '40px', borderBottom: '4px solid rgba(255,255,255,0.7)', borderLeft: '4px solid rgba(255,255,255,0.7)', borderRadius: '0 0 0 8px' }}></div>
-          <div style={{ position: 'absolute', bottom: '20px', right: '20px', width: '40px', height: '40px', borderBottom: '4px solid rgba(255,255,255,0.7)', borderRight: '4px solid rgba(255,255,255,0.7)', borderRadius: '0 0 8px 0' }}></div>
+          <div style={{ position: 'absolute', top: '15px', left: '15px', width: '40px', height: '40px', borderTop: '5px solid rgba(255,255,255,0.9)', borderLeft: '5px solid rgba(255,255,255,0.9)', borderRadius: '10px 0 0 0', zIndex: 2 }}></div>
+          <div style={{ position: 'absolute', top: '15px', right: '15px', width: '40px', height: '40px', borderTop: '5px solid rgba(255,255,255,0.9)', borderRight: '5px solid rgba(255,255,255,0.9)', borderRadius: '0 10px 0 0', zIndex: 2 }}></div>
+          <div style={{ position: 'absolute', bottom: '15px', left: '15px', width: '40px', height: '40px', borderBottom: '5px solid rgba(255,255,255,0.9)', borderLeft: '5px solid rgba(255,255,255,0.9)', borderRadius: '0 0 0 10px', zIndex: 2 }}></div>
+          <div style={{ position: 'absolute', bottom: '15px', right: '15px', width: '40px', height: '40px', borderBottom: '5px solid rgba(255,255,255,0.9)', borderRight: '5px solid rgba(255,255,255,0.9)', borderRadius: '0 0 10px 0', zIndex: 2 }}></div>
         </div>
 
         {/* Instructions */}
