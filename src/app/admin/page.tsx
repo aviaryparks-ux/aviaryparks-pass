@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -228,13 +229,13 @@ export default function AdminDashboard() {
       const { error } = await supabase.from('events').insert([{ ...newEvent, image_url: finalImageUrl }]);
       if (error) throw error;
       
-      alert('Event berhasil ditambahkan!');
+      toast.success('Event berhasil ditambahkan!');
       setShowEventForm(false);
       setNewEvent({ title: '', description: '', content: '', event_date: '', image_url: '', status: 'ACTIVE' });
       setImageFile(null);
       fetchEvents();
     } catch (err: any) {
-      alert('Gagal menambah event: ' + err.message);
+      toast.error('Gagal menambah event: ' + err.message);
     }
   };
 
@@ -271,11 +272,11 @@ export default function AdminDashboard() {
       if (editingScheduleId) {
         const { error } = await supabase.from('schedules').update({ ...newSchedule, image_url: finalImageUrl }).eq('id', editingScheduleId);
         if (error) throw error;
-        alert('Jadwal berhasil diubah!');
+        toast.success('Jadwal berhasil diubah!');
       } else {
         const { error } = await supabase.from('schedules').insert([{ ...newSchedule, image_url: finalImageUrl }]);
         if (error) throw error;
-        alert('Jadwal berhasil ditambahkan!');
+        toast.success('Jadwal berhasil ditambahkan!');
       }
       
       setShowScheduleForm(false);
@@ -284,7 +285,7 @@ export default function AdminDashboard() {
       setScheduleImageFile(null);
       fetchSchedules();
     } catch (err: any) {
-      alert('Terjadi kesalahan: ' + err.message);
+      toast.error('Terjadi kesalahan: ' + err.message);
     }
   };
 
@@ -305,7 +306,7 @@ export default function AdminDashboard() {
     if (!confirm('Hapus event ini?')) return;
     const { error } = await supabase.from('events').delete().eq('id', id);
     if (!error) fetchEvents();
-    else alert('Gagal menghapus event: ' + error.message);
+    else toast.error('Gagal menghapus event: ' + error.message);
   };
 
   async function fetchSystemUsers() {
@@ -324,10 +325,10 @@ export default function AdminDashboard() {
     }]);
 
     if (error) {
-      alert('Gagal menambah user: ' + error.message);
+      toast.error('Gagal menambah user: ' + error.message);
     } else {
       setNewSysUser({ username: '', password: '', role: 'GATE' });
-      alert('User berhasil ditambahkan!');
+      toast.success('User berhasil ditambahkan!');
       fetchSystemUsers();
     }
   };
@@ -336,7 +337,7 @@ export default function AdminDashboard() {
     if (!confirm('Yakin ingin menghapus user ini?')) return;
     const { error } = await supabase.from('system_users').delete().eq('id', id);
     if (!error) fetchSystemUsers();
-    else alert('Gagal menghapus user: ' + error.message);
+    else toast.error('Gagal menghapus user: ' + error.message);
   };
 
   async function fetchPackages() {
@@ -395,14 +396,14 @@ export default function AdminDashboard() {
       const data = await res.json();
       
       if (!res.ok || data.error) {
-        alert('Gagal menambah paket: ' + (data.error || 'Unknown error'));
+        toast.error('Gagal menambah paket: ' + (data.error || 'Unknown error'));
       } else {
         setNewPkg({ name: '', min_qty: 1, max_qty: 1, price: '' });
-        alert('Paket berhasil ditambahkan!');
+        toast.success('Paket berhasil ditambahkan!');
         fetchPackages();
       }
     } catch (err: any) {
-      alert('Gagal menambah paket: ' + err.message);
+      toast.error('Gagal menambah paket: ' + err.message);
     }
   };
 
@@ -412,12 +413,12 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/admin/packages/delete?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok || data.error) {
-        alert('Gagal menghapus paket: ' + (data.error || 'Unknown error'));
+        toast.error('Gagal menghapus paket: ' + (data.error || 'Unknown error'));
       } else {
         fetchPackages();
       }
     } catch (err: any) {
-      alert('Gagal menghapus paket: ' + err.message);
+      toast.error('Gagal menghapus paket: ' + err.message);
     }
   };
 
@@ -427,12 +428,12 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/admin/members/delete?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok || data.error) {
-        alert('Gagal menghapus pelanggan: ' + (data.error || 'Unknown error'));
+        toast.error('Gagal menghapus pelanggan: ' + (data.error || 'Unknown error'));
       } else {
         fetchData();
       }
     } catch (err: any) {
-      alert('Gagal menghapus pelanggan: ' + err.message);
+      toast.error('Gagal menghapus pelanggan: ' + err.message);
     }
   };
 

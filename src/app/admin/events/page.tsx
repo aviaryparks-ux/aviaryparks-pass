@@ -56,13 +56,13 @@ export default function EventsAdminPage() {
 
       if (error) throw error;
       
-      alert('Event berhasil ditambahkan!');
+      toast.success('Event berhasil ditambahkan!');
       setShowForm(false);
       setFormData({ title: '', description: '', content: '', event_date: '', image_url: '', status: 'ACTIVE' });
       fetchEvents();
     } catch (error: any) {
       console.error(error);
-      alert('Gagal menyimpan event: ' + error.message);
+      toast.error('Gagal menyimpan event: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export default function EventsAdminPage() {
       if (error) throw error;
       fetchEvents();
     } catch (error: any) {
-      alert('Gagal menghapus event: ' + error.message);
+      toast.error('Gagal menghapus event: ' + error.message);
     }
   };
 

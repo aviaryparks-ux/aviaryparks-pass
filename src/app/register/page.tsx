@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { validateNikFormat, checkNikDuplicate } from '@/lib/nikValidator';
@@ -53,11 +54,11 @@ export default function Register() {
 
   const addMember = () => {
     if (!selectedPkg) {
-      alert('Silakan pilih paket tiket terlebih dahulu di sebelah kiri.');
+      toast.error('Silakan pilih paket tiket terlebih dahulu di sebelah kiri.');
       return;
     }
     if (members.length >= selectedPkg.max_qty - 1) {
-      alert(`Kapasitas maksimal untuk ${selectedPkg.name} adalah ${selectedPkg.max_qty} orang.`);
+      toast.error(`Kapasitas maksimal untuk ${selectedPkg.name} adalah ${selectedPkg.max_qty} orang.`);
       return;
     }
     setMembers([...members, { name: '', nik: '', category: 'DEWASA' }]);
@@ -107,7 +108,7 @@ export default function Register() {
 
     try {
       if (!selectedPkg) {
-        alert('Silakan pilih paket tiket terlebih dahulu sebelum melanjutkan.');
+        toast.error('Silakan pilih paket tiket terlebih dahulu sebelum melanjutkan.');
         setIsLoading(false);
         return;
       }
@@ -141,7 +142,7 @@ export default function Register() {
 
       const result = await res.json();
       if (!res.ok) {
-        alert(result.error || 'Gagal mengirim kode verifikasi.');
+        toast.error(result.error || 'Gagal mengirim kode verifikasi.');
         setIsLoading(false);
         return;
       }
@@ -158,7 +159,7 @@ export default function Register() {
 
     } catch (err) {
       console.error(err);
-      alert('Terjadi kesalahan koneksi.');
+      toast.error('Terjadi kesalahan koneksi.');
     } finally {
       setIsLoading(false);
     }

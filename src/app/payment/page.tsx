@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { CreditCard, ShieldCheck, Ticket, Headphones, Lock, ChevronDown, Receipt } from 'lucide-react';
@@ -136,7 +137,7 @@ export default function Payment() {
 
   const handlePayment = async () => {
     if (!groupId) {
-      alert('Sesi tidak valid, silakan daftar ulang.');
+      toast.error('Sesi tidak valid, silakan daftar ulang.');
       router.push('/register');
       return;
     }
@@ -162,12 +163,12 @@ export default function Payment() {
         // Redirect ke halaman Duitku
         window.location.href = data.paymentUrl;
       } else {
-        alert('Gagal membuat tagihan pembayaran: ' + (data.error || 'Unknown Error'));
+        toast.error('Gagal membuat tagihan pembayaran: ' + (data.error || 'Unknown Error'));
         setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
-      alert('Terjadi kesalahan saat memproses pembayaran.');
+      toast.error('Terjadi kesalahan saat memproses pembayaran.');
       setIsLoading(false);
     }
   };

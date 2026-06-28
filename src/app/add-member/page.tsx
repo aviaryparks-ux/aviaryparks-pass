@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -17,7 +18,7 @@ export default function AddMemberPage() {
       if (stored) {
         setGroupId(stored);
       } else {
-        alert('Sesi login tidak valid.');
+        toast.error('Sesi login tidak valid.');
         router.push('/');
       }
     }
@@ -42,7 +43,7 @@ export default function AddMemberPage() {
       const { error } = await supabase.from('members').insert(membersToInsert);
 
       if (error) {
-        alert('Gagal menambahkan anggota: ' + error.message);
+        toast.error('Gagal menambahkan anggota: ' + error.message);
         setLoading(false);
         return;
       }
@@ -51,7 +52,7 @@ export default function AddMemberPage() {
       router.push('/payment');
     } catch (err) {
       console.error(err);
-      alert('Terjadi kesalahan.');
+      toast.error('Terjadi kesalahan.');
       setLoading(false);
     }
   };
