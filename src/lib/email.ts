@@ -24,11 +24,15 @@ export const sendPaymentReceiptEmail = async (email: string, name: string, group
             <p style="margin: 0; font-size: 14px; color: #64748b;">Nomor Registrasi Anda (Group ID):</p>
             <p style="margin: 8px 0 0 0; font-size: 20px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">${groupId}</p>
           </div>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://bad-cheetah-86.loca.lt'}/login" style="background-color: #059669; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+              Masuk ke Dasbor Pengunjung
+            </a>
+          </div>
           <p style="font-size: 16px; color: #334155; line-height: 1.6;">
             Langkah selanjutnya:<br/>
-            1. Kunjungi website Aviary Park.<br/>
-            2. Masuk ke Dasbor Pengunjung.<br/>
-            3. Daftarkan wajah Anda (Face Biometric) untuk akses masuk tanpa tiket fisik.
+            1. Klik tombol di atas untuk masuk ke Dasbor.<br/>
+            2. Daftarkan wajah Anda (Face Biometric) untuk akses masuk tanpa tiket fisik.
           </p>
           <p style="font-size: 16px; color: #334155; margin-top: 32px;">
             Sampai jumpa di Aviary Park Indonesia!<br/>

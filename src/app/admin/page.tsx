@@ -239,7 +239,9 @@ export default function AdminDashboard() {
         finalImageUrl = publicUrl;
       }
 
-      const { error } = await supabase.from('events').insert([{ ...newEvent, image_url: finalImageUrl }]);
+      const res = await fetch('/api/admin/events', { method: 'POST', body: JSON.stringify({ ...newEvent, image_url: finalImageUrl }) });
+      const json = await res.json();
+      const error = json.error ? new Error(json.error) : null;
       if (error) throw error;
       
       toast.success('Event berhasil ditambahkan!');
@@ -254,7 +256,7 @@ export default function AdminDashboard() {
 
   const toggleEventStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    await supabase.from('events').update({ status: newStatus }).eq('id', id);
+    await fetch('/api/admin/events', { method: 'PUT', body: JSON.stringify({ id, status: newStatus }) });
     fetchEvents();
   };
 
@@ -283,11 +285,15 @@ export default function AdminDashboard() {
       }
 
       if (editingScheduleId) {
-        const { error } = await supabase.from('schedules').update({ ...newSchedule, image_url: finalImageUrl }).eq('id', editingScheduleId);
+        const res = await fetch('/api/admin/schedules', { method: 'PUT', body: JSON.stringify({ id: editingScheduleId, ...newSchedule, image_url: finalImageUrl }) });
+        const json = await res.json();
+        const error = json.error ? new Error(json.error) : null;
         if (error) throw error;
         toast.success('Jadwal berhasil diubah!');
       } else {
-        const { error } = await supabase.from('schedules').insert([{ ...newSchedule, image_url: finalImageUrl }]);
+        const res = await fetch('/api/admin/schedules', { method: 'POST', body: JSON.stringify({ ...newSchedule, image_url: finalImageUrl }) });
+        const json = await res.json();
+        const error = json.error ? new Error(json.error) : null;
         if (error) throw error;
         toast.success('Jadwal berhasil ditambahkan!');
       }
@@ -304,20 +310,22 @@ export default function AdminDashboard() {
 
   const deleteSchedule = async (id: string) => {
     if (window.confirm('Yakin ingin menghapus jadwal ini?')) {
-      await supabase.from('schedules').delete().eq('id', id);
+      await fetch('/api/admin/schedules?id=' + id, { method: 'DELETE' });
       fetchSchedules();
     }
   };
 
   const toggleScheduleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    await supabase.from('schedules').update({ status: newStatus }).eq('id', id);
+    await fetch('/api/admin/schedules', { method: 'PUT', body: JSON.stringify({ id, status: newStatus }) });
     fetchSchedules();
   };
 
   const deleteEvent = async (id: string) => {
     if (!confirm('Hapus event ini?')) return;
-    const { error } = await supabase.from('events').delete().eq('id', id);
+    const res = await fetch('/api/admin/events?id=' + id, { method: 'DELETE' });
+    const json = await res.json();
+    const error = json.error ? new Error(json.error) : null;
     if (!error) fetchEvents();
     else toast.error('Gagal menghapus event: ' + error.message);
   };
@@ -348,7 +356,9 @@ export default function AdminDashboard() {
 
   const deleteSystemUser = async (id: string) => {
     if (!confirm('Yakin ingin menghapus user ini?')) return;
-    const { error } = await supabase.from('system_users').delete().eq('id', id);
+    const res = await fetch('/api/admin/system_users?id=' + id, { method: 'DELETE' });
+    const json = await res.json();
+    const error = json.error ? new Error(json.error) : null;
     if (!error) fetchSystemUsers();
     else toast.error('Gagal menghapus user: ' + error.message);
   };

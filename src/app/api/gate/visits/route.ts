@@ -8,12 +8,15 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseAdmin.from('visits').insert([{ member_id, location }]).select();
     if (error) throw error;
 
-    // Send email asynchronously without waiting
-    supabaseAdmin.from('members').select('email, name').eq('id', member_id).single().then(({ data: member }) => {
+    // Send email (MUST BE AWAITED)
+    try {
+      const { data: member } = await supabaseAdmin.from('members').select('email, name').eq('id', member_id).single();
       if (member && member.email) {
-        sendVisitNotificationEmail(member.email, member.name, location);
+        await sendVisitNotificationEmail(member.email, member.name, location);
       }
-    });
+    } catch (err) {
+      console.error('Failed to send visit email:', err);
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

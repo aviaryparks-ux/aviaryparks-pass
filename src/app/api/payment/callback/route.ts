@@ -59,17 +59,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
       }
 
-      // Send email asynchronously
-      supabaseAdmin.from('members').select('email, name, package_id').eq('group_id', actualGroupId).eq('role', 'PRIMARY').single().then(async ({ data: member }) => {
+      // Send email (MUST BE AWAITED so serverless function doesn't die)
+      try {
+        const { data: member } = await supabaseAdmin.from('members').select('email, name, package_id').eq('group_id', actualGroupId).eq('role', 'PRIMARY').single();
         if (member && member.email) {
           let packageName = 'Annual Pass';
           if (member.package_id) {
             const { data: pkg } = await supabaseAdmin.from('ticket_packages').select('name').eq('id', member.package_id).single();
             if (pkg) packageName = pkg.name;
           }
-          sendPaymentReceiptEmail(member.email, member.name, actualGroupId, packageName);
+          await sendPaymentReceiptEmail(member.email, member.name, actualGroupId, packageName);
         }
-      });
+      } catch (err) {
+        console.error('Failed to send email:', err);
+      }
 
     } else {
       console.log(`Payment Failed or Pending for order: ${merchantOrderId}, ResultCode: ${resultCode}`);
