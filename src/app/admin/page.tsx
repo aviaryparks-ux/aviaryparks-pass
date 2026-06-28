@@ -31,18 +31,23 @@ export default function AdminDashboard() {
     for (let i = chartFilter - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      dates.push(d.toLocaleDateString('id-ID', { day: 'numeric', month: 'numeric' }));
+      dates.push(`${d.getDate()}/${d.getMonth() + 1}`);
     }
     
     const vCounts: Record<string, number> = {};
     rawVisits.forEach(v => {
-      const date = new Date(v.visited_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'numeric' });
+      // Ensure the timestamp string is interpreted as UTC if it lacks a timezone by appending 'Z'
+      const timeStr = v.visited_at.endsWith('Z') || v.visited_at.includes('+') ? v.visited_at : v.visited_at + 'Z';
+      const d = new Date(timeStr);
+      const date = `${d.getDate()}/${d.getMonth() + 1}`;
       vCounts[date] = (vCounts[date] || 0) + 1;
     });
     
     const sCounts: Record<string, { Lunas: number; BelumLunas: number }> = {};
     users.forEach(m => {
-      const date = new Date(m.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'numeric' });
+      const timeStr = m.created_at.endsWith('Z') || m.created_at.includes('+') ? m.created_at : m.created_at + 'Z';
+      const d = new Date(timeStr);
+      const date = `${d.getDate()}/${d.getMonth() + 1}`;
       if (!sCounts[date]) sCounts[date] = { Lunas: 0, BelumLunas: 0 };
       if (m.status === 'ACTIVE') sCounts[date].Lunas += 1;
       else sCounts[date].BelumLunas += 1;
