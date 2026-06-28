@@ -6,7 +6,8 @@ export default function VisitsTab({ visits, familyMembers = [] }: { visits: any[
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
 
   // Calculate Family Visits (unique days)
-  const uniqueVisitDays = new Set(visits.map(v => new Date(v.visited_at).toISOString().split('T')[0]));
+  // Use local timezone (en-CA gives YYYY-MM-DD format in local time)
+  const uniqueVisitDays = new Set(visits.map(v => new Date(v.visited_at).toLocaleDateString('en-CA')));
   const totalVisits = uniqueVisitDays.size;
   
   // Find favorite month based on unique days
