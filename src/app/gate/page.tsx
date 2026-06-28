@@ -387,8 +387,8 @@ export default function GateScanner() {
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
             backgroundColor: 'rgba(248, 250, 252, 0.95)', zIndex: 100,
             backdropFilter: 'blur(10px)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            padding: '2rem', overflowY: 'auto',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem', overflowY: 'auto',
             animation: 'fadeIn 0.4s ease-out'
           }}
           onMouseDown={() => setIsCooldownPaused(true)}
@@ -398,7 +398,7 @@ export default function GateScanner() {
           onTouchEnd={() => setIsCooldownPaused(false)}
         >
           {/* Header internal for Detail */}
-          <div style={{ width: '100%', maxWidth: '850px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', marginTop: '2rem', animation: 'fadeIn 0.6s ease-out' }}>
+          <div style={{ width: '100%', maxWidth: '850px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', marginTop: '0.5rem', animation: 'fadeIn 0.6s ease-out' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: '50px', height: '50px', backgroundColor: '#10b981', color: 'white', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }}>
                 <svg className="animated-check" width="30" height="30" viewBox="0 0 52 52">
@@ -417,14 +417,14 @@ export default function GateScanner() {
             </button>
           </div>
 
-          <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '1.5rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
+          <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '1rem', fontSize: '0.9rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
             {isCooldownPaused ? 'Waktu dijeda. Lepaskan untuk melanjutkan.' : 'Tahan (Hold) layar ini untuk menghentikan waktu mundur.'}
           </p>
           
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2rem', width: '100%', maxWidth: '1050px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '1.5rem', width: '100%', maxWidth: '1000px' }}>
             
             {/* Bagian Kiri: ID Card Virtual */}
-            <div style={{ perspective: '1000px', width: '100%', maxWidth: '550px', aspectRatio: '1.58 / 1', containerType: 'inline-size', animation: 'slideUpBounce 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+            <div style={{ perspective: '1000px', width: '100%', maxWidth: '480px', aspectRatio: '1.58 / 1', containerType: 'inline-size', animation: 'slideUpBounce 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
               <div style={{ 
                 position: 'relative', width: '100%', height: '100%',
                 background: 'url(\'/hornbill-card-bg.png\') center right / cover no-repeat, #064e3b', 
@@ -483,7 +483,7 @@ export default function GateScanner() {
             </div>
 
             {/* Bagian Kanan: Info Paket & Rombongan */}
-            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.5rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '380px', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)', animation: 'slideInRight 0.6s ease-out 0.2s both' }}>
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.25rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '350px', maxHeight: '480px', overflowY: 'auto', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)', animation: 'slideInRight 0.6s ease-out 0.2s both' }}>
               
               {/* Info Paket Tiket */}
               <div style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
