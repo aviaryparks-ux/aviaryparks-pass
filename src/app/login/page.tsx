@@ -52,7 +52,7 @@ export default function Login() {
     <div style={{ position: 'relative', height: '100dvh', overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
       {/* Background Image */}
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url(/payment_bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 0 }}></div>
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url(/payment_bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 0 }}></div>
 
       {/* 3D Trapezoid Logo Tab */}
       <div style={{ 

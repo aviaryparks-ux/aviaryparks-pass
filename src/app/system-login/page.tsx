@@ -27,44 +27,31 @@ function SystemLoginForm() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('system_users')
-        .select('*')
-        .eq('username', username)
-        .eq('password', password)
-        .single();
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          password,
+          callbackUrl
+        }),
+      });
 
-      if (error || !data) {
-        setError('Username atau Password salah! (Pastikan tabel system_users sudah dibuat di Supabase)');
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Gagal login. Periksa username dan password.');
         setIsLoading(false);
         return;
-      }
-
-      // Check role mapping
-      if (isAdmin && data.role !== 'ADMIN') {
-        setError('Akses ditolak! Akun ini bukan Super Admin.');
-        setIsLoading(false);
-        return;
-      }
-
-      if (isGate && data.role !== 'GATE' && data.role !== 'ADMIN') {
-        setError('Akses ditolak! Akun ini tidak memiliki akses Gate.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Success
-      if (isAdmin) {
-        document.cookie = `auth_admin=true; path=/; max-age=86400`;
-      } else if (isGate) {
-        document.cookie = `auth_gate=true; path=/; max-age=86400`;
       }
 
       // Store username in localStorage for display in dashboard
       localStorage.setItem('system_username', data.username);
       localStorage.setItem('system_role', data.role);
 
-      router.push(callbackUrl);
+      router.push(data.redirect || '/');
     } catch (err) {
       console.error(err);
       setError('Terjadi kesalahan sistem.');
@@ -73,13 +60,47 @@ function SystemLoginForm() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', padding: '2rem' }}>
-      <div style={{ backgroundColor: 'white', padding: '3rem', borderRadius: '1rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px' }}>
+    <div style={{ position: 'relative', height: '100dvh', overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Background Image */}
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url(/payment_bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 0 }}></div>
+
+      {/* 3D Trapezoid Logo Tab */}
+      <div style={{ 
+        position: 'absolute', 
+        top: 0,
+        left: '3rem',
+        padding: '1rem 2rem 1.5rem 2rem',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 20
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: '#f0fdf4',
+          transform: 'perspective(150px) rotateX(-10deg)',
+          transformOrigin: 'top',
+          borderBottomLeftRadius: '1.5rem',
+          borderBottomRightRadius: '1.5rem',
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          zIndex: -1
+        }}></div>
+        <img src="/logo.png" alt="Aviary Park Logo" style={{ height: '70px', objectFit: 'contain' }} />
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 10, height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+        <div style={{ 
+          backgroundColor: '#ffffff', 
+          borderRadius: '24px', 
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', 
+          maxWidth: '420px', 
+          width: '100%', 
+          padding: '2.5rem 2rem'
+        }}>
         
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img src="/logo.png" alt="Aviary Park Logo" style={{ height: '50px', marginBottom: '1rem' }} />
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a' }}>Otorisasi Sistem</h2>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.5rem' }}>Akses khusus untuk <strong style={{color: 'var(--primary-color)'}}>{roleName}</strong></p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#064e3b', marginBottom: '0.5rem' }}>Otorisasi Sistem</h2>
+          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Akses khusus untuk <strong style={{color: '#059669'}}>{roleName}</strong></p>
         </div>
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -119,9 +140,42 @@ function SystemLoginForm() {
             />
           </div>
 
-          <button type="submit" disabled={isLoading} style={{ backgroundColor: 'var(--primary-color)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', fontWeight: 'bold', fontSize: '1rem', cursor: isLoading ? 'not-allowed' : 'pointer', marginTop: '0.5rem', transition: 'background-color 0.2s', opacity: isLoading ? 0.7 : 1 }}>
-            {isLoading ? 'Memeriksa...' : 'Buka Kunci Akses'}
-          </button>
+            <style>{`
+              @keyframes shimmer-login {
+                0% { background-position: -200% center; }
+                100% { background-position: 200% center; }
+              }
+              .login-btn {
+                background: linear-gradient(90deg, #059669, #34d399, #059669);
+                background-size: 200% auto;
+                animation: shimmer-login 3s linear infinite;
+                transition: all 0.3s ease;
+              }
+              .login-btn:hover {
+                transform: scale(1.02);
+                box-shadow: 0 8px 30px rgba(5, 150, 105, 0.5);
+              }
+            `}</style>
+
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className={!isLoading ? 'login-btn' : ''}
+              style={{ 
+                marginTop: '0.5rem', 
+                padding: '1rem', 
+                fontSize: '1.1rem', 
+                fontWeight: '700',
+                color: 'white',
+                backgroundColor: isLoading ? '#94a3b8' : '#059669',
+                border: 'none',
+                borderRadius: '32px',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                boxShadow: isLoading ? 'none' : '0 4px 12px rgba(5,150,105,0.3)'
+              }}
+            >
+              {isLoading ? 'Memeriksa...' : 'Buka Kunci Akses'}
+            </button>
         </form>
 
         <div style={{ marginTop: '2rem', textAlign: 'center' }}>
@@ -130,6 +184,7 @@ function SystemLoginForm() {
           </Link>
         </div>
       </div>
+    </div>
     </div>
   );
 }

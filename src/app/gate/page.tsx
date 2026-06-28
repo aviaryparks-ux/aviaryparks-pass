@@ -236,6 +236,17 @@ export default function GateScanner() {
     setIdentifiedFamily([]);
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      localStorage.removeItem('system_username');
+      localStorage.removeItem('system_role');
+      window.location.href = '/system-login';
+    } catch (err) {
+      console.error('Logout error', err);
+    }
+  };
+
   // Pengaturan Warna UI Dinamis
   let borderColor = '#94a3b8';
   let bgColor = '#f8fafc';
@@ -297,10 +308,16 @@ export default function GateScanner() {
           <img src="/logo.png" alt="Aviary Park Indonesia" style={{ height: '60px', width: 'auto' }} />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', marginLeft: '13rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginLeft: '13rem', gap: '1rem' }}>
           <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '0.4rem 1.2rem', borderRadius: '2rem', fontWeight: 'bold', fontSize: '1rem' }}>
             LOKET
           </div>
+          <button 
+            onClick={handleLogout}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fee2e2', color: '#ef4444', padding: '0.4rem 1.2rem', borderRadius: '2rem', fontWeight: 'bold', fontSize: '1rem', border: 'none', cursor: 'pointer' }}
+          >
+            Logout
+          </button>
         </div>
 
 

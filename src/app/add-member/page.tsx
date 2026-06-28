@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { UserPlus } from 'lucide-react';
 
 export default function AddMemberPage() {
   const router = useRouter();
@@ -58,17 +59,81 @@ export default function AddMemberPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' }}>
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '1rem', width: '100%', maxWidth: '400px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', textAlign: 'center' }}>Tambah Anggota Baru</h2>
-        <p style={{ color: '#64748b', marginBottom: '1.5rem', textAlign: 'center', fontSize: '0.875rem' }}>
-          Data anggota tambahan akan ditagihkan secara terpisah.
-        </p>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', backgroundColor: '#f0fdf4', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Background Image */}
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url(/payment_bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 0 }}></div>
+      
+      {/* Header with Logo */}
+      <div style={{ 
+          position: 'absolute', 
+          top: 0,
+          left: '3rem',
+          padding: '1rem 2rem 1.5rem 2rem',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 20
+      }}>
+        {/* 3D Trapezoid Background */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: '#f0fdf4',
+          transform: 'perspective(150px) rotateX(-10deg)',
+          transformOrigin: 'top',
+          borderBottomLeftRadius: '1.5rem',
+          borderBottomRightRadius: '1.5rem',
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          zIndex: -1
+        }}></div>
+        <img src="/logo.png" alt="Aviary Park Logo" style={{ height: '70px', objectFit: 'contain' }} />
+      </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 1.5rem 1rem 1.5rem', position: 'relative', zIndex: 10, overflow: 'hidden' }}>
+        
+        {/* The Card */}
+        <div style={{ 
+          backgroundColor: '#ffffff', 
+          borderRadius: '20px', 
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', 
+          display: 'flex', 
+          overflow: 'hidden', 
+          maxWidth: '500px', 
+          width: '100%',
+          maxHeight: '90dvh',
+          flexDirection: 'column',
+          marginTop: '60px'
+        }}>
+          
+          <div style={{ padding: '1.5rem 2rem', overflowY: 'auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  backgroundColor: '#e6f4ea', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center'
+                }}>
+                  <UserPlus size={22} color="#065f46" />
+                </div>
+              </div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#064e3b', marginBottom: '0.3rem' }}>Tambah Anggota Baru</h2>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
+                Data anggota tambahan akan ditagihkan secara terpisah.
+              </p>
+            </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {members.map((member, index) => (
-            <div key={index} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5rem', marginBottom: '0.5rem', position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div key={index} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '0.25rem', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#334155' }}>Anggota {index + 1}</h3>
                 {members.length > 1 && (
                   <button 
@@ -85,41 +150,43 @@ export default function AddMemberPage() {
                 )}
               </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>Nama Lengkap</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={member.name} 
-                    onChange={(e) => {
-                      const newMembers = [...members];
-                      newMembers[index].name = e.target.value;
-                      setMembers(newMembers);
-                    }} 
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }} 
-                    placeholder="Masukkan nama"
-                  />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500', fontSize: '0.8rem' }}>Nama Lengkap</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={member.name} 
+                      onChange={(e) => {
+                        const newMembers = [...members];
+                        newMembers[index].name = e.target.value;
+                        setMembers(newMembers);
+                      }} 
+                      style={{ width: '100%', padding: '0.6rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} 
+                      placeholder="Masukkan nama"
+                    />
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500', fontSize: '0.8rem' }}>NIK</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={member.nik} 
+                      onChange={(e) => {
+                        const newMembers = [...members];
+                        newMembers[index].nik = e.target.value;
+                        setMembers(newMembers);
+                      }} 
+                      style={{ width: '100%', padding: '0.6rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} 
+                      placeholder="Masukkan NIK"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>NIK</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={member.nik} 
-                    onChange={(e) => {
-                      const newMembers = [...members];
-                      newMembers[index].nik = e.target.value;
-                      setMembers(newMembers);
-                    }} 
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }} 
-                    placeholder="Masukkan NIK KTP/KIA"
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>Peran/Hubungan</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500', fontSize: '0.8rem' }}>Peran/Hubungan</label>
                   <select 
                     value={member.role} 
                     onChange={(e) => {
@@ -127,7 +194,7 @@ export default function AddMemberPage() {
                       newMembers[index].role = e.target.value;
                       setMembers(newMembers);
                     }} 
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: 'white' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: 'white', fontSize: '0.875rem' }}
                   >
                     <option value="SUAMI">Suami</option>
                     <option value="ISTRI">Istri</option>
@@ -143,23 +210,24 @@ export default function AddMemberPage() {
             type="button" 
             onClick={() => setMembers([...members, { name: '', nik: '', role: 'ANAK' }])}
             style={{ 
-              padding: '0.75rem', 
+              padding: '0.6rem', 
               backgroundColor: 'transparent', 
               color: '#3b82f6', 
               border: '2px dashed #93c5fd', 
               borderRadius: '0.5rem', 
               fontWeight: 'bold', 
-              cursor: 'pointer' 
+              cursor: 'pointer',
+              fontSize: '0.875rem'
             }}
           >
-            + Tambah Anggota Lainnya
+            + Tambah Anggota
           </button>
 
           <button 
             type="submit" 
             disabled={loading}
             style={{ 
-              marginTop: '1rem', 
+              marginTop: '0.25rem', 
               padding: '0.75rem', 
               backgroundColor: loading ? '#94a3b8' : '#10b981', 
               color: 'white', 
@@ -172,10 +240,12 @@ export default function AddMemberPage() {
             {loading ? 'Memproses...' : 'Lanjutkan ke Pembayaran'}
           </button>
 
-          <Link href="/dashboard" style={{ textAlign: 'center', color: '#64748b', fontSize: '0.875rem', textDecoration: 'none', marginTop: '0.5rem' }}>
+          <Link href="/dashboard" style={{ textAlign: 'center', color: '#64748b', fontSize: '0.875rem', textDecoration: 'none', marginTop: '0.5rem', display: 'block' }}>
             Batal & Kembali
           </Link>
         </form>
+          </div>
+        </div>
       </div>
     </div>
   );

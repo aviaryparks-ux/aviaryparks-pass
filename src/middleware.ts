@@ -1,25 +1,49 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 
-export function middleware(request: NextRequest) {
+const getJwtSecretKey = () => {
+  const secret = process.env.JWT_SECRET || 'super-secret-aviary-park-key-2026';
+  return new TextEncoder().encode(secret);
+};
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect Admin Route
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    const isAdmin = request.cookies.get('auth_admin')?.value === 'true';
-    if (!isAdmin) {
+  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
+  const isGateRoute = pathname.startsWith('/gate');
+
+  if (isAdminRoute || isGateRoute) {
+    const token = request.cookies.get('system_token')?.value;
+
+    if (!token) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      return NextResponse.redirect(new URL('/system-login?callbackUrl=/admin', request.url));
+      const callbackUrl = pathname;
+      return NextResponse.redirect(new URL(`/system-login?callbackUrl=${encodeURIComponent(callbackUrl)}`, request.url));
     }
-  }
 
-  // Protect Gate Route
-  if (pathname.startsWith('/gate')) {
-    const isGate = request.cookies.get('auth_gate')?.value === 'true';
-    if (!isGate) {
-      return NextResponse.redirect(new URL('/system-login?callbackUrl=/gate', request.url));
+    try {
+      // Verify JWT
+      const { payload } = await jwtVerify(token, getJwtSecretKey());
+      
+      // Check roles
+      if (isAdminRoute && payload.role !== 'ADMIN') {
+        throw new Error('Not Admin');
+      }
+
+      if (isGateRoute && payload.role !== 'GATE' && payload.role !== 'ADMIN') {
+        throw new Error('Not Gate');
+      }
+
+      return NextResponse.next();
+    } catch (err) {
+      console.error('JWT Verification failed:', err);
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      return NextResponse.redirect(new URL('/system-login?error=unauthorized', request.url));
     }
   }
 
