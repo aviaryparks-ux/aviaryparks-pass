@@ -72,23 +72,28 @@ export const sendPaymentReceiptEmail = async (to: string, name: string, groupId:
 export const sendVisitNotificationEmail = async (email: string, name: string, location: string) => {
   try {
     const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-        <div style="background-color: #f59e0b; padding: 24px; text-align: center; color: white;">
-          <h1 style="margin: 0; font-size: 24px;">Selamat Datang! 🦜</h1>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+        <div style="background-color: #f59e0b; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin: -20px -20px 20px -20px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">Selamat Datang! 🦜</h1>
         </div>
-        <div style="padding: 32px;">
-          <p style="font-size: 16px; color: #334155;">Halo <strong>${name}</strong>,</p>
-          <p style="font-size: 16px; color: #334155; line-height: 1.6;">
-            Kami mencatat Anda baru saja masuk melalui <strong>${location}</strong> dengan menggunakan Face Biometric.
-          </p>
-          <p style="font-size: 16px; color: #334155; line-height: 1.6;">
-            Semoga Anda dan keluarga memiliki hari yang menyenangkan dan penuh petualangan di Aviary Park Indonesia! Jangan ragu untuk menghubungi staf kami jika Anda membutuhkan bantuan.
-          </p>
-          <p style="font-size: 16px; color: #334155; margin-top: 32px;">
-            Salam Hangat,<br/>
-            <strong>Tim Aviary Park</strong>
+        <p style="font-size: 16px; color: #334155;">Halo <strong>${name}</strong>,</p>
+        <p style="font-size: 16px; color: #334155; line-height: 1.6;">
+          Kami mencatat Anda baru saja melakukan *scan* wajah dan berhasil masuk melalui <strong>${location}</strong>.
+        </p>
+        
+        <div style="background-color: #fffbeb; padding: 16px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 24px 0;">
+          <p style="margin: 0; font-size: 15px; color: #92400e;">
+            <strong>Tips Kunjungan:</strong> Buka <strong>Dasbor Pengunjung</strong> Anda untuk melihat Jadwal Pertunjukan Burung hari ini agar Anda tidak ketinggalan momen seru!
           </p>
         </div>
+
+        <p style="font-size: 16px; color: #334155; line-height: 1.6;">
+          Semoga Anda dan keluarga memiliki hari yang luar biasa penuh petualangan di Aviary Park Indonesia.
+        </p>
+        <p style="font-size: 16px; color: #334155; margin-top: 32px;">
+          Salam Hangat,<br/>
+          <strong>Tim Aviary Park</strong>
+        </p>
       </div>
     `;
 

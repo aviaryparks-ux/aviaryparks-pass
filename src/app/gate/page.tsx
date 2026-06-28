@@ -201,33 +201,19 @@ export default function GateScanner() {
     setCooldown(7);
     setIsCooldownPaused(false);
 
-    // Cek apakah sudah berkunjung hari ini
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const { data: existingVisits, error: fetchErr } = await supabase
-      .from('visits')
-      .select('id')
-      .eq('member_id', member.id)
-      .gte('visited_at', today.toISOString())
-      .limit(1);
-
-    if (fetchErr) {
-      console.error("Failed to check existing visits:", fetchErr);
-    }
-
-    if (!existingVisits || existingVisits.length === 0) {
-      // Simpan ke tabel visits secara diam-diam (background)
-      const { error: visitErr } = await supabase.from('visits').insert([{
-        member_id: member.id,
-        status: 'SUCCESS'
-      }]);
-      
-      if (visitErr) {
-        console.error("Failed to insert visit:", visitErr);
-      }
-    } else {
-      console.log(`Visit for ${member.name} already recorded today, skipping insert.`);
+    // Panggil API Backend (Bypass RLS & Kirim Email)
+    try {
+      const res = await fetch('/api/gate/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          member_id: member.id,
+          location: 'Gerbang Utama'
+        })
+      });
+      if (!res.ok) console.error("Failed to record visit in backend");
+    } catch (err) {
+      console.error("Error calling visits API:", err);
     }
   };
 
