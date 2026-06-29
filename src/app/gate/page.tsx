@@ -28,6 +28,7 @@ export default function GateScanner() {
   const faceMatcherRef = useRef<faceapi.FaceMatcher | null>(null);
   const lastScansRef = useRef<Record<string, number>>({}); 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isScanningRef = useRef<boolean>(false);
 
   const returnToGate = () => {
     setViewMode('SCANNING');
@@ -147,21 +148,32 @@ export default function GateScanner() {
       if (viewModeRef.current === 'DETAIL') return; // Pause scanning if in detail mode
       if (!videoRef.current || !faceMatcherRef.current) return;
       if (videoRef.current.paused || videoRef.current.ended) return;
+      
+      // Mencegah penumpukan scan jika scan sebelumnya belum selesai (Pencegah Lag/Crash)
+      if (isScanningRef.current) return;
+      
+      isScanningRef.current = true;
 
-      const detection = await faceapi.detectSingleFace(videoRef.current)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      try {
+        const detection = await faceapi.detectSingleFace(videoRef.current)
+          .withFaceLandmarks()
+          .withFaceDescriptor();
 
-      if (detection) {
-        const match = faceMatcherRef.current.findBestMatch(detection.descriptor);
-        
-        if (match.label !== 'unknown') {
-          handleMatch(match.label);
+        if (detection) {
+          const match = faceMatcherRef.current.findBestMatch(detection.descriptor);
+          
+          if (match.label !== 'unknown') {
+            handleMatch(match.label);
+          } else {
+            handleUnknown();
+          }
         } else {
-          handleUnknown();
+          // Opsional: kembali ke mode idle jika beberapa detik tidak ada wajah
         }
-      } else {
-        // Opsional: kembali ke mode idle jika beberapa detik tidak ada wajah
+      } catch (err) {
+        console.error("Scanning error", err);
+      } finally {
+        isScanningRef.current = false;
       }
     }, 500);
   };
