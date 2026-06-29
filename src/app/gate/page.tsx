@@ -178,6 +178,17 @@ export default function GateScanner() {
     }, 500);
   };
 
+  const speakWelcome = (name: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(`Selamat datang di Aviary Park Indonesia, ${name.split(' ')[0]}`);
+      msg.lang = 'id-ID';
+      msg.rate = 0.95;
+      msg.pitch = 1.1;
+      window.speechSynthesis.speak(msg);
+    }
+  };
+
   const handleMatch = async (memberId: string) => {
     const member = membersRef.current.find(m => m.id === memberId);
     if (!member) return;
@@ -207,6 +218,9 @@ export default function GateScanner() {
     setStatusMsg(`Akses Diberikan: Selamat bersenang-senang, ${member.name}!`);
     setGateStatus('success');
     setIdentifiedUser(member);
+    
+    // Putar Suara Selamat Datang
+    speakWelcome(member.name);
     setIdentifiedFamily(membersRef.current.filter(m => m.group_id === member.group_id && m.id !== member.id));
 
     setViewMode('DETAIL');
