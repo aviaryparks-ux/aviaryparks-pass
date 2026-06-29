@@ -64,7 +64,7 @@ export default function GateScanner() {
 
         // 2. Ambil data wajah dari Supabase (Ambil semua agar bisa lihat data keluarga)
         const [mFetch, pFetch] = await Promise.all([
-            fetch('/api/admin/members'),
+            fetch('/api/gate/members'),
             fetch('/api/public/packages')
           ]);
           const membersRes = await mFetch.json();
