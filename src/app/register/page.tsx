@@ -388,10 +388,10 @@ export default function Register() {
         right: 0,
         bottom: 0,
         zIndex: 0,
-        backgroundImage: 'url(/register_bg.png)',
+        backgroundImage: 'url(/payment_bg.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        opacity: 0.8,
+        opacity: 1,
       }}></div>
       <div style={{
         position: 'fixed',
