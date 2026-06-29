@@ -100,8 +100,8 @@ export default function GateScanner() {
           return new faceapi.LabeledFaceDescriptors(member.id, [descArray]);
         });
 
-        // Toleransi kecocokan 0.6 (semakin kecil semakin ketat)
-        faceMatcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+        // Toleransi kecocokan 0.45 (semakin kecil semakin ketat, 0.45 ideal untuk mencegah salah wajah)
+        faceMatcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
 
         setStatusMsg('Sistem siap. Menunggu pengunjung...');
         setGateStatus('idle');
