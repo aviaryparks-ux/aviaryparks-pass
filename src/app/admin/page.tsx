@@ -44,9 +44,11 @@ export default function AdminDashboard() {
       const date = `${d.getDate()}/${d.getMonth() + 1}`;
       vCounts[date] = (vCounts[date] || 0) + 1;
       
-      if (v.member_id && v.members?.name) {
+      if (v.member_id) {
+        const member = users.find(u => u.id === v.member_id);
+        const name = member ? member.name : 'Unknown User';
         if (!userVisitsCount[v.member_id]) {
-          userVisitsCount[v.member_id] = { count: 0, name: v.members.name };
+          userVisitsCount[v.member_id] = { count: 0, name };
         }
         userVisitsCount[v.member_id].count += 1;
       }
