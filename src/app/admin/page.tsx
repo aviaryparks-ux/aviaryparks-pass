@@ -26,7 +26,7 @@ export default function AdminDashboard() {
     }
   };
   
-  const { salesData, visitsData } = useMemo(() => {
+  const { salesData, visitsData, topUsers } = useMemo(() => {
     const dates = [];
     for (let i = chartFilter - 1; i >= 0; i--) {
       const d = new Date();
@@ -35,12 +35,21 @@ export default function AdminDashboard() {
     }
     
     const vCounts: Record<string, number> = {};
+    const userVisitsCount: Record<string, { count: number; name: string }> = {};
+
     rawVisits.forEach(v => {
       // Ensure the timestamp string is interpreted as UTC if it lacks a timezone by appending 'Z'
       const timeStr = v.visited_at.endsWith('Z') || v.visited_at.includes('+') ? v.visited_at : v.visited_at + 'Z';
       const d = new Date(timeStr);
       const date = `${d.getDate()}/${d.getMonth() + 1}`;
       vCounts[date] = (vCounts[date] || 0) + 1;
+      
+      if (v.member_id && v.members?.name) {
+        if (!userVisitsCount[v.member_id]) {
+          userVisitsCount[v.member_id] = { count: 0, name: v.members.name };
+        }
+        userVisitsCount[v.member_id].count += 1;
+      }
     });
     
     const sCounts: Record<string, { Lunas: number; BelumLunas: number }> = {};
@@ -53,6 +62,10 @@ export default function AdminDashboard() {
       else sCounts[date].BelumLunas += 1;
     });
 
+    const topUsers = Object.values(userVisitsCount)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     return {
       salesData: dates.map(d => ({
         date: d,
@@ -62,7 +75,8 @@ export default function AdminDashboard() {
       visitsData: dates.map(d => ({
         date: d,
         Kunjungan: vCounts[d] || 0
-      }))
+      })),
+      topUsers
     };
   }, [chartFilter, users, rawVisits]);
   // Member Database State
@@ -824,6 +838,30 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Top 5 Users List */}
+          {topUsers.length > 0 && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#64748b', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Pengunjung Teraktif
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {topUsers.map((u, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: i < 3 ? '#eff6ff' : '#f1f5f9', color: i < 3 ? '#3b82f6' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        {i + 1}
+                      </div>
+                      <span style={{ fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{u.name}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600', backgroundColor: '#e2e8f0', padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>
+                      {u.count}x
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
