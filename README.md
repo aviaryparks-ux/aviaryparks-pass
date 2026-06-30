@@ -1,4 +1,4 @@
-# Aviary Park Pass 🦜
+# Aviary Park Pass 
 
 **Aviary Park Pass** is a next-generation theme park management and ticketing system featuring Touchless AI Entry (Facial Recognition). This system is designed to eliminate physical queues, prevent ticket fraud, and provide seamless access for visitors.
 
