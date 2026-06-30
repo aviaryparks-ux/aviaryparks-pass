@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,11 +9,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'NIK diperlukan.' }, { status: 400 });
     }
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('members')
       .select('id')
       .eq('nik', nik)
       .limit(1);
+
+    // Jika excludeNik diberikan (misal saat edit profil),
+    // abaikan record yang NIK-nya sama dengan yang sedang diedit
+    if (excludeNik) {
+      query = query.neq('nik', excludeNik);
+    }
 
     const { data } = await query;
     const exists = data && data.length > 0;
@@ -29,3 +30,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Terjadi kesalahan server.' }, { status: 500 });
   }
 }
+

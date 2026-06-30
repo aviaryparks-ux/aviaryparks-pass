@@ -1,13 +1,28 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getVisitorFromRequest, unauthorizedResponse } from '@/lib/visitorAuth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const visitor = await getVisitorFromRequest(request);
+    if (!visitor) return unauthorizedResponse();
+
     const data = await request.json();
     const { id, ...updates } = data;
 
     if (!id) {
       return NextResponse.json({ error: 'Missing member ID' }, { status: 400 });
+    }
+
+    // Verify Ownership
+    const { data: memberCheck } = await supabaseAdmin
+      .from('members')
+      .select('group_id')
+      .eq('id', id)
+      .single();
+
+    if (!memberCheck || memberCheck.group_id !== visitor.groupId) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
     // We will save all fields sent by the client

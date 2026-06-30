@@ -34,7 +34,7 @@
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-family: var(--font-montserrat), "Montserrat", Arial, sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -116,23 +116,74 @@ a {
   margin: 0 auto 2.5rem;
 }
 
- /* Mobile Responsiveness Helpers */
+/* Mobile Responsiveness Helpers */
 @media (max-width: 768px) {
+  /* Layout Modifiers */
   .mobile-col { flex-direction: column !important; }
+  .mobile-col-reverse { flex-direction: column-reverse !important; }
   .mobile-px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .mobile-py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
   .mobile-pt-20 { padding-top: 6rem !important; }
   .mobile-text-center { text-align: center !important; align-items: center !important; }
-  .mobile-w-full { width: 100% !important; }
+  .mobile-w-full { width: 100% !important; max-width: 100% !important; }
+  .mobile-hide { display: none !important; }
+  .mobile-show { display: block !important; }
+  .mobile-flex { display: flex !important; }
+  
+  /* Typography */
+  .mobile-h1 { font-size: 2.2rem !important; line-height: 1.2 !important; }
+  .mobile-h2 { font-size: 1.5rem !important; }
+  .mobile-p { font-size: 0.9rem !important; }
+  
+  /* Hero & Backgrounds */
   .mobile-bg-hero {
     background: linear-gradient(to bottom, rgba(240,253,244,0.95) 0%, rgba(240,253,244,0.85) 100%), url('/hero-new.jpg') center / cover no-repeat !important;
   }
-  .mobile-h1 { font-size: 2.2rem !important; }
-  .mobile-p { font-size: 0.9rem !important; }
-  .trust-badges { flex-direction: column !important; gap: 1rem !important; align-items: flex-start !important; width: 100%; }
-  .trust-badge-divider { width: 100% !important; height: 1px !important; }
+  
+  /* Header & Logo */
   .logo-container { left: 1rem !important; padding: 0.5rem 1rem 1rem 1rem !important; }
   .logo-img { height: 50px !important; }
-  .header-container { padding: 1rem !important; justify-content: center !important; }
+  .header-container { padding: 1rem !important; justify-content: center !important; gap: 0.5rem !important; }
+  
+  /* Components */
+  .trust-badges { flex-direction: column !important; gap: 1rem !important; align-items: flex-start !important; width: 100%; }
+  .trust-badge-divider { width: 100% !important; height: 1px !important; }
+  
+  /* Dashboard specific mobile layout */
+  .dash-main { padding: 1rem !important; padding-bottom: 80px !important; gap: 1.5rem !important; }
+  .dash-sidebar { display: none !important; } /* Replaced by bottom nav */
+  .dash-bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+    z-index: 50;
+    justify-content: space-around;
+    padding: 0.5rem;
+    padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+  }
+  .nav-btn-mobile {
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.7rem !important;
+    padding: 0.5rem !important;
+    width: 20%;
+    justify-content: center;
+  }
+  
+  /* Form Inputs (prevent zoom on iOS) */
+  input, select, textarea { font-size: 16px !important; }
+  
+  /* Card specific */
+  .id-card-wrapper { transform: scale(0.9); transform-origin: top center; margin-bottom: -20px; }
+}
+
+@media (min-width: 769px) {
+  .dash-bottom-nav { display: none !important; }
 }
 /* Google Translate Overrides */
 iframe.goog-te-banner-frame { display: none !important; visibility: hidden !important; }

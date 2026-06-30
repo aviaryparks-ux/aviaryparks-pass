@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
+import { getVisitorFromRequest, unauthorizedResponse } from '@/lib/visitorAuth';
 
 export async function GET(request: NextRequest) {
   try {
+    const visitor = await getVisitorFromRequest(request);
+    if (!visitor) return unauthorizedResponse();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const groupId = searchParams.get('group_id');
     const single = searchParams.get('single') === 'true';
 
+    // Verify Ownership
+    if (groupId && groupId !== visitor.groupId) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+
     let query = supabaseAdmin.from('members').select('*');
 
     if (id) {
-      query = query.eq('id', id);
+      // We must ensure the requested 'id' also belongs to the visitor's group
+      query = query.eq('id', id).eq('group_id', visitor.groupId);
     } else if (groupId) {
       query = query.eq('group_id', groupId).order('created_at', { ascending: true });
     } else {

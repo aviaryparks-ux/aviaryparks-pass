@@ -4,7 +4,7 @@ import LanguageSelector from './_components/LanguageSelector';
 
 export default function Home() {
   return (
-    <div style={{ height: '100dvh', position: 'relative', overflow: 'hidden', backgroundColor: '#f0fdf4', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', position: 'relative', overflow: 'hidden', backgroundColor: '#f0fdf4', color: '#0f172a', display: 'flex', flexDirection: 'column' }}>
       
       {/* Background Image with Gradient Mask */}
       <div className="mobile-bg-hero" style={{

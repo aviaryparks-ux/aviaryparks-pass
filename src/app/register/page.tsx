@@ -258,7 +258,7 @@ export default function Register() {
 
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f0fdf4', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f0fdf4' }}>
 
       {/* OTP Verification Modal */}
       {step === 'otp' && (

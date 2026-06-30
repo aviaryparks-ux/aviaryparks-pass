@@ -23,8 +23,9 @@ export async function POST(request: Request) {
 
     if (pendingMembers && pendingMembers.length > 0) {
       // SIMULASI WEBHOOK UNTUK LOCALHOST
-      // Karena Duitku tidak bisa mengirim callback ke localhost, kita simulasikan sukses
-      if (process.env.NODE_ENV === 'development') {
+      // Gunakan env var khusus ENABLE_PAYMENT_SIMULATION=true di .env.local
+      // JANGAN set ini di production/staging!
+      if (process.env.ENABLE_PAYMENT_SIMULATION === 'true') {
         await supabaseAdmin
           .from('members')
           .update({ 

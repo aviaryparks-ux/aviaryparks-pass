@@ -12,7 +12,7 @@ export default function Sidebar({
 }) {
   const { t } = useLanguage();
   return (
-    <aside style={{ 
+    <aside className="dash-sidebar" style={{ 
       position: 'relative', 
       zIndex: 1, 
       width: isSidebarOpen ? '260px' : '0px', 

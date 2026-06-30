@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 
-// Setup Supabase (Note: we should ideally use a service role key here if available, 
-// but anon key is okay if RLS allows us to query system_users by username).
-// For the sake of this API route, we are on the server side.
+// Gunakan Service Role Key agar tidak bergantung konfigurasi RLS
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
 const getJwtSecretKey = () => {
-  // Use a fallback secret for development if env var is not set, 
-  // but strongly recommend setting JWT_SECRET in production.
-  const secret = process.env.JWT_SECRET || 'super-secret-aviary-park-key-2026';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set!');
+  }
   return new TextEncoder().encode(secret);
 };
 
@@ -25,15 +26,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Username dan Password wajib diisi' }, { status: 400 });
     }
 
-    // Server-side check against Supabase
+    // Cari user berdasarkan username saja, lalu verifikasi password secara aman
     const { data, error } = await supabase
       .from('system_users')
       .select('*')
       .eq('username', username)
-      .eq('password', password)
       .single();
 
     if (error || !data) {
+      return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
+    }
+
+    // Strategi dual-check: support password lama (plaintext) & baru (bcrypt hash)
+    // Ini memungkinkan migrasi bertahap tanpa merusak login user yang sudah ada
+    const isBcryptHash = data.password?.startsWith('$2');
+    let isPasswordValid = false;
+
+    if (isBcryptHash) {
+      // Password sudah di-hash, gunakan bcrypt.compare
+      isPasswordValid = await bcrypt.compare(password, data.password);
+    } else {
+      // Password masih plaintext (user lama), bandingkan langsung
+      isPasswordValid = (password === data.password);
+
+      // Auto-upgrade: hash password sekarang untuk login berikutnya
+      if (isPasswordValid) {
+        const hashed = await bcrypt.hash(password, 12);
+        await supabase
+          .from('system_users')
+          .update({ password: hashed })
+          .eq('id', data.id);
+      }
+    }
+
+    if (!isPasswordValid) {
       return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
     }
 
@@ -57,15 +83,23 @@ export async function POST(request: NextRequest) {
     })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('24h') // Token expires in 24 hours
+    .setExpirationTime('24h')
     .sign(getJwtSecretKey());
+
+    // Default routing based on role if no specific callbackUrl was provided (or if it's just '/')
+    let finalRedirect = callbackUrl && callbackUrl !== '/' ? callbackUrl : null;
+    if (!finalRedirect) {
+      if (data.role === 'ADMIN') finalRedirect = '/admin';
+      else if (data.role === 'GATE') finalRedirect = '/gate';
+      else finalRedirect = '/';
+    }
 
     // Create the response and set the HTTPOnly cookie
     const response = NextResponse.json({ 
       success: true, 
       username: data.username,
       role: data.role,
-      redirect: callbackUrl || '/'
+      redirect: finalRedirect
     });
 
     response.cookies.set({
@@ -80,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     return response;
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Login error:', err);
     return NextResponse.json({ error: 'Terjadi kesalahan sistem internal.' }, { status: 500 });
   }

@@ -8,4 +8,11 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.warn('Supabase URL or Service Role Key is missing. Backend secure operations may fail.');
 }
 
-export const supabaseAdmin = createClient(supabaseUrl || '', supabaseServiceKey || '');
+// This client bypasses RLS. ONLY USE ON THE SERVER SIDE!
+export const supabaseAdmin = createClient(supabaseUrl || '', supabaseServiceKey || '', {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
+

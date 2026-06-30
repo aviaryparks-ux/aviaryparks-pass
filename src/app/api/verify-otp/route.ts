@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { validateNikFormat } from '@/lib/nikValidator';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Alias agar kode di bawah tidak perlu diubah
+const supabase = supabaseAdmin;
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -78,12 +77,15 @@ export async function POST(req: NextRequest) {
       }
 
       // Lakukan insert secara aman menggunakan service role key
-      const { error: insertError } = await supabase.from('members').insert(processedData);
+      const { data: insertedData, error: insertError } = await supabase.from('members').insert(processedData).select();
 
       if (insertError) {
         console.error('Insert Error:', insertError);
-        return NextResponse.json({ error: `Gagal menyimpan data pendaftaran: ${insertError.message}` }, { status: 500 });
+        // Jangan expose detail error database ke client
+        return NextResponse.json({ error: 'Gagal menyimpan data pendaftaran. Silakan coba lagi.' }, { status: 500 });
       }
+
+      console.log("INSERTED DATA FACE DESCRIPTOR:", insertedData[0].face_descriptor ? "EXISTS" : "NULL");
     }
 
     // 3. Tandai OTP sebagai sudah digunakan

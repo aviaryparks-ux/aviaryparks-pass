@@ -27,7 +27,14 @@ export async function POST(request: Request) {
     const expectedSignatureStr = `${myMerchantCode}${amount}${merchantOrderId}${myMerchantKey}`;
     const expectedSignature = crypto.createHash('md5').update(expectedSignatureStr).digest('hex');
 
-    if (signature !== expectedSignature) {
+    // Gunakan timingSafeEqual untuk mencegah timing attack
+    const sigBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+    const isValidSignature =
+      sigBuffer.length === expectedBuffer.length &&
+      crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+
+    if (!isValidSignature) {
       console.error('Invalid signature in callback', { signature, expectedSignature });
       return NextResponse.json({ error: 'Bad Signature' }, { status: 400 });
     }

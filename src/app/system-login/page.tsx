@@ -60,7 +60,7 @@ function SystemLoginForm() {
   };
 
   return (
-    <div style={{ position: 'relative', height: '100dvh', overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ position: 'relative', height: '100dvh', overflow: 'hidden' }}>
       {/* Background Image */}
       <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url(/payment_bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 0 }}></div>
 

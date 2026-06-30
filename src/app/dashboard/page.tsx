@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import { Toaster, toast } from 'react-hot-toast';
 
 import Sidebar from './_components/Sidebar';
+import BottomNav from './_components/BottomNav';
 import DashboardTab from './_components/DashboardTab';
 
 import VisitsTab from './_components/VisitsTab';
@@ -16,11 +18,11 @@ import ProfileTab from './_components/ProfileTab';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [visits, setVisits] = useState<any[]>([]);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<any>({});
   const [isFlipped, setIsFlipped] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentTab, setCurrentTab] = useState('dashboard');
@@ -28,10 +30,15 @@ export default function Dashboard() {
   const [isLangOpen, setIsLangOpen] = useState(false);
   const { t, language, setLanguage } = useLanguage();
 
-  const handleLogout = () => {
-    localStorage.removeItem('tempUserId');
-    localStorage.removeItem('tempGroupId');
-    localStorage.removeItem('tempUserName');
+  const handleLogout = async () => {
+    // Hapus visitor_token cookie via API
+    await fetch('/api/auth/visitor-logout', { method: 'POST' });
+    // Bersihkan localStorage sisa (backward compat)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('tempUserId');
+      localStorage.removeItem('tempGroupId');
+      localStorage.removeItem('tempUserName');
+    }
     window.location.href = '/';
   };
 
@@ -40,7 +47,6 @@ export default function Dashboard() {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get('tab');
-      
       if (tabParam) {
         setCurrentTab(tabParam);
       } else {
@@ -54,10 +60,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('dashboardTab', currentTab);
-      
       const searchParams = new URLSearchParams(window.location.search);
       const currentUrlTab = searchParams.get('tab') || 'dashboard';
-      
       if (currentUrlTab !== currentTab) {
         const url = new URL(window.location.href);
         if (currentTab === 'dashboard') {
@@ -80,96 +84,77 @@ export default function Dashboard() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // ── Fetch data via secure API routes (cookie-based auth) ─────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
-        let storedId = '';
-        if (typeof window !== 'undefined') {
-          storedId = localStorage.getItem('tempUserId') || '';
-          if (!storedId) {
-            const storedGroupId = localStorage.getItem('tempGroupId');
-            if (storedGroupId) {
-              const { data, error: groupErr } = await supabase
-                .from('members')
-                .select('id')
-                .eq('group_id', storedGroupId)
-                .order('created_at', { ascending: true })
-                .limit(1)
-                .single();
-              if (data) storedId = data.id;
-              if (groupErr) setDebugInfo((prev: any) => ({ ...prev, groupErr }));
-            } else {
-              setDebugInfo((prev: any) => ({ ...prev, noStoredGroupId: true }));
-            }
-          }
+        // 1. Ambil identity visitor dari JWT cookie
+        const meRes = await fetch('/api/auth/visitor-me');
+        if (!meRes.ok) {
+          // Cookie tidak ada atau expired → redirect ke login
+          router.push('/login?error=session-expired');
+          return;
         }
+        const { data: me } = await meRes.json();
+        const { memberId, groupId } = me;
 
-        if (!storedId) {
-          setDebugInfo((prev: any) => ({ ...prev, noStoredId: true }));
+        // 2. Ambil data member utama
+        const memberRes = await fetch(`/api/visitor/members?id=${memberId}&single=true`);
+        if (!memberRes.ok) {
+          router.push('/login?error=session-expired');
+          return;
+        }
+        const memberJson = await memberRes.json();
+        const memberData = memberJson.data;
+
+        if (!memberData) {
           setLoading(false);
           return;
         }
 
-        const { data: memberData, error: memberErr } = await supabase
-          .from('members')
-          .select('*')
-          .eq('id', storedId)
-          .limit(1)
-          .single();
-
-        if (memberErr) setDebugInfo((prev: any) => ({ ...prev, memberErr }));
-
-        if (memberData && !memberErr) {
-          if (memberData.status === 'PENDING_PAYMENT') {
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('tempGroupId', memberData.group_id);
-              localStorage.setItem('tempUserName', memberData.name);
-              window.location.href = '/payment';
-            }
-            return;
+        // Jika status masih PENDING_PAYMENT, redirect ke payment
+        if (memberData.status === 'PENDING_PAYMENT') {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('tempGroupId', memberData.group_id);
+            window.location.href = '/payment';
           }
-          
-          setUser(memberData);
-          
-          const { data: familyData } = await supabase
-            .from('members')
-            .select('*')
-            .eq('group_id', memberData.group_id);
-            
-          if (familyData) {
-            const hasMissingFace = familyData.some(m => !m.face_descriptor && m.status === 'ACTIVE');
-            
-            if (hasMissingFace) {
-              if (typeof window !== 'undefined') {
-                window.location.href = '/face-setup';
-              }
-              return; // Keep loading=true so dashboard doesn't flash
-            }
-
-            setFamilyMembers(familyData);
-            
-            const memberIds = familyData.map(m => m.id);
-            const { data: visitsData } = await supabase
-              .from('visits')
-              .select('*')
-              .in('member_id', memberIds)
-              .order('visited_at', { ascending: false });
-              
-            if (visitsData) {
-              setVisits(visitsData);
-            }
-          }
+          return;
         }
-        setLoading(false); // Done loading for happy path
+
+        setUser(memberData);
+
+        // 3. Ambil semua anggota grup (keluarga)
+        const familyRes = await fetch(`/api/visitor/members?group_id=${groupId}`);
+        const familyJson = await familyRes.json();
+        const familyData: any[] = familyJson.data || [];
+
+        // Cek jika ada anggota aktif yang belum setup wajah
+        const hasMissingFace = familyData.some((m) => !m.face_descriptor && m.status === 'ACTIVE');
+        if (hasMissingFace) {
+          window.location.href = '/face-setup';
+          return;
+        }
+
+        setFamilyMembers(familyData);
+
+        // 4. Ambil riwayat kunjungan seluruh grup
+        const memberIds = familyData.map((m) => m.id).join(',');
+        if (memberIds) {
+          const visitsRes = await fetch(`/api/visitor/visits?member_ids=${memberIds}`);
+          const visitsJson = await visitsRes.json();
+          if (visitsJson.data) setVisits(visitsJson.data);
+        }
+
+        setLoading(false);
       } catch (err) {
-        console.error("Dashboard fetch error", err);
-        // Only set loading to false if we are not redirecting
+        console.error('Dashboard fetch error', err);
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [router]);
+
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8fafc' }}><p>Memuat Dashboard...</p></div>;
@@ -179,9 +164,6 @@ export default function Dashboard() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8fafc' }}>
         <p>Sesi tidak valid. <Link href="/" style={{color: 'var(--primary-color)'}}>Kembali</Link></p>
-        <pre style={{ marginTop: '1rem', background: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '0.5rem', maxWidth: '80%', overflow: 'auto', fontSize: '0.75rem' }}>
-          DEBUG INFO: {JSON.stringify(debugInfo, null, 2)}
-        </pre>
       </div>
     );
   }
@@ -259,23 +241,32 @@ export default function Dashboard() {
       />
 
       {/* MAIN CONTENT */}
-      <main style={{ position: 'relative', zIndex: 1, flex: 1, padding: '2rem 3rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <main className="dash-main" style={{ position: 'relative', zIndex: 1, flex: 1, padding: '2rem 3rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         
         {/* HEADER */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-            </button>
-            <div>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.25rem' }}>{t('welcome_back')}, <span className="notranslate" translate="no">{user.name.split(' ')[0]}</span>!</h1>
-              <p style={{ color: '#64748b' }}>{t('ready_for_adventure')}</p>
+        <header className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', width: '100%', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button 
+                className="mobile-hide"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+              </button>
+              <div>
+                <h1 className="mobile-h2" style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.25rem' }}>{t('welcome_back')}, <span className="notranslate" translate="no">{user.name.split(' ')[0]}</span>!</h1>
+                <p className="mobile-hide" style={{ color: '#64748b' }}>{t('ready_for_adventure')}</p>
+              </div>
+            </div>
+            {/* Action buttons moved here on mobile */}
+            <div className="mobile-flex" style={{ display: 'none', alignItems: 'center', gap: '0.5rem' }}>
+              <button style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </button>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="mobile-hide" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             
             {/* Language Selector */}
             <div style={{ position: 'relative' }}>
@@ -376,6 +367,9 @@ export default function Dashboard() {
         {renderTabContent()}
 
       </main>
+      
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <BottomNav currentTab={currentTab} setCurrentTab={setCurrentTab} />
     </div>
   );
 }
