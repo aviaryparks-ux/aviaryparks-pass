@@ -221,7 +221,13 @@ export default function FaceSetup() {
       })
       .catch((err) => {
         console.error(err);
-        setMessage('Akses kamera ditolak.');
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setErrorMsg('Akses kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda (biasanya ikon gembok di sebelah URL bar), lalu muat ulang halaman ini.');
+        } else if (err.name === 'NotFoundError') {
+          setErrorMsg('Kamera tidak terdeteksi di perangkat ini. Pastikan Anda memiliki kamera yang berfungsi.');
+        } else {
+          setErrorMsg('Terjadi kesalahan saat mengakses kamera: ' + err.message);
+        }
       });
   };
 

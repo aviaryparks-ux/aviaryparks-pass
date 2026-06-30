@@ -114,8 +114,8 @@ export async function POST(request: NextRequest) {
 
     return response;
 
-  } catch (err: unknown) {
+  } catch (err: any) {
     console.error('Login error:', err);
-    return NextResponse.json({ error: 'Terjadi kesalahan sistem internal.' }, { status: 500 });
+    return NextResponse.json({ error: `Terjadi kesalahan sistem internal: ${err.message}` }, { status: 500 });
   }
 }

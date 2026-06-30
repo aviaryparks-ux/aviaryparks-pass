@@ -63,46 +63,16 @@ export default function GateScanner() {
           faceapi.nets.faceRecognitionNet.loadFromUri('/models')
         ]);
 
-        // 2. Ambil data wajah dari Supabase (Ambil semua agar bisa lihat data keluarga)
-        const [mFetch, pFetch] = await Promise.all([
-            fetch('/api/gate/members'),
-            fetch('/api/public/packages')
-          ]);
-          const membersRes = await mFetch.json();
-          const packagesRes = await pFetch.json();
+        // 2. Ambil data paket untuk keperluan tampilan
+        const pFetch = await fetch('/api/public/packages');
+        const packagesRes = await pFetch.json();
         
         if (packagesRes.data) {
           setPackages(packagesRes.data);
         }
 
-        const data = membersRes.data;
-        const error = membersRes.error;
-
-        if (error || !data || data.length === 0) {
-          setStatusMsg('Tidak ada data pengunjung di database. Silakan daftarkan terlebih dahulu.');
-          setGateStatus('idle');
-          return;
-        }
-
-        membersRef.current = data;
-
-        // 3. Persiapkan FaceMatcher hanya untuk yang punya data wajah
-        const membersWithFaces = data.filter((m: any) => m.face_descriptor);
-        
-        if (membersWithFaces.length === 0) {
-          setStatusMsg('Tidak ada biometrik tersimpan di database.');
-          setGateStatus('idle');
-          return;
-        }
-
-        const labeledDescriptors = membersWithFaces.map((member: any) => {
-          // face_descriptor disimpan sebagai array di JSON, kita ubah kembali ke Float32Array
-          const descArray = new Float32Array(member.face_descriptor);
-          return new faceapi.LabeledFaceDescriptors(member.id, [descArray]);
-        });
-
-        // Toleransi kecocokan 0.45 (semakin kecil semakin ketat, 0.45 ideal untuk mencegah salah wajah)
-        faceMatcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+        setStatusMsg('Sistem siap. Menunggu pengunjung...');
+        setGateStatus('idle');
 
         setStatusMsg('Sistem siap. Menunggu pengunjung...');
         setGateStatus('idle');
@@ -134,8 +104,14 @@ export default function GateScanner() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (err) {
-      setStatusMsg('Akses kamera ditolak. Pastikan kamera diizinkan.');
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setStatusMsg('Akses kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda (biasanya ikon gembok di sebelah URL bar), lalu muat ulang halaman ini.');
+      } else if (err.name === 'NotFoundError') {
+        setStatusMsg('Kamera tidak terdeteksi di perangkat ini. Pastikan Anda memiliki kamera yang berfungsi.');
+      } else {
+        setStatusMsg('Terjadi kesalahan saat mengakses kamera: ' + err.message);
+      }
       setGateStatus('denied');
     }
   };
@@ -146,7 +122,7 @@ export default function GateScanner() {
     // Scan setiap 500ms agar performa komputer tidak berat
     intervalRef.current = setInterval(async () => {
       if (viewModeRef.current === 'DETAIL') return; // Pause scanning if in detail mode
-      if (!videoRef.current || !faceMatcherRef.current) return;
+      if (!videoRef.current) return;
       if (videoRef.current.paused || videoRef.current.ended) return;
       
       // Mencegah penumpukan scan jika scan sebelumnya belum selesai (Pencegah Lag/Crash)
@@ -160,12 +136,21 @@ export default function GateScanner() {
           .withFaceDescriptor();
 
         if (detection) {
-          const match = faceMatcherRef.current.findBestMatch(detection.descriptor);
+          const descriptorArray = Array.from(detection.descriptor);
           
-          if (match.label !== 'unknown') {
-            handleMatch(match.label);
-          } else {
-            handleUnknown();
+          const res = await fetch('/api/gate/match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descriptorArray })
+          });
+          
+          if (res.ok) {
+            const result = await res.json();
+            if (result.data) {
+              handleMatch(result.data, result.family || []);
+            } else {
+              handleUnknown();
+            }
           }
         } else {
           // Opsional: kembali ke mode idle jika beberapa detik tidak ada wajah
@@ -189,10 +174,7 @@ export default function GateScanner() {
     }
   };
 
-  const handleMatch = async (memberId: string) => {
-    const member = membersRef.current.find(m => m.id === memberId);
-    if (!member) return;
-
+  const handleMatch = async (member: any, family: any[]) => {
     // Cek Status Keaktifan
     const isValidStatus = member.status === 'ACTIVE' || member.status?.toLowerCase() === 'primary' || member.role?.toUpperCase() === 'PRIMARY';
     if (!isValidStatus) {
@@ -204,7 +186,7 @@ export default function GateScanner() {
 
     // Cek Spam (Cooldown 60 detik)
     const now = Date.now();
-    const lastScan = lastScansRef.current[memberId] || 0;
+    const lastScan = lastScansRef.current[member.id] || 0;
     if (now - lastScan < 60000) {
       // Sudah terekam beberapa detik lalu, cukup tampilkan hijau tanpa rekam database lagi
       setStatusMsg(`Akses Diberikan: Selamat bersenang-senang, ${member.name}!`);
@@ -214,14 +196,14 @@ export default function GateScanner() {
     }
 
     // Rekam Kunjungan Baru
-    lastScansRef.current[memberId] = now;
+    lastScansRef.current[member.id] = now;
     setStatusMsg(`Akses Diberikan: Selamat bersenang-senang, ${member.name}!`);
     setGateStatus('success');
     setIdentifiedUser(member);
     
     // Putar Suara Selamat Datang
     speakWelcome(member.name);
-    setIdentifiedFamily(membersRef.current.filter(m => m.group_id === member.group_id && m.id !== member.id));
+    setIdentifiedFamily(family);
 
     setViewMode('DETAIL');
     setCooldown(7);

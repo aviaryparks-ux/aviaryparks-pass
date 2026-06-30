@@ -32,7 +32,10 @@ export async function POST(request: Request) {
 
     const { error } = await supabaseAdmin
       .from('members')
-      .update({ face_descriptor: descriptorArray })
+      .update({ 
+        face_descriptor: descriptorArray,
+        face_vector: `[${descriptorArray.join(',')}]`
+      })
       .eq('id', memberId);
 
     if (error) {
