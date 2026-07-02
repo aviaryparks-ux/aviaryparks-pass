@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import jsQR from 'jsqr';
 import Link from 'next/link';
+import { toast, Toaster } from 'react-hot-toast';
 
 export default function POSPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [statusMsg, setStatusMsg] = useState('Memuat model & data...');
   const [identifiedUser, setIdentifiedUser] = useState<any>(null);
+  const identifiedUserRef = useRef<any>(null);
   
   const [scanMode, setScanMode] = useState<'FACE' | 'BARCODE'>('FACE');
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -58,7 +60,7 @@ export default function POSPage() {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     intervalRef.current = setInterval(async () => {
-      if (identifiedUser) return; // Pause scanning if user is identified
+      if (identifiedUserRef.current) return; // Pause scanning if user is identified
       if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
       if (isScanningRef.current) return;
       
@@ -91,6 +93,7 @@ export default function POSPage() {
                 const result = await res.json();
                 if (result.data) {
                   setIdentifiedUser(result.data);
+                  identifiedUserRef.current = result.data;
                   fetchRewards(result.data.id);
                   setStatusMsg('Member Ditemukan: ' + result.data.name);
                 } else {
@@ -122,6 +125,7 @@ export default function POSPage() {
               const result = await res.json();
               if (result.data) {
                 setIdentifiedUser(result.data);
+                identifiedUserRef.current = result.data;
                 fetchRewards(result.data.id);
                 setStatusMsg('Wajah Dikenali: ' + result.data.name);
               }
@@ -158,23 +162,25 @@ export default function POSPage() {
           const result = await res.json();
           if (result.data) {
             setIdentifiedUser(result.data);
+            identifiedUserRef.current = result.data;
             fetchRewards(result.data.id);
             setBarcodeInput('');
           } else {
-            alert('Member tidak ditemukan!');
+            toast.error('Member tidak ditemukan!');
           }
         } else {
-          alert('Member tidak ditemukan!');
+          toast.error('Member tidak ditemukan!');
         }
       } catch (err) {
         console.error(err);
-        alert('Gagal mencari member');
+        toast.error('Gagal mencari member');
       }
     }
   };
 
   const resetTransaction = () => {
     setIdentifiedUser(null);
+    identifiedUserRef.current = null;
     setSubtotal('');
     setSelectedReward(null);
     setRewards([]);
@@ -213,13 +219,13 @@ export default function POSPage() {
       
       const result = await res.json();
       if (result.success) {
-        alert(`Transaksi Berhasil!\n\nDiskon Digunakan: ${selectedReward ? selectedReward.name : '-'}\nPoin Didapat: +${result.data.points_earned} Poin`);
+        toast.success(`Transaksi Berhasil!\nDiskon: ${selectedReward ? selectedReward.name : '-'}\nPoin Didapat: +${result.data.points_earned} Poin`);
         resetTransaction();
       } else {
-        alert('Gagal memproses transaksi: ' + result.error);
+        toast.error('Gagal memproses transaksi: ' + result.error);
       }
     } catch(e) {
-      alert('Terjadi kesalahan.');
+      toast.error('Terjadi kesalahan.');
     } finally {
       setIsProcessing(false);
     }
@@ -227,6 +233,7 @@ export default function POSPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+      <Toaster position="top-center" reverseOrder={false} />
       <header style={{ background: '#022c22', color: 'white', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <img src="/logo.png" alt="Logo" style={{ height: '40px' }} />
