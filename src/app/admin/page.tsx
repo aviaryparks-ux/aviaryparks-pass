@@ -4,8 +4,46 @@ import { useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
+
+const extractDemographics = (nik: string) => {
+  if (!nik || nik.length !== 16) return { gender: 'Unknown', age: 'Unknown', birthDate: '-' };
+  
+  const dd = parseInt(nik.substring(6, 8));
+  const mm = parseInt(nik.substring(8, 10));
+  const yy = parseInt(nik.substring(10, 12));
+  
+  if (isNaN(dd) || isNaN(mm) || isNaN(yy)) return { gender: 'Unknown', age: 'Unknown', birthDate: '-' };
+
+  let gender = 'Laki-laki';
+  let date = dd;
+  if (dd > 40) {
+    gender = 'Perempuan';
+    date = dd - 40;
+  }
+  
+  const currentYear = new Date().getFullYear();
+  const currentYY = parseInt(currentYear.toString().substring(2));
+  
+  const fullYear = yy > currentYY ? 1900 + yy : 2000 + yy;
+  const age = currentYear - fullYear;
+  
+  return { gender, age, birthDate: `${date}/${mm}/${fullYear}` };
+};
+
+const getRFMTag = (visitsCount: number, totalSpend: number, lastVisitDate: string | null) => {
+  if (visitsCount === 0) return { label: 'Newbie', color: '#64748b', bg: '#f1f5f9' };
+  if (visitsCount >= 3 || totalSpend >= 500000) return { label: 'VIP Member', color: '#c2410c', bg: '#ffedd5', icon: '👑' };
+  
+  if (lastVisitDate) {
+    const daysSince = Math.floor((new Date().getTime() - new Date(lastVisitDate).getTime()) / (1000 * 3600 * 24));
+    if (daysSince > 90) return { label: 'At Risk', color: '#b91c1c', bg: '#fee2e2', icon: '⚠️' };
+  }
+  
+  if (visitsCount >= 2) return { label: 'Loyal', color: '#1d4ed8', bg: '#dbeafe', icon: '💙' };
+  return { label: 'Newbie', color: '#64748b', bg: '#f1f5f9', icon: '🌱' };
+};
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
@@ -556,6 +594,47 @@ export default function AdminDashboard() {
   const topSpendersCount = Object.values(memberTotals).filter(v => (v as number) > 1000000).length;
   const ltv = uniqueMembersCount > 0 ? totalRevenue / uniqueMembersCount : 0;
 
+  const handleExportCSV = () => {
+    const headers = ['Nama', 'NIK', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Usia', 'Jenis Kelamin'];
+    const csvRows = [headers.join(',')];
+
+    users.forEach(u => {
+      const visitsCount = rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length;
+      const totalSpend = memberTotals[u.id] || 0;
+      
+      const userVisits = rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id))
+                                  .sort((a,b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
+      const lastVisit = userVisits.length > 0 ? userVisits[0].visited_at : null;
+
+      const rfm = getRFMTag(visitsCount, totalSpend, lastVisit);
+      const demo = extractDemographics(u.nik);
+
+      const row = [
+        `"${u.name}"`,
+        `'${u.nik}'`,
+        u.role,
+        `"${u.email || ''}"`,
+        `'${u.phone || ''}'`,
+        u.status,
+        u.activation_date ? new Date(u.activation_date).toLocaleDateString('id-ID') : '-',
+        visitsCount,
+        totalSpend,
+        `"${rfm.label}"`,
+        demo.age,
+        demo.gender
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvData = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const csvUrl = URL.createObjectURL(csvData);
+    const hiddenElement = document.createElement('a');
+    hiddenElement.href = csvUrl;
+    hiddenElement.target = '_blank';
+    hiddenElement.download = `Laporan_CRM_Aviary_${new Date().toLocaleDateString('id-ID')}.csv`;
+    hiddenElement.click();
+  };
+
   return (
     <div style={{ position: 'relative', display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', color: '#334155' }}>
       
@@ -1000,15 +1079,21 @@ export default function AdminDashboard() {
         <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', padding: '2rem', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
             <h3 style={{ margin: 0 }}>Daftar Member</h3>
-            <select 
-              value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
-            >
-              <option value="ALL">Semua Status</option>
-              <option value="ACTIVE">Aktif (Sudah Bayar)</option>
-              <option value="PENDING_PAYMENT">Menunggu Pembayaran</option>
-            </select>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={handleExportCSV} style={{ padding: '0.5rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Unduh Laporan CSV
+              </button>
+              <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+              >
+                <option value="ALL">Semua Status</option>
+                <option value="ACTIVE">Aktif (Sudah Bayar)</option>
+                <option value="PENDING_PAYMENT">Menunggu Pembayaran</option>
+              </select>
+            </div>
           </div>
 
           {loading ? (
@@ -1022,7 +1107,7 @@ export default function AdminDashboard() {
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                     <th style={{ padding: '1rem' }}>Nama</th>
                     <th style={{ padding: '1rem' }}>NIK</th>
-                    <th style={{ padding: '1rem' }}>Tipe</th>
+                    <th style={{ padding: '1rem' }}>Segmen CRM & Demografi</th>
                     <th style={{ padding: '1rem' }}>Visits</th>
                     <th style={{ padding: '1rem' }}>F&B / Wahana</th>
                     <th style={{ padding: '1rem' }}>Email / WA</th>
@@ -1071,7 +1156,25 @@ export default function AdminDashboard() {
                             )}
                           </td>
                           <td style={{ padding: '1rem' }}>{u.nik}</td>
-                          <td style={{ padding: '1rem', fontSize: '0.75rem' }}>{u.role}</td>
+                          <td style={{ padding: '1rem' }}>
+                            {(() => {
+                              const vCount = rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length;
+                              const tSpend = memberTotals[u.id] || 0;
+                              const uVisits = rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).sort((a,b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
+                              const lVisit = uVisits.length > 0 ? uVisits[0].visited_at : null;
+                              const rfm = getRFMTag(vCount, tSpend, lVisit);
+                              const demo = extractDemographics(u.nik);
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                  <span style={{ backgroundColor: rfm.bg, color: rfm.color, padding: '0.2rem 0.5rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content' }}>
+                                    {rfm.icon} {rfm.label}
+                                  </span>
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{demo.gender}, {demo.age} thn</span>
+                                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{u.role}</span>
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0f172a' }}>
                             {rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length}x
                           </td>
@@ -1760,6 +1863,50 @@ export default function AdminDashboard() {
               <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
                 Fitur Segera Hadir
               </h3>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            {/* Peak Hours Chart */}
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Distribusi Jam Sibuk (Kunjungan)</h3>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={peakHoursData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} />
+                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                    <Bar dataKey="visits" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Total Kunjungan" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Revenue by Location Pie Chart */}
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Distribusi Omset F&B / Wahana</h3>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={revenueLocationData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {revenueLocationData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `Rp ${value.toLocaleString('id-ID')}`} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
