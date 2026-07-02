@@ -1711,7 +1711,22 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'BUSINESS_LEADS' && (
+      {activeTab === 'BUSINESS_LEADS' && (() => {
+        const memberTotals: Record<string, number> = {};
+        let totalRevenue = 0;
+        
+        posTransactions.forEach(t => {
+          const amount = Number(t.amount) || 0;
+          if (!memberTotals[t.member_id]) memberTotals[t.member_id] = 0;
+          memberTotals[t.member_id] += amount;
+          totalRevenue += amount;
+        });
+
+        const uniqueMembersCount = Object.keys(memberTotals).length;
+        const topSpendersCount = Object.values(memberTotals).filter(v => v > 1000000).length;
+        const ltv = uniqueMembersCount > 0 ? totalRevenue / uniqueMembersCount : 0;
+
+        return (
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Business Leads & Analitik Lifetime Value</h2>
           
@@ -1719,19 +1734,19 @@ export default function AdminDashboard() {
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #8b5cf6' }}>
               <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Top Spenders (Total &gt; Rp 1jt)</p>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                {posTransactions.length > 0 ? 'Sedang dihitung...' : '0'} Member
+                {topSpendersCount} Member
               </h3>
             </div>
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
               <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Rata-rata Pengeluaran Ekstra (LTV)</p>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                Rp 0 / Member
+                Rp {ltv.toLocaleString('id-ID')} / Member
               </h3>
             </div>
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #f59e0b' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Retensi Kunjungan</p>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Retensi Kunjungan (Dummy)</p>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                0% Member kembali
+                Fitur Segera Hadir
               </h3>
             </div>
           </div>
@@ -1755,13 +1770,20 @@ export default function AdminDashboard() {
                     <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Belum ada data riwayat transaksi kasir (POS).</td>
                   </tr>
                 ) : (
-                  <tr><td colSpan={4}>Data Kasir tersedia...</td></tr>
+                  posTransactions.map(t => (
+                    <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '1rem 1.5rem', color: '#334155', fontWeight: '500', fontSize: '0.875rem' }}>{t.id.split('-')[0]}</td>
+                      <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontSize: '0.875rem' }}>{t.member_id.substring(0, 8)}...</td>
+                      <td style={{ padding: '1rem 1.5rem', color: '#059669', fontWeight: '600' }}>Rp {Number(t.amount).toLocaleString('id-ID')}</td>
+                      <td style={{ padding: '1rem 1.5rem', color: '#475569', fontSize: '0.875rem' }}>{t.location}</td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           </div>
         </div>
-      )}
+      })()}
       </div>
       </main>
     </div>
