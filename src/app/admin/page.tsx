@@ -612,6 +612,16 @@ export default function AdminDashboard() {
   const topSpendersCount = Object.values(memberTotals).filter(v => (v as number) > 1000000).length;
   const ltv = uniqueMembersCount > 0 ? totalRevenue / uniqueMembersCount : 0;
 
+  const uniqueVisitorIds = new Set();
+  const repeatVisitorIds = new Set();
+  rawVisits.forEach(v => {
+    if (v.member_id) {
+      if (uniqueVisitorIds.has(v.member_id)) repeatVisitorIds.add(v.member_id);
+      else uniqueVisitorIds.add(v.member_id);
+    }
+  });
+  const retentionRate = uniqueVisitorIds.size > 0 ? ((repeatVisitorIds.size / uniqueVisitorIds.size) * 100).toFixed(1) : '0';
+
   const peakHoursMap: Record<string, number> = {};
   rawVisits.forEach(v => {
     if(!v.visited_at) return;
@@ -1852,9 +1862,18 @@ export default function AdminDashboard() {
               </h3>
             </div>
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #f59e0b' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Retensi Kunjungan (Dummy)</p>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Tingkat Retensi Kunjungan</p>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                Fitur Segera Hadir
+                {(() => {
+                  const visitors = new Set();
+                  const repeatVisitors = new Set();
+                  rawVisits.forEach(v => {
+                    if (visitors.has(v.member_id)) repeatVisitors.add(v.member_id);
+                    visitors.add(v.member_id);
+                  });
+                  const retentionRate = visitors.size > 0 ? ((repeatVisitors.size / visitors.size) * 100).toFixed(1) : 0;
+                  return retentionRate;
+                })()}% Repeat Visitors
               </h3>
             </div>
           </div>
