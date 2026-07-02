@@ -2100,7 +2100,7 @@ export default function AdminDashboard() {
                       dataKey="value"
                     >
                       {revenueCompositionData.map((entry, index) => (
-                        <Cell key={`cell-\${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), '']} />
