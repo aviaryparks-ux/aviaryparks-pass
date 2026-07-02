@@ -7,14 +7,27 @@ import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 
+const PROVINCE_MAP: Record<string, string> = {
+  '11': 'Aceh', '12': 'Sumut', '13': 'Sumbar', '14': 'Riau', '15': 'Jambi', '16': 'Sumsel', '17': 'Bengkulu', '18': 'Lampung', '19': 'Babel', '21': 'Kep. Riau',
+  '31': 'DKI Jakarta', '32': 'Jawa Barat', '33': 'Jawa Tengah', '34': 'DIY', '35': 'Jawa Timur', '36': 'Banten',
+  '51': 'Bali', '52': 'NTB', '53': 'NTT',
+  '61': 'Kalbar', '62': 'Kalteng', '63': 'Kalsel', '64': 'Kaltim', '65': 'Kaltara',
+  '71': 'Sulut', '72': 'Sulteng', '73': 'Sulsel', '74': 'Sultra', '75': 'Gorontalo', '76': 'Sulbar',
+  '81': 'Maluku', '82': 'Malut',
+  '91': 'Papua Barat', '94': 'Papua'
+};
+
 const extractDemographics = (nik: string) => {
-  if (!nik || nik.length !== 16) return { gender: 'Unknown', age: 'Unknown', birthDate: '-' };
+  if (!nik || nik.length !== 16) return { gender: 'Unknown', age: 'Unknown', birthDate: '-', province: 'Lainnya' };
+  
+  const provCode = nik.substring(0, 2);
+  const province = PROVINCE_MAP[provCode] || 'Lainnya';
   
   const dd = parseInt(nik.substring(6, 8));
   const mm = parseInt(nik.substring(8, 10));
   const yy = parseInt(nik.substring(10, 12));
   
-  if (isNaN(dd) || isNaN(mm) || isNaN(yy)) return { gender: 'Unknown', age: 'Unknown', birthDate: '-' };
+  if (isNaN(dd) || isNaN(mm) || isNaN(yy)) return { gender: 'Unknown', age: 'Unknown', birthDate: '-', province };
 
   let gender = 'Laki-laki';
   let date = dd;
@@ -29,7 +42,7 @@ const extractDemographics = (nik: string) => {
   const fullYear = yy > currentYY ? 1900 + yy : 2000 + yy;
   const age = currentYear - fullYear;
   
-  return { gender, age, birthDate: `${date}/${mm}/${fullYear}` };
+  return { gender, age, birthDate: `${date}/${mm}/${fullYear}`, province };
 };
 
 const getRFMTag = (visitsCount: number, totalSpend: number, lastVisitDate: string | null) => {
@@ -612,7 +625,7 @@ export default function AdminDashboard() {
   const PIE_COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
   const handleExportCSV = () => {
-    const headers = ['Nama', 'NIK', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Usia', 'Jenis Kelamin'];
+    const headers = ['Nama', 'NIK', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Usia', 'Jenis Kelamin', 'Asal Daerah'];
     const csvRows = [headers.join(';')];
 
     users.forEach(u => {
@@ -638,7 +651,8 @@ export default function AdminDashboard() {
         totalSpend,
         `"${rfm.label}"`,
         demo.age,
-        `"${demo.gender}"`
+        `"${demo.gender}"`,
+        `"${demo.province}"`
       ];
       csvRows.push(row.join(';'));
     });
@@ -1186,7 +1200,7 @@ export default function AdminDashboard() {
                                   <span style={{ backgroundColor: rfm.bg, color: rfm.color, padding: '0.2rem 0.5rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content' }}>
                                     {rfm.icon} {rfm.label}
                                   </span>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{demo.gender}, {demo.age} thn</span>
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{demo.gender}, {demo.age} thn, {demo.province}</span>
                                   <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{u.role}</span>
                                 </div>
                               );
