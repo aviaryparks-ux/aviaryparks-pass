@@ -188,6 +188,8 @@ export default function AdminDashboard() {
   // Transactions State
   const [transactions, setTransactions] = useState<any[]>([]);
   const [trxFilter, setTrxFilter] = useState<'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR'>('ALL');
+  const [financeFilter, setFinanceFilter] = useState<'TODAY' | 'MONTH' | 'YEAR' | 'ALL' | 'CUSTOM'>('MONTH');
+  const [financeCustomDate, setFinanceCustomDate] = useState<string>('');
 
   // Loyalty Program & Business Leads State
   const [rewardsCatalog, setRewardsCatalog] = useState<any[]>([]);
@@ -663,10 +665,41 @@ export default function AdminDashboard() {
   const PIE_COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#06b6d4'];
 
   // --- FINANCIAL REPORT CALCULATIONS ---
+  let filteredTransactions = transactions;
+  let filteredPosTransactions = posTransactions;
+
+  const finNow = new Date();
+  if (financeFilter === 'TODAY') {
+    finNow.setHours(0, 0, 0, 0);
+    filteredTransactions = transactions.filter(t => new Date(t.created_at) >= finNow);
+    filteredPosTransactions = posTransactions.filter(t => new Date(t.created_at) >= finNow);
+  } else if (financeFilter === 'MONTH') {
+    const monthAgo = new Date(finNow.getFullYear(), finNow.getMonth(), 1);
+    filteredTransactions = transactions.filter(t => new Date(t.created_at) >= monthAgo);
+    filteredPosTransactions = posTransactions.filter(t => new Date(t.created_at) >= monthAgo);
+  } else if (financeFilter === 'YEAR') {
+    const yearAgo = new Date(finNow.getFullYear(), 0, 1);
+    filteredTransactions = transactions.filter(t => new Date(t.created_at) >= yearAgo);
+    filteredPosTransactions = posTransactions.filter(t => new Date(t.created_at) >= yearAgo);
+  } else if (financeFilter === 'CUSTOM' && financeCustomDate) {
+    const customStart = new Date(financeCustomDate);
+    customStart.setHours(0, 0, 0, 0);
+    const customEnd = new Date(customStart);
+    customEnd.setDate(customEnd.getDate() + 1);
+    filteredTransactions = transactions.filter(t => {
+      const d = new Date(t.created_at);
+      return d >= customStart && d < customEnd;
+    });
+    filteredPosTransactions = posTransactions.filter(t => {
+      const d = new Date(t.created_at);
+      return d >= customStart && d < customEnd;
+    });
+  }
+
   let totalTicketRevenue = 0;
   let totalPosRevenue = 0;
 
-  transactions.forEach((tx: any) => {
+  filteredTransactions.forEach((tx: any) => {
     if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
       totalTicketRevenue += Number(tx.amount || tx.total_amount || 0);
     }
@@ -676,7 +709,7 @@ export default function AdminDashboard() {
   let souvenirRevenue = 0;
   let ridesRevenue = 0;
 
-  posTransactions.forEach((tx: any) => {
+  filteredPosTransactions.forEach((tx: any) => {
     const amt = Number(tx.amount || 0);
     totalPosRevenue += amt;
     if (tx.location === 'RESTO') restoRevenue += amt;
@@ -695,47 +728,91 @@ export default function AdminDashboard() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const trendData = Array.from({length: 7}).map((_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (6 - i));
-    const nextDay = new Date(d);
-    nextDay.setDate(d.getDate() + 1);
-    
-    let dailyTicket = 0;
-    let dailyPos = 0;
+  let trendData: any[] = [];
 
-    transactions.forEach((tx: any) => {
-      if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
-        const txDate = new Date(tx.created_at);
-        if (txDate >= d && txDate < nextDay) {
-          dailyTicket += Number(tx.amount || tx.total_amount || 0);
+  if (financeFilter === 'TODAY' || (financeFilter === 'CUSTOM' && financeCustomDate)) {
+    const baseDate = financeFilter === 'TODAY' ? new Date() : new Date(financeCustomDate);
+    baseDate.setHours(0, 0, 0, 0);
+    
+    trendData = Array.from({length: 12}).map((_, i) => {
+      const hourStart = i * 2;
+      const hourEnd = hourStart + 2;
+      
+      let dTicket = 0;
+      let dPos = 0;
+      
+      filteredTransactions.forEach((tx: any) => {
+        if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+          const txDate = new Date(tx.created_at);
+          if (txDate.getHours() >= hourStart && txDate.getHours() < hourEnd) dTicket += Number(tx.amount || tx.total_amount || 0);
         }
-      }
+      });
+      filteredPosTransactions.forEach((tx: any) => {
+        const txDate = new Date(tx.created_at);
+        if (txDate.getHours() >= hourStart && txDate.getHours() < hourEnd) dPos += Number(tx.amount || 0);
+      });
+      
+      return {
+        date: `${hourStart.toString().padStart(2, '0')}:00`,
+        Tiket: dTicket,
+        'F&B / Retail': dPos
+      };
     });
-
-    posTransactions.forEach((tx: any) => {
-      const txDate = new Date(tx.created_at);
-      if (txDate >= d && txDate < nextDay) {
-        dailyPos += Number(tx.amount || 0);
-      }
-    });
+  } else {
+    const points = financeFilter === 'MONTH' ? 14 : (financeFilter === 'YEAR' || financeFilter === 'ALL' ? 12 : 7);
     
-    return {
-      date: d.toLocaleDateString('id-ID', { weekday: 'short' }),
-      Tiket: dailyTicket,
-      'F&B / Retail': dailyPos
-    };
-  });
+    trendData = Array.from({length: points}).map((_, i) => {
+      const d = new Date(today);
+      if (points === 12) {
+        d.setMonth(d.getMonth() - (11 - i));
+        d.setDate(1);
+        const nextMonth = new Date(d);
+        nextMonth.setMonth(d.getMonth() + 1);
+        
+        let dTicket = 0;
+        let dPos = 0;
+        filteredTransactions.forEach((tx: any) => {
+          if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+            const txDate = new Date(tx.created_at);
+            if (txDate >= d && txDate < nextMonth) dTicket += Number(tx.amount || tx.total_amount || 0);
+          }
+        });
+        filteredPosTransactions.forEach((tx: any) => {
+          const txDate = new Date(tx.created_at);
+          if (txDate >= d && txDate < nextMonth) dPos += Number(tx.amount || 0);
+        });
+        return { date: d.toLocaleDateString('id-ID', { month: 'short' }), Tiket: dTicket, 'F&B / Retail': dPos };
+      } else {
+        d.setDate(d.getDate() - ((points - 1) - i));
+        const nextDay = new Date(d);
+        nextDay.setDate(d.getDate() + 1);
+        
+        let dTicket = 0;
+        let dPos = 0;
+        filteredTransactions.forEach((tx: any) => {
+          if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+            const txDate = new Date(tx.created_at);
+            if (txDate >= d && txDate < nextDay) dTicket += Number(tx.amount || tx.total_amount || 0);
+          }
+        });
+        filteredPosTransactions.forEach((tx: any) => {
+          const txDate = new Date(tx.created_at);
+          if (txDate >= d && txDate < nextDay) dPos += Number(tx.amount || 0);
+        });
+        return { date: d.toLocaleDateString('id-ID', { weekday: 'short', day: points > 7 ? 'numeric' : undefined }), Tiket: dTicket, 'F&B / Retail': dPos };
+      }
+    });
+  }
 
   const allRecentTransactions = [
-    ...transactions.map((t: any) => ({
+    ...filteredTransactions.map((t: any) => ({
       id: t.id,
       date: new Date(t.created_at),
       type: 'Tiket',
       amount: Number(t.amount || t.total_amount || 0),
       status: t.payment_status || t.status || 'PAID'
     })),
-    ...posTransactions.map((t: any) => ({
+    ...filteredPosTransactions.map((t: any) => ({
       id: t.id,
       date: new Date(t.created_at),
       type: t.location === 'RESTO' ? 'F&B' : (t.location === 'SOUVENIR' ? 'Souvenir' : 'Wahana'),
@@ -1940,10 +2017,31 @@ export default function AdminDashboard() {
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Laporan Penjualan & Keuangan</h2>
-            <button style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export Laporan
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              {financeFilter === 'CUSTOM' && (
+                <input 
+                  type="date" 
+                  value={financeCustomDate}
+                  onChange={(e) => setFinanceCustomDate(e.target.value)}
+                  style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none' }}
+                />
+              )}
+              <select 
+                value={financeFilter}
+                onChange={(e) => setFinanceFilter(e.target.value as any)}
+                style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', cursor: 'pointer', backgroundColor: 'white', fontWeight: '500', color: '#334155' }}
+              >
+                <option value="TODAY">Hari Ini</option>
+                <option value="MONTH">Bulan Ini</option>
+                <option value="YEAR">Tahun Ini</option>
+                <option value="ALL">Semua Waktu</option>
+                <option value="CUSTOM">Pilih Tanggal...</option>
+              </select>
+              <button style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+              </button>
+            </div>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
