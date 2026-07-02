@@ -2409,7 +2409,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      </div>
+
         {activeTab === 'POS_TERMINALS' && (
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
