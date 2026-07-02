@@ -103,6 +103,7 @@ export default function AdminDashboard() {
   // Member Database State
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedMemberDetail, setSelectedMemberDetail] = useState<any>(null);
   const itemsPerPage = 10;
 
   const toggleGroup = (groupId: string) => {
@@ -1100,7 +1101,10 @@ export default function AdminDashboard() {
                             })() : '-'}
                           </td>
                           <td style={{ padding: '1rem' }}>
-                            <button onClick={() => deleteUser(u.id)} style={{ padding: '0.4rem 0.6rem', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Hapus</button>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button onClick={() => setSelectedMemberDetail(u)} style={{ padding: '0.4rem 0.6rem', backgroundColor: '#e0f2fe', color: '#0284c7', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Detail</button>
+                              <button onClick={() => deleteUser(u.id)} style={{ padding: '0.4rem 0.6rem', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Hapus</button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1791,6 +1795,52 @@ export default function AdminDashboard() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Member Detail Modal */}
+      {selectedMemberDetail && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>Detail Profil CRM: {selectedMemberDetail.name}</h2>
+              <button onClick={() => setSelectedMemberDetail(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '2rem', color: '#64748b', lineHeight: 1 }}>×</button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+              <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '1.1rem', color: '#334155', borderBottom: '3px solid #8b5cf6', display: 'inline-block', marginBottom: '1rem', paddingBottom: '0.25rem' }}>Riwayat Kunjungan Gerbang</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '400px', overflowY: 'auto' }}>
+                  {rawVisits.filter(v => v.member_id === selectedMemberDetail.id || (selectedMemberDetail.role === 'PRIMARY' && v.member_id === selectedMemberDetail.group_id)).map((v, idx) => (
+                    <li key={idx} style={{ padding: '0.75rem', backgroundColor: 'white', marginBottom: '0.5rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                      <span style={{ fontWeight: '500', color: '#1e293b' }}>{new Date(v.created_at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{new Date(v.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </li>
+                  ))}
+                  {rawVisits.filter(v => v.member_id === selectedMemberDetail.id || (selectedMemberDetail.role === 'PRIMARY' && v.member_id === selectedMemberDetail.group_id)).length === 0 && (
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', fontStyle: 'italic' }}>Belum ada rekaman kunjungan.</p>
+                  )}
+                </ul>
+              </div>
+              <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '1.1rem', color: '#334155', borderBottom: '3px solid #10b981', display: 'inline-block', marginBottom: '1rem', paddingBottom: '0.25rem' }}>Riwayat Belanja (POS)</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '400px', overflowY: 'auto' }}>
+                  {posTransactions.filter(t => t.member_id === selectedMemberDetail.id).map((t, idx) => (
+                    <li key={idx} style={{ padding: '0.75rem', backgroundColor: 'white', marginBottom: '0.5rem', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{ fontWeight: 'bold', color: '#059669' }}>Rp {Number(t.amount).toLocaleString('id-ID')}</span>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{new Date(t.created_at).toLocaleDateString('id-ID')}</span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#475569' }}>Lokasi Kasir: <span style={{ fontWeight: '500' }}>{t.location}</span></div>
+                    </li>
+                  ))}
+                  {posTransactions.filter(t => t.member_id === selectedMemberDetail.id).length === 0 && (
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', fontStyle: 'italic' }}>Belum ada rekaman pembelanjaan.</p>
+                  )}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       )}
