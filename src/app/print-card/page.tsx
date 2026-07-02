@@ -131,13 +131,19 @@ export default function PrintCard() {
               <li>Syarat & ketentuan dapat berubah sewaktu-waktu.</li>
             </ul>
             
-            {/* Real Barcode API */}
-            <div style={{ marginTop: 'auto', background: 'white', padding: '1mm', borderRadius: '1mm', display: 'flex', justifyContent: 'center' }}>
-              <img 
-                src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${user.nik || user.id?.substring(0, 8) || '250625-0001'}&scale=2&height=10&includetext`} 
-                alt="Barcode" 
-                style={{ width: '100%', height: '6.5mm', objectFit: 'contain' }}
-              />
+            {/* Real QR Code API */}
+            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '2mm', background: 'rgba(255,255,255,0.1)', padding: '1mm', borderRadius: '1.5mm' }}>
+              <div style={{ background: 'white', padding: '0.5mm', borderRadius: '1mm', display: 'flex' }}>
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${user.nik || user.id}`} 
+                  alt="QR Code" 
+                  style={{ width: '10mm', height: '10mm', objectFit: 'contain' }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '2mm', fontWeight: 'bold', color: '#facc15' }}>SCAN HERE</span>
+                <span style={{ fontSize: '1.2mm', opacity: 0.9 }}>For Discounts & Rewards</span>
+              </div>
             </div>
           </div>
 

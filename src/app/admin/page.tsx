@@ -96,7 +96,8 @@ export default function AdminDashboard() {
         date: d,
         Kunjungan: vCounts[d] || 0
       })),
-      topUsers
+      topUsers,
+      arrivalsData
     };
   }, [chartFilter, users, rawVisits]);
   // Member Database State
@@ -115,7 +116,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // System Users State
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'BUSINESS_LEADS'>('DASHBOARD');
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   
   // Events State
@@ -135,6 +136,13 @@ export default function AdminDashboard() {
   // Transactions State
   const [transactions, setTransactions] = useState<any[]>([]);
   const [trxFilter, setTrxFilter] = useState<'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR'>('ALL');
+
+  // Loyalty Program & Business Leads State
+  const [rewardsCatalog, setRewardsCatalog] = useState<any[]>([]);
+  const [posTransactions, setPosTransactions] = useState<any[]>([]);
+  const [pointMutations, setPointMutations] = useState<any[]>([]);
+  const [showRewardForm, setShowRewardForm] = useState(false);
+  const [newReward, setNewReward] = useState({ name: '', description: '', points_required: 100, reward_type: 'VOUCHER_50K', is_active: true });
 
   // Load saved tab on mount
   useEffect(() => {
@@ -207,8 +215,25 @@ export default function AdminDashboard() {
       fetchSchedules();
     } else if (activeTab === 'TRANSACTIONS') {
       fetchTransactions();
+    } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'BUSINESS_LEADS') {
+      fetchLoyaltyData();
     }
   }, [activeTab, trxFilter]);
+
+  async function fetchLoyaltyData() {
+    try {
+      const rRes = await fetch('/api/admin/loyalty/rewards');
+      if (rRes.ok) { const j = await rRes.json(); setRewardsCatalog(j.data || []); }
+      
+      const pRes = await fetch('/api/admin/loyalty/pos-transactions');
+      if (pRes.ok) { const j = await pRes.json(); setPosTransactions(j.data || []); }
+      
+      const mRes = await fetch('/api/admin/loyalty/mutations');
+      if (mRes.ok) { const j = await mRes.json(); setPointMutations(j.data || []); }
+    } catch(e) {
+      console.log('Loyalty API error', e);
+    }
+  }
 
   async function fetchTransactions() {
     try {
@@ -581,8 +606,22 @@ export default function AdminDashboard() {
               onClick={() => setActiveTab('TRANSACTIONS')}
               style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TRANSACTIONS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TRANSACTIONS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TRANSACTIONS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TRANSACTIONS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              Riwayat Transaksi
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
+              Transaksi Penjualan
+            </div>
+            <div 
+              onClick={() => setActiveTab('LOYALTY_PROGRAM')}
+              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LOYALTY_PROGRAM' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LOYALTY_PROGRAM' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LOYALTY_PROGRAM' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LOYALTY_PROGRAM' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Loyalty & Rewards
+            </div>
+            <div 
+              onClick={() => setActiveTab('BUSINESS_LEADS')}
+              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'BUSINESS_LEADS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'BUSINESS_LEADS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'BUSINESS_LEADS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'BUSINESS_LEADS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+              Business Leads
             </div>
             
             <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>PENGATURAN</p>

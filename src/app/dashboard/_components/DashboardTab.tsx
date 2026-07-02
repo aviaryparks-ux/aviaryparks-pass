@@ -209,12 +209,18 @@ export default function DashboardTab({
                     </ul>
                     
                     {/* Real QR Code API */}
-                    <div style={{ marginTop: 'auto', background: 'white', padding: '0.5cqi', borderRadius: '1cqi', display: 'flex', justifyContent: 'center' }}>
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${activeUser.nik || activeUser.id}`} 
-                        alt="QR Code" 
-                        style={{ width: '8cqi', height: '8cqi', objectFit: 'contain' }}
-                      />
+                    <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '2cqi', background: 'rgba(255,255,255,0.1)', padding: '1cqi', borderRadius: '1.5cqi' }}>
+                      <div style={{ background: 'white', padding: '0.5cqi', borderRadius: '1cqi', display: 'flex' }}>
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${activeUser.nik || activeUser.id}`} 
+                          alt="QR Code" 
+                          style={{ width: '10cqi', height: '10cqi', objectFit: 'contain' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '2cqi', fontWeight: 'bold', color: '#facc15' }}>SCAN HERE</span>
+                        <span style={{ fontSize: '1.2cqi', opacity: 0.9 }}>For Discounts & Rewards</span>
+                      </div>
                     </div>
                   </div>
 
