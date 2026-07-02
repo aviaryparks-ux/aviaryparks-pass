@@ -1563,6 +1563,159 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {activeTab === 'LOYALTY_PROGRAM' && (
+        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a' }}>Loyalty & Rewards Program</h2>
+            <button 
+              onClick={() => {
+                setNewReward({ name: '', description: '', points_required: 100, reward_type: 'VOUCHER_50K', is_active: true });
+                setShowRewardForm(true);
+              }}
+              style={{ padding: '0.5rem 1rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}
+            >
+              + Tambah Reward
+            </button>
+          </div>
+
+          {/* Catalog List */}
+          <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: '2rem' }}>
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a' }}>Katalog Reward (Bisa Ditukar Member)</h3>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', fontSize: '0.875rem' }}>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Nama Reward</th>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Tipe</th>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Poin Dibutuhkan</th>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rewardsCatalog.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Belum ada katalog reward, silakan tambah.</td>
+                  </tr>
+                ) : rewardsCatalog.map((r, idx) => (
+                  <tr key={r.id || idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '1rem 1.5rem', fontWeight: '500', color: '#0f172a' }}>{r.name}</td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#334155' }}>{r.reward_type}</td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#059669', fontWeight: '600' }}>{r.points_required} Poin</td>
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold', backgroundColor: r.is_active ? '#dcfce7' : '#fee2e2', color: r.is_active ? '#166534' : '#991b1b' }}>
+                        {r.is_active ? 'AKTIF' : 'NONAKTIF'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {showRewardForm && (
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>Tambah Reward Baru</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input placeholder="Nama Reward (e.g. Voucher 50K)" value={newReward.name} onChange={e => setNewReward({...newReward, name: e.target.value})} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                <input placeholder="Deskripsi Singkat" value={newReward.description} onChange={e => setNewReward({...newReward, description: e.target.value})} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem', display: 'block' }}>Poin Dibutuhkan</label>
+                    <input type="number" value={newReward.points_required} onChange={e => setNewReward({...newReward, points_required: Number(e.target.value)})} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem', display: 'block' }}>Tipe Reward</label>
+                    <select value={newReward.reward_type} onChange={e => setNewReward({...newReward, reward_type: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
+                      <option value="VOUCHER_50K">Voucher Potongan</option>
+                      <option value="FREE_RIDE">Gratis Wahana</option>
+                      <option value="EXTEND_PASS">Perpanjangan Kartu</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/admin/loyalty/rewards', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newReward)
+                        });
+                        if (res.ok) {
+                          setShowRewardForm(false);
+                          fetchLoyaltyData();
+                        } else {
+                          alert('Gagal menyimpan reward');
+                        }
+                      } catch(e) {
+                        alert('Gagal menyimpan reward');
+                      }
+                    }}
+                    style={{ padding: '0.75rem 1.5rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}
+                  >
+                    Simpan Reward
+                  </button>
+                  <button onClick={() => setShowRewardForm(false)} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Batal</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'BUSINESS_LEADS' && (
+        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Business Leads & Analitik Lifetime Value</h2>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #8b5cf6' }}>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Top Spenders (Total > Rp 1jt)</p>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
+                {posTransactions.length > 0 ? 'Sedang dihitung...' : '0'} Member
+              </h3>
+            </div>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Rata-rata Pengeluaran Ekstra (LTV)</p>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
+                Rp 0 / Member
+              </h3>
+            </div>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #f59e0b' }}>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Retensi Kunjungan</p>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
+                0% Member kembali
+              </h3>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a' }}>Top Spenders (Whales) - Transaksi F&B / Wahana</h3>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', fontSize: '0.875rem' }}>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>ID Transaksi</th>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Member ID</th>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Total (Rp)</th>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Lokasi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Belum ada data riwayat transaksi kasir (POS).</td>
+                  </tr>
+                ) : (
+                  <tr><td colSpan={4}>Data Kasir tersedia...</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       </div>
       </main>
     </div>
