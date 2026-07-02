@@ -1814,8 +1814,8 @@ export default function AdminDashboard() {
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '400px', overflowY: 'auto' }}>
                   {rawVisits.filter(v => v.member_id === selectedMemberDetail.id || (selectedMemberDetail.role === 'PRIMARY' && v.member_id === selectedMemberDetail.group_id)).map((v, idx) => (
                     <li key={idx} style={{ padding: '0.75rem', backgroundColor: 'white', marginBottom: '0.5rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                      <span style={{ fontWeight: '500', color: '#1e293b' }}>{new Date(v.created_at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                      <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{new Date(v.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span style={{ fontWeight: '500', color: '#1e293b' }}>{new Date(v.visited_at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{new Date(v.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                     </li>
                   ))}
                   {rawVisits.filter(v => v.member_id === selectedMemberDetail.id || (selectedMemberDetail.role === 'PRIMARY' && v.member_id === selectedMemberDetail.group_id)).length === 0 && (
