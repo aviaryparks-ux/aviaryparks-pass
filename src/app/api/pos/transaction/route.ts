@@ -62,18 +62,19 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Insert POS Transaction
+    // 3. Calculate Earned Points
+    const pointsEarned = Math.floor(finalTotal / RATIO);
+
+    // 4. Insert POS Transaction
     const { data: posTx, error: posErr } = await supabaseAdmin.from('pos_transactions').insert({
       member_id,
       location: 'F&B Restaurant',
-      total_amount: finalTotal
+      amount: finalTotal,
+      points_earned: pointsEarned
     }).select().single();
 
     if (posErr) throw posErr;
 
-    // 4. Calculate Earned Points
-    const pointsEarned = Math.floor(finalTotal / RATIO);
-    
     if (pointsEarned > 0) {
       currentBalance += pointsEarned;
       // Record mutation for earn
