@@ -14,7 +14,22 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return NextResponse.json({ success: true, data });
+
+    const memberIds = Array.from(new Set((data || []).map(t => t.member_id)));
+    const { data: members } = await supabaseAdmin
+      .from('members')
+      .select('id, name')
+      .in('id', memberIds);
+
+    const memberMap: any = {};
+    if (members) members.forEach(m => memberMap[m.id] = m.name);
+
+    const enrichedData = (data || []).map(t => ({
+      ...t,
+      member_name: memberMap[t.member_id] || 'Unknown'
+    }));
+
+    return NextResponse.json({ success: true, data: enrichedData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
