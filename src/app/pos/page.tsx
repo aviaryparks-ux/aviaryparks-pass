@@ -84,7 +84,7 @@ export default function POSPage() {
 
             if (code && code.data) {
               qrFound = true;
-              const res = await fetch(`/api/visitor/members?id=${code.data}&single=true`);
+              const res = await fetch(`/api/pos/lookup?id=${code.data}`);
               if (res.ok) {
                 const result = await res.json();
                 if (result.data) {
@@ -147,7 +147,7 @@ export default function POSPage() {
   const handleBarcodeSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && barcodeInput.trim() !== '') {
       try {
-        const res = await fetch(`/api/visitor/members?id=${barcodeInput.trim()}&single=true`);
+        const res = await fetch(`/api/pos/lookup?id=${barcodeInput.trim()}`);
         if (res.ok) {
           const result = await res.json();
           if (result.data) {
@@ -157,6 +157,8 @@ export default function POSPage() {
           } else {
             alert('Member tidak ditemukan!');
           }
+        } else {
+          alert('Member tidak ditemukan!');
         }
       } catch (err) {
         console.error(err);
