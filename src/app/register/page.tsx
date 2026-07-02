@@ -460,57 +460,28 @@ export default function Register() {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {/* Feature 1 */}
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-              <div style={{ padding: '1rem', backgroundColor: '#d1fae5', borderRadius: '50%', color: '#059669' }}>
-                <Infinity size={28} />
-              </div>
-              <div style={{ paddingTop: '0.3rem' }}>
-                <h3 style={{ fontWeight: '700', fontSize: '1.05rem', marginBottom: '0.3rem' }}>Bebas Berkunjung</h3>
-                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.5, maxWidth: '280px' }}>
-                  Kunjungan <strong>unlimited</strong> selama 1 tahun dari tanggal aktivasi.
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-              <div style={{ padding: '1rem', backgroundColor: '#d1fae5', borderRadius: '50%', color: '#059669' }}>
-                <ScanFace size={28} />
-              </div>
-              <div style={{ paddingTop: '0.3rem' }}>
-                <h3 style={{ fontWeight: '700', fontSize: '1.05rem', marginBottom: '0.3rem' }}>Akses Cepat</h3>
-                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.5, maxWidth: '280px' }}>
-                  Masuk lebih cepat dengan Face Recognition.
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-              <div style={{ padding: '1rem', backgroundColor: '#d1fae5', borderRadius: '50%', color: '#059669' }}>
-                <Tag size={28} />
-              </div>
-              <div style={{ paddingTop: '0.3rem' }}>
-                <h3 style={{ fontWeight: '700', fontSize: '1.05rem', marginBottom: '0.3rem' }}>Hemat & Praktis</h3>
-                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.5, maxWidth: '280px' }}>
-                  Satu kali pembelian, banyak keuntungan.
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 4 */}
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-              <div style={{ padding: '1rem', backgroundColor: '#d1fae5', borderRadius: '50%', color: '#059669' }}>
-                <Gift size={28} />
-              </div>
-              <div style={{ paddingTop: '0.3rem' }}>
-                <h3 style={{ fontWeight: '700', fontSize: '1.05rem', marginBottom: '0.3rem' }}>Keuntungan Eksklusif</h3>
-                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.5, maxWidth: '280px' }}>
-                  Dapatkan diskon khusus F&B, merchandise, dan event tertentu.
-                </p>
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingRight: '1rem' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#064e3b', marginBottom: '0.5rem' }}>Benefit Annual Pass</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+              {[
+                { icon: <Infinity size={20} />, title: 'Unlimited Entry', desc: 'Tiket Premium Akses Penuh' },
+                { icon: <ScanFace size={20} />, title: 'Face Scan Entry', desc: 'Masuk tanpa tiket fisik' },
+                { icon: <Tag size={20} />, title: 'Diskon 20%', desc: 'Tiket Tambahan (Add On), All Rides, All Resto, Animal Encounter, Starling & Rooftop Hotel' },
+                { icon: <Tag size={20} />, title: 'Diskon 10%', desc: 'Belanja di Souvenir Shop' },
+                { icon: <Gift size={20} />, title: 'Spesial Hotel Rate', desc: 'Deluxe Room 700rb nett (inc. Bfast 2 pax), Starling Buffet 175rb nett' },
+                { icon: <User size={20} />, title: 'Aviary Member', desc: 'Lounge @ Aviary Park Resto, Points for Rewards & Referral' },
+              ].map((f, i) => (
+                <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: '#f8fafc', padding: '1rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
+                  <div style={{ padding: '0.75rem', backgroundColor: '#d1fae5', borderRadius: '50%', color: '#059669', flexShrink: 0 }}>
+                    {f.icon}
+                  </div>
+                  <div>
+                    <h4 style={{ fontWeight: '700', fontSize: '0.95rem', color: '#0f172a', marginBottom: '0.2rem' }}>{f.title}</h4>
+                    <p style={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.4 }}>{f.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

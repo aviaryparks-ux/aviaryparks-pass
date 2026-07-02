@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="id">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+		<title>Aviary Park Pass - Investor Pitch Deck</title>
+		
+		<!-- Reveal.js CSS -->
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reset.min.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css" id="theme">
+		
+		<style>
+			:root {
+				--r-main-color: #f8fafc;
+				--r-heading-color: #10b981;
+				--r-link-color: #34d399;
+				--r-link-color-hover: #10b981;
+				--r-selection-background-color: #10b981;
+				--r-background-color: #0f172a;
+			}
+			.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+				text-transform: none;
+				font-weight: bold;
+				color: #10b981;
+			}
+			.reveal .slides section .fragment {
+				color: #cbd5e1;
+			}
+			.box {
+				background: rgba(255, 255, 255, 0.05);
+				border: 1px solid rgba(16, 185, 129, 0.3);
+				padding: 20px;
+				border-radius: 12px;
+				margin: 10px 0;
+			}
+			.highlight {
+				color: #34d399;
+				font-weight: bold;
+			}
+			.footer-logo {
+				position: absolute;
+				bottom: 20px;
+				left: 20px;
+				font-size: 0.5em;
+				color: #64748b;
+				z-index: 10;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				
+				<!-- SLIDE 1: Judul -->
+				<section data-background-gradient="linear-gradient(to bottom, #020617, #0f172a)">
+					<h2 style="font-size: 3em; margin-bottom: 0;">Aviary Park Pass</h2>
+					<h4 style="color: #94a3b8; font-weight: normal;">The Future of Theme Park Experience</h4>
+					<br>
+					<p style="font-size: 0.8em; color: #cbd5e1;">Sistem Masuk Tanpa Sentuh Berbasis AI<br><i>(Touchless AI Entry System)</i></p>
+					<br>
+					<p style="font-size: 0.6em; color: #64748b;">Gunakan tombol panah (➔) untuk lanjut</p>
+				</section>
+
+				<!-- SLIDE 2: Masalah -->
+				<section data-transition="slide">
+					<h2>Masalah Saat Ini</h2>
+					<div style="display: flex; gap: 20px; justify-content: center; margin-top: 40px;">
+						<div class="box fragment fade-up">
+							<h4 style="color: #ef4444;">Antrean Panjang</h4>
+							<p style="font-size: 0.7em;">Pengecekan gelang fisik manual memakan waktu.</p>
+						</div>
+						<div class="box fragment fade-up" data-fragment-index="2">
+							<h4 style="color: #ef4444;">Kecurangan Tiket</h4>
+							<p style="font-size: 0.7em;">Tiket Annual Pass rentan dipinjamkan ke orang lain.</p>
+						</div>
+						<div class="box fragment fade-up" data-fragment-index="3">
+							<h4 style="color: #ef4444;">Low Data</h4>
+							<p style="font-size: 0.7em;">Manajemen kesulitan melacak frekuensi kunjungan secara presisi.</p>
+						</div>
+					</div>
+				</section>
+
+				<!-- SLIDE 3: Solusi -->
+				<section data-transition="zoom">
+					<h2 style="font-size: 2.5em;">Wajah Anda = Tiket Anda</h2>
+					<p class="fragment fade-in" style="font-size: 0.9em; margin-top: 30px;">Memperkenalkan <span class="highlight">Aviary Park Pass</span>. Sistem manajemen pengunjung terintegrasi dengan teknologi <strong>Facial Recognition</strong> skala industri.</p>
+					<ul style="font-size: 0.8em; margin-top: 30px; line-height: 1.5;">
+						<li class="fragment fade-in-then-semi-out">Masuk ke wahana tanpa harus merogoh kantong (Touchless).</li>
+						<li class="fragment fade-in-then-semi-out">Proses verifikasi kurang dari 1 detik di pintu gerbang.</li>
+						<li class="fragment fade-in-then-semi-out">100% Anti Kecurangan: Wajah tidak bisa dipinjamkan.</li>
+					</ul>
+				</section>
+
+				<!-- SLIDE 4: Keamanan -->
+				<section>
+					<section>
+						<h2>Bagaimana dengan <span style="color: #38bdf8;">Keamanan Data?</span></h2>
+						<p style="font-size: 0.8em; color: #94a3b8;">Komitmen kami terhadap privasi pengunjung dan keamanan finansial.</p>
+					</section>
+					<section>
+						<h3>Keamanan Privasi (Biometrik)</h3>
+						<div class="box">
+							<p style="font-size: 0.8em;">Sistem kami <strong>TIDAK menyimpan foto wajah</strong> pengunjung.</p>
+							<p style="font-size: 0.6em; color: #94a3b8; margin-top: 10px;">
+								Kami menggunakan model AI ResNet-34 untuk mengonversi bentuk tengkorak wajah menjadi 128 vektor matematika (angka desimal). Jika sistem diretas, data tersebut tidak dapat dibentuk kembali menjadi gambar wajah manusia, menjamin 100% anti-Pencurian Identitas.
+							</p>
+						</div>
+					</section>
+					<section>
+						<h3>Keamanan Transaksi</h3>
+						<div class="box">
+							<p style="font-size: 0.8em;">Terintegrasi dengan <strong>Payment Gateway Resmi</strong>.</p>
+							<p style="font-size: 0.6em; color: #94a3b8; margin-top: 10px;">
+								Sistem kami tidak menyimpan nomor kartu kredit atau PIN. Semua transaksi ditangani langsung oleh penyedia berlisensi Bank Indonesia (standar PCI-DSS internasional). Data manajemen diamankan menggunakan JWT & Role-Based Access Control.
+							</p>
+						</div>
+					</section>
+				</section>
+
+				<!-- SLIDE 5: Teknologi -->
+				<section data-background-gradient="linear-gradient(to top, #064e3b, #0f172a)">
+					<h2>Arsitektur Teknologi</h2>
+					<p style="font-size: 0.8em;">Infrastruktur <i>Enterprise-Grade</i> yang siap menampung jutaan data.</p>
+					<ul style="font-size: 0.7em; margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+						<li class="fragment"><strong>Frontend:</strong> Next.js (React) - Tercepat di kelasnya.</li>
+						<li class="fragment"><strong>Backend:</strong> Edge Functions (Vercel).</li>
+						<li class="fragment"><strong>Database:</strong> Supabase (PostgreSQL 15).</li>
+						<li class="fragment"><strong>Kecerdasan Buatan:</strong> pgvector (AI Vector Database).</li>
+					</ul>
+				</section>
+
+				<!-- SLIDE 6: Demo -->
+				<section data-transition="convex">
+					<h2 style="font-size: 3em;">LIVE DEMO</h2>
+					<p style="color: #cbd5e1; margin-top: 20px;">Mari kita lihat keajaibannya secara langsung.</p>
+					<br>
+					<a href="/" target="_blank" style="padding: 15px 30px; background-color: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.8em; margin-top: 20px; display: inline-block;">
+						Buka Aplikasi Sekarang 🚀
+					</a>
+				</section>
+
+			</div>
+		</div>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+		<script>
+			Reveal.initialize({
+				hash: true,
+				transition: 'slide',
+				backgroundTransition: 'fade',
+				center: true
+			});
+		</script>
+	</body>
+</html>

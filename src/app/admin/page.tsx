@@ -26,7 +26,7 @@ export default function AdminDashboard() {
     }
   };
   
-  const { salesData, visitsData, topUsers } = useMemo(() => {
+  const { salesData, visitsData, topUsers, arrivalsData } = useMemo(() => {
     const dates = [];
     for (let i = chartFilter - 1; i >= 0; i--) {
       const d = new Date();
@@ -36,9 +36,9 @@ export default function AdminDashboard() {
     
     const vCounts: Record<string, number> = {};
     const userVisitsCount: Record<string, { count: number; name: string }> = {};
+    const arrivalsMap: Record<string, { date: string; group_id: string; group_name: string; paxCount: number; members: Set<string> }> = {};
 
     rawVisits.forEach(v => {
-      // Ensure the timestamp string is interpreted as UTC if it lacks a timezone by appending 'Z'
       const timeStr = v.visited_at.endsWith('Z') || v.visited_at.includes('+') ? v.visited_at : v.visited_at + 'Z';
       const d = new Date(timeStr);
       const date = `${d.getDate()}/${d.getMonth() + 1}`;
@@ -51,6 +51,22 @@ export default function AdminDashboard() {
           userVisitsCount[v.member_id] = { count: 0, name };
         }
         userVisitsCount[v.member_id].count += 1;
+
+        if (member && member.group_id) {
+          const arrivalKey = `${member.group_id}_${date}`;
+          if (!arrivalsMap[arrivalKey]) {
+            const primary = users.find(u => u.group_id === member.group_id && u.role === 'PRIMARY');
+            arrivalsMap[arrivalKey] = {
+              date,
+              group_id: member.group_id,
+              group_name: primary ? primary.name : name,
+              paxCount: 0,
+              members: new Set()
+            };
+          }
+          arrivalsMap[arrivalKey].members.add(v.member_id);
+          arrivalsMap[arrivalKey].paxCount = arrivalsMap[arrivalKey].members.size;
+        }
       }
     });
     
@@ -67,6 +83,8 @@ export default function AdminDashboard() {
     const topUsers = Object.values(userVisitsCount)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
+      
+    const arrivalsData = Object.values(arrivalsMap).sort((a, b) => b.date.localeCompare(a.date));
 
     return {
       salesData: dates.map(d => ({
@@ -864,6 +882,47 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+          {/* Arrivals Report List */}
+          <div style={{ marginTop: '2rem' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#64748b', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Laporan Frekuensi & Kedatangan (Grup Keluarga)
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+              <div style={{ flex: 1, backgroundColor: '#fdf4ff', padding: '1rem', borderRadius: '0.75rem' }}>
+                <div style={{ fontSize: '0.75rem', color: '#86198f' }}>Total Kedatangan (Group)</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#86198f' }}>{arrivalsData.length}</div>
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #f1f5f9' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#e2e8f0', color: '#475569' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Tanggal</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Nama (Kepala Keluarga)</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Jumlah Pax Masuk</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {arrivalsData.slice(0, 10).map((arr, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '0.75rem' }}>{arr.date}</td>
+                      <td style={{ padding: '0.75rem', fontWeight: '500' }}>{arr.group_name}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontWeight: 'bold' }}>
+                          {arr.paxCount} Pax
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {arrivalsData.length === 0 && (
+                    <tr><td colSpan={3} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada data kedatangan</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
       </div>

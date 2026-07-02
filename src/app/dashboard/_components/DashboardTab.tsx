@@ -208,12 +208,12 @@ export default function DashboardTab({
                       <li>Syarat & ketentuan dapat berubah sewaktu-waktu.</li>
                     </ul>
                     
-                    {/* Real Barcode API */}
-                    <div style={{ marginTop: 'auto', background: 'white', padding: '1cqi', borderRadius: '1cqi', display: 'flex', justifyContent: 'center' }}>
+                    {/* Real QR Code API */}
+                    <div style={{ marginTop: 'auto', background: 'white', padding: '0.5cqi', borderRadius: '1cqi', display: 'flex', justifyContent: 'center' }}>
                       <img 
-                        src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${activeUser.nik || activeUser.id?.substring(0, 8) || '250625-0001'}&scale=2&height=10&includetext`} 
-                        alt="Barcode" 
-                        style={{ width: '100%', height: '7cqi', objectFit: 'contain' }}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${activeUser.nik || activeUser.id}`} 
+                        alt="QR Code" 
+                        style={{ width: '8cqi', height: '8cqi', objectFit: 'contain' }}
                       />
                     </div>
                   </div>
