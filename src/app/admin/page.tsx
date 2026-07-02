@@ -168,7 +168,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // System Users State
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'BUSINESS_LEADS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'BUSINESS_LEADS' | 'LIVE_SCAN' | 'DEVICE_MANAGEMENT' | 'FINANCIAL_REPORTS' | 'VISITOR_ANALYTICS' | 'SYSTEM_CONFIG'>('DASHBOARD');
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   
   // Events State
@@ -1955,7 +1955,7 @@ export default function AdminDashboard() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} tickFormatter={(value) => `\${value / 1000000}M`} />
-                    <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: number) => ['Rp ' + value.toLocaleString('id-ID'), '']} />
+                    <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), '']} />
                     <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
                     <Bar dataKey="Tiket" stackId="a" fill="#10b981" radius={[0, 0, 4, 4]} barSize={40} />
                     <Bar dataKey="F&B / Retail" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
@@ -1982,7 +1982,7 @@ export default function AdminDashboard() {
                         <Cell key={`cell-\${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: number) => ['Rp ' + value.toLocaleString('id-ID'), '']} />
+                    <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), '']} />
                     <Legend iconType="circle" layout="vertical" verticalAlign="bottom" align="center" />
                   </PieChart>
                 </ResponsiveContainer>
@@ -2141,7 +2141,7 @@ export default function AdminDashboard() {
                       outerRadius={100}
                       dataKey="value"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
                     >
                       {ageGroupData.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
