@@ -16,7 +16,9 @@ export default function POSPage() {
   const [barcodeInput, setBarcodeInput] = useState('');
   
   const [subtotal, setSubtotal] = useState<number | ''>('');
+  const [posTerminals, setPosTerminals] = useState<any[]>([]);
   const [posLocation, setPosLocation] = useState<string>('RESTO');
+  const [posTerminalName, setPosTerminalName] = useState<string>('Terminal (Fallback)');
   const [rewards, setRewards] = useState<any[]>([]);
   const [selectedReward, setSelectedReward] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,6 +27,19 @@ export default function POSPage() {
   const isScanningRef = useRef<boolean>(false);
 
   useEffect(() => {
+    const fetchTerminals = async () => {
+      try {
+        const res = await fetch('/api/pos/terminals');
+        const json = await res.json();
+        if (json.success && json.data.length > 0) {
+          setPosTerminals(json.data);
+          setPosLocation(json.data[0].category);
+          setPosTerminalName(json.data[0].name);
+        }
+      } catch (e) { console.error(e); }
+    };
+    fetchTerminals();
+
     const initScanner = async () => {
       try {
         await Promise.all([
@@ -215,7 +230,8 @@ export default function POSPage() {
           member_id: identifiedUser.id,
           subtotal: Number(subtotal),
           reward_id: selectedReward ? selectedReward.id : null,
-          location: posLocation
+          location: posLocation,
+          terminal_name: posTerminalName
         })
       });
       
@@ -253,13 +269,23 @@ export default function POSPage() {
           <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Pilih Lokasi Kasir</h2>
             <select 
-              value={posLocation} 
-              onChange={e => setPosLocation(e.target.value)}
+              value={`${posLocation}|${posTerminalName}`} 
+              onChange={e => {
+                const [cat, name] = e.target.value.split('|');
+                setPosLocation(cat);
+                setPosTerminalName(name);
+              }}
               style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#f8fafc', fontWeight: '600', color: '#0f172a' }}
             >
-              <option value="RESTO">🍔 Restoran & Cafe (F&B)</option>
-              <option value="SOUVENIR">🎁 Toko Merchandise (Souvenir)</option>
-              <option value="WAHANA">🎢 Wahana Bermain (Wahana)</option>
+              {posTerminals.length > 0 ? posTerminals.map((t: any) => (
+                <option key={t.id} value={`${t.category}|${t.name}`}>{t.name}</option>
+              )) : (
+                <>
+                  <option value="RESTO|Restoran & Cafe (F&B)">🍔 Restoran & Cafe (F&B)</option>
+                  <option value="SOUVENIR|Toko Merchandise (Souvenir)">🎁 Toko Merchandise (Souvenir)</option>
+                  <option value="WAHANA|Wahana Bermain (Wahana)">🎢 Wahana Bermain (Wahana)</option>
+                </>
+              )}
             </select>
           </div>
 

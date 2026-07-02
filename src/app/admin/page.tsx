@@ -168,7 +168,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // System Users State
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'BUSINESS_LEADS' | 'LIVE_SCAN' | 'DEVICE_MANAGEMENT' | 'FINANCIAL_REPORTS' | 'VISITOR_ANALYTICS' | 'SYSTEM_CONFIG'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'BUSINESS_LEADS' | 'LIVE_SCAN' | 'DEVICE_MANAGEMENT' | 'FINANCIAL_REPORTS' | 'VISITOR_ANALYTICS' | 'SYSTEM_CONFIG' | 'POS_TERMINALS'>('DASHBOARD');
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   
   // Events State
@@ -180,6 +180,11 @@ export default function AdminDashboard() {
 
   // Schedules State
   const [schedules, setSchedules] = useState<any[]>([]);
+
+  // POS Terminals States
+  const [posTerminals, setPosTerminals] = useState<any[]>([]);
+  const [newTerminalName, setNewTerminalName] = useState('');
+  const [newTerminalCategory, setNewTerminalCategory] = useState('RESTO');
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSchedule, setNewSchedule] = useState({ title: '', description: '', start_time: '', end_time: '', location: '', image_url: '', status: 'ACTIVE' });
   const [scheduleImageFile, setScheduleImageFile] = useState<File | null>(null);
@@ -188,6 +193,40 @@ export default function AdminDashboard() {
   // Transactions State
   const [transactions, setTransactions] = useState<any[]>([]);
   const [trxFilter, setTrxFilter] = useState<'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR'>('ALL');
+  
+  const fetchPosTerminals = async () => {
+    try {
+      const res = await fetch('/api/pos/terminals');
+      const json = await res.json();
+      if (json.success && json.data) {
+        setPosTerminals(json.data);
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const handleAddTerminal = async () => {
+    if(!newTerminalName) return;
+    try {
+      const res = await fetch('/api/pos/terminals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newTerminalName, category: newTerminalCategory })
+      });
+      if(res.ok) {
+        setNewTerminalName('');
+        fetchPosTerminals();
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const handleDeleteTerminal = async (id: string) => {
+    try {
+      const res = await fetch(`/api/pos/terminals?id=${id}`, { method: 'DELETE' });
+      if(res.ok) fetchPosTerminals();
+    } catch(e) { console.error(e); }
+  };
+
+  const [dateFilter, setDateFilter] = useState<'TODAY'|'MONTH'|'YEAR'|'ALL'|'CUSTOM'>('ALL');
   const [financeFilter, setFinanceFilter] = useState<'TODAY' | 'MONTH' | 'YEAR' | 'ALL' | 'CUSTOM'>('MONTH');
   const [financeCustomDate, setFinanceCustomDate] = useState<string>('');
 
@@ -268,6 +307,8 @@ export default function AdminDashboard() {
       fetchEvents();
     } else if (activeTab === 'SCHEDULES') {
       fetchSchedules();
+    } else if (activeTab === 'POS_TERMINALS') {
+      fetchPosTerminals();
     } else if (activeTab === 'TRANSACTIONS') {
       fetchTransactions();
     } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'BUSINESS_LEADS' || activeTab === 'MEMBERS_DATABASE') {
@@ -984,7 +1025,15 @@ export default function AdminDashboard() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               Konfigurasi Sistem <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
             </div>
-          </nav>
+            <button 
+            onClick={() => setActiveTab('POS_TERMINALS')} 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: 'none', background: activeTab === 'POS_TERMINALS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'POS_TERMINALS' ? 'white' : '#94a3b8', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'POS_TERMINALS' ? '600' : '500', transition: 'all 0.2s' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
+            Terminal POS
+          </button>
+          
+        </nav>
 
           <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
             <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>
@@ -2361,6 +2410,61 @@ export default function AdminDashboard() {
         </div>
       )}
       </div>
+        {activeTab === 'POS_TERMINALS' && (
+          <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Manajemen Terminal Kasir (POS)</h2>
+            </div>
+            
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem' }}>Nama Mesin/Titik Lokasi</label>
+                <input type="text" value={newTerminalName} onChange={e => setNewTerminalName(e.target.value)} placeholder="Contoh: Wahana Kereta Mini" style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem' }}>Kategori Omset Keuangan</label>
+                <select value={newTerminalCategory} onChange={e => setNewTerminalCategory(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}>
+                  <option value="RESTO">Restoran / Cafe (F&B)</option>
+                  <option value="SOUVENIR">Toko Merchandise (Souvenir)</option>
+                  <option value="WAHANA">Wahana Bermain (Wahana)</option>
+                </select>
+              </div>
+              <button onClick={handleAddTerminal} style={{ padding: '0.75rem 1.5rem', background: '#0f172a', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer' }}>+ Tambah Lokasi</button>
+            </div>
+
+            <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.875rem' }}>
+                    <th style={{ padding: '1rem' }}>Nama Lokasi (Terminal)</th>
+                    <th style={{ padding: '1rem' }}>Kategori Omset</th>
+                    <th style={{ padding: '1rem' }}>ID Mesin (UUID)</th>
+                    <th style={{ padding: '1rem', textAlign: 'right' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {posTerminals.length > 0 ? posTerminals.map(term => (
+                    <tr key={term.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '1rem', fontWeight: '500', color: '#0f172a' }}>{term.name}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ padding: '0.25rem 0.75rem', background: term.category === 'RESTO' ? '#fef3c7' : (term.category === 'SOUVENIR' ? '#e0e7ff' : '#dcfce3'), color: term.category === 'RESTO' ? '#d97706' : (term.category === 'SOUVENIR' ? '#4f46e5' : '#16a34a'), borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                          {term.category}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.875rem' }}>{term.id}</td>
+                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <button onClick={() => handleDeleteTerminal(term.id)} style={{ color: '#ef4444', background: 'none', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Hapus</button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada data Terminal. (Harap jalankan SQL Schema di Supabase)</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );

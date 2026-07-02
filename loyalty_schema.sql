@@ -39,3 +39,16 @@ INSERT INTO rewards_catalog (name, description, points_required, reward_type) VA
 ('Voucher Potongan Rp 50.000', 'Berlaku di semua outlet F&B dan Souvenir', 100, 'VOUCHER_50K'),
 ('Gratis 1 Tiket Wahana', 'Berlaku untuk Animal Encounter', 300, 'FREE_RIDE'),
 ('Perpanjangan Annual Pass 1 Bulan', 'Tambahan 30 hari masa aktif', 500, 'EXTEND_PASS');
+
+-- 5. Create table for POS Terminals
+CREATE TABLE IF NOT EXISTS pos_terminals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  category text NOT NULL CHECK (category IN ('RESTO', 'SOUVENIR', 'WAHANA')),
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+INSERT INTO pos_terminals (name, category) VALUES 
+('?? Restoran & Cafe (F&B)', 'RESTO'), 
+('?? Toko Merchandise (Souvenir)', 'SOUVENIR'), 
+('?? Wahana Bermain (Wahana)', 'WAHANA');
