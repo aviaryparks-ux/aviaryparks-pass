@@ -638,7 +638,10 @@ export default function AdminDashboard() {
 
   const revenueLocationMap: Record<string, number> = {};
   posTransactions.forEach(t => {
-    const loc = t.location || 'Lainnya';
+    let loc = t.location || 'Lainnya';
+    if (loc === 'RESTO' || loc === 'F&B Restaurant') loc = 'F&B (Resto)';
+    else if (loc === 'SOUVENIR') loc = 'Souvenir';
+    else if (loc === 'WAHANA') loc = 'Wahana';
     revenueLocationMap[loc] = (revenueLocationMap[loc] || 0) + Number(t.amount);
   });
   const revenueLocationData = Object.keys(revenueLocationMap).map(loc => ({ name: loc, value: revenueLocationMap[loc] })).sort((a,b) => b.value - a.value);
