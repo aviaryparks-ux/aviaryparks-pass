@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     // 1. Fetch current member to get points_balance
     const { data: member, error: memberErr } = await supabaseAdmin
-      .from('users')
+      .from('members')
       .select('points_balance')
       .eq('id', member_id)
       .single();
@@ -85,8 +85,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // 5. Update final points_balance to users table
-    await supabaseAdmin.from('users').update({ points_balance: currentBalance }).eq('id', member_id);
+    // 5. Update final points_balance to members table
+    await supabaseAdmin.from('members').update({ points_balance: currentBalance }).eq('id', member_id);
 
     return NextResponse.json({ 
       success: true, 
