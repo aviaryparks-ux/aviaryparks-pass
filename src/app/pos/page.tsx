@@ -248,6 +248,21 @@ export default function POSPage() {
         
         {/* Left Column: Scanner */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+          {/* Terminal Location (Always Visible) */}
+          <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Pilih Lokasi Kasir</h2>
+            <select 
+              value={posLocation} 
+              onChange={e => setPosLocation(e.target.value)}
+              style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#f8fafc', fontWeight: '600', color: '#0f172a' }}
+            >
+              <option value="RESTO">🍔 Restoran & Cafe (F&B)</option>
+              <option value="SOUVENIR">🎁 Toko Merchandise (Souvenir)</option>
+              <option value="WAHANA">🎢 Wahana Bermain (Wahana)</option>
+            </select>
+          </div>
+
           <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Identifikasi Member</h2>
             
@@ -312,20 +327,6 @@ export default function POSPage() {
                   <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>{identifiedUser.name}</h3>
                   <p style={{ margin: 0, color: '#059669', fontWeight: 'bold' }}>Saldo Poin: {identifiedUser.points_balance || 0}</p>
                 </div>
-              </div>
-
-              {/* Terminal Location */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Lokasi Terminal POS</label>
-                <select 
-                  value={posLocation} 
-                  onChange={e => setPosLocation(e.target.value)}
-                  style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#f8fafc', fontWeight: '500' }}
-                >
-                  <option value="RESTO">🍔 Restoran & Cafe (F&B)</option>
-                  <option value="SOUVENIR">🎁 Toko Merchandise (Souvenir)</option>
-                  <option value="WAHANA">🎢 Wahana Bermain (Wahana)</option>
-                </select>
               </div>
 
               {/* Input Belanja */}
