@@ -143,6 +143,7 @@ export default function AdminDashboard() {
   const [pointMutations, setPointMutations] = useState<any[]>([]);
   const [showRewardForm, setShowRewardForm] = useState(false);
   const [newReward, setNewReward] = useState({ name: '', description: '', points_required: 100, reward_type: 'VOUCHER_50K', is_active: true });
+  const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
 
   // Load saved tab on mount
   useEffect(() => {
@@ -232,6 +233,16 @@ export default function AdminDashboard() {
       if (mRes.ok) { const j = await mRes.json(); setPointMutations(j.data || []); }
     } catch(e) {
       console.log('Loyalty API error', e);
+    }
+  }
+
+  async function deleteReward(id: string) {
+    if (!confirm('Hapus reward ini?')) return;
+    try {
+      const res = await fetch(`/api/admin/loyalty/rewards/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchLoyaltyData();
+    } catch(e) {
+      console.error('Delete error', e);
     }
   }
 
@@ -1591,12 +1602,13 @@ export default function AdminDashboard() {
                   <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Tipe</th>
                   <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Poin Dibutuhkan</th>
                   <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Status</th>
+                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {rewardsCatalog.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Belum ada katalog reward, silakan tambah.</td>
+                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Belum ada katalog reward, silakan tambah.</td>
                   </tr>
                 ) : rewardsCatalog.map((r, idx) => (
                   <tr key={r.id || idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -1604,9 +1616,40 @@ export default function AdminDashboard() {
                     <td style={{ padding: '1rem 1.5rem', color: '#334155' }}>{r.reward_type}</td>
                     <td style={{ padding: '1rem 1.5rem', color: '#059669', fontWeight: '600' }}>{r.points_required} Poin</td>
                     <td style={{ padding: '1rem 1.5rem' }}>
-                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold', backgroundColor: r.is_active ? '#dcfce7' : '#fee2e2', color: r.is_active ? '#166534' : '#991b1b' }}>
+                      <span 
+                        onClick={async () => {
+                          if (!r.id) return;
+                          await fetch(`/api/admin/loyalty/rewards/${r.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ is_active: !r.is_active })
+                          });
+                          fetchLoyaltyData();
+                        }}
+                        style={{ cursor: 'pointer', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold', backgroundColor: r.is_active ? '#dcfce7' : '#fee2e2', color: r.is_active ? '#166534' : '#991b1b' }}
+                      >
                         {r.is_active ? 'AKTIF' : 'NONAKTIF'}
                       </span>
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          onClick={() => {
+                            setEditingRewardId(r.id);
+                            setNewReward({ name: r.name, description: r.description || '', points_required: r.points_required, reward_type: r.reward_type, is_active: r.is_active });
+                            setShowRewardForm(true);
+                          }}
+                          style={{ padding: '0.5rem', backgroundColor: '#e0f2fe', color: '#0284c7', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button 
+                          onClick={() => deleteReward(r.id)}
+                          style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1638,13 +1681,16 @@ export default function AdminDashboard() {
                   <button 
                     onClick={async () => {
                       try {
-                        const res = await fetch('/api/admin/loyalty/rewards', {
-                          method: 'POST',
+                        const url = editingRewardId ? `/api/admin/loyalty/rewards/${editingRewardId}` : '/api/admin/loyalty/rewards';
+                        const method = editingRewardId ? 'PUT' : 'POST';
+                        const res = await fetch(url, {
+                          method,
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(newReward)
                         });
                         if (res.ok) {
                           setShowRewardForm(false);
+                          setEditingRewardId(null);
                           fetchLoyaltyData();
                         } else {
                           alert('Gagal menyimpan reward');
@@ -1655,9 +1701,9 @@ export default function AdminDashboard() {
                     }}
                     style={{ padding: '0.75rem 1.5rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}
                   >
-                    Simpan Reward
+                    {editingRewardId ? 'Update Reward' : 'Simpan Reward'}
                   </button>
-                  <button onClick={() => setShowRewardForm(false)} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Batal</button>
+                  <button onClick={() => { setShowRewardForm(false); setEditingRewardId(null); }} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Batal</button>
                 </div>
               </div>
             </div>
