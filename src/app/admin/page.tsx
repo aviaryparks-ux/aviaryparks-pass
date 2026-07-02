@@ -613,7 +613,7 @@ export default function AdminDashboard() {
 
   const handleExportCSV = () => {
     const headers = ['Nama', 'NIK', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Usia', 'Jenis Kelamin'];
-    const csvRows = [headers.join(',')];
+    const csvRows = [headers.join(';')];
 
     users.forEach(u => {
       const visitsCount = rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length;
@@ -629,21 +629,21 @@ export default function AdminDashboard() {
       const row = [
         `"${u.name}"`,
         `'${u.nik}'`,
-        u.role,
+        `"${u.role}"`,
         `"${u.email || ''}"`,
         `'${u.phone || ''}'`,
-        u.status,
-        u.activation_date ? new Date(u.activation_date).toLocaleDateString('id-ID') : '-',
+        `"${u.status}"`,
+        `"${u.activation_date ? new Date(u.activation_date).toLocaleDateString('id-ID') : '-'}"`,
         visitsCount,
         totalSpend,
         `"${rfm.label}"`,
         demo.age,
-        demo.gender
+        `"${demo.gender}"`
       ];
-      csvRows.push(row.join(','));
+      csvRows.push(row.join(';'));
     });
 
-    const csvData = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const csvData = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const csvUrl = URL.createObjectURL(csvData);
     const hiddenElement = document.createElement('a');
     hiddenElement.href = csvUrl;
