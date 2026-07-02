@@ -2128,7 +2128,7 @@ export default function AdminDashboard() {
             </div>
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #8b5cf6' }}>
               <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Total Transaksi</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{transactions.length + posTransactions.length} trx</h3>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{filteredTransactions.length + filteredPosTransactions.length} trx</h3>
             </div>
           </div>
 
