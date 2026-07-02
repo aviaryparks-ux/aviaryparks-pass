@@ -79,19 +79,25 @@ export default function POSPage() {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "dontInvert",
+              inversionAttempts: "attemptBoth",
             });
 
             if (code && code.data) {
               qrFound = true;
+              console.log("QR Code detected:", code.data);
+              setStatusMsg('QR Terbaca, Memproses...');
               const res = await fetch(`/api/pos/lookup?id=${code.data}`);
               if (res.ok) {
                 const result = await res.json();
                 if (result.data) {
                   setIdentifiedUser(result.data);
                   fetchRewards(result.data.id);
-                  setStatusMsg('QR Terdeteksi: ' + result.data.name);
+                  setStatusMsg('Member Ditemukan: ' + result.data.name);
+                } else {
+                  setStatusMsg('QR Code tidak valid atau member tidak ditemukan.');
                 }
+              } else {
+                setStatusMsg('Gagal memverifikasi QR Code dari server.');
               }
             }
           }
@@ -127,7 +133,7 @@ export default function POSPage() {
       } finally {
         isScanningRef.current = false;
       }
-    }, 1000); // scan every 1 second
+    }, 500); // scan every 500ms for more responsive QR
   };
 
   const fetchRewards = async (memberId: string) => {
