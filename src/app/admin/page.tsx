@@ -1072,7 +1072,7 @@ export default function AdminDashboard() {
                           <td style={{ padding: '1rem' }}>{u.nik}</td>
                           <td style={{ padding: '1rem', fontSize: '0.75rem' }}>{u.role}</td>
                           <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0f172a' }}>
-                            {visits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length}x
+                            {rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length}x
                           </td>
                           <td style={{ padding: '1rem', color: '#059669', fontWeight: '600', fontSize: '0.85rem' }}>
                             Rp {(memberTotals[u.id] || 0).toLocaleString('id-ID')}
