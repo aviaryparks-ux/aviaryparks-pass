@@ -691,15 +691,31 @@ export default function AdminDashboard() {
   ].filter(d => d.value > 0);
 
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const trendData = Array.from({length: 7}).map((_, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (6 - i));
+    const nextDay = new Date(d);
+    nextDay.setDate(d.getDate() + 1);
     
-    const randomFactor1 = 0.8 + (Math.random() * 0.4); 
-    const randomFactor2 = 0.7 + (Math.random() * 0.6);
-    
-    const dailyTicket = Math.round((totalTicketRevenue / 7) * randomFactor1) || Math.round((15000000 * randomFactor1));
-    const dailyPos = Math.round((totalPosRevenue / 7) * randomFactor2) || Math.round((5000000 * randomFactor2));
+    let dailyTicket = 0;
+    let dailyPos = 0;
+
+    transactions.forEach((tx: any) => {
+      if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+        const txDate = new Date(tx.created_at);
+        if (txDate >= d && txDate < nextDay) {
+          dailyTicket += Number(tx.amount || tx.total_amount || 0);
+        }
+      }
+    });
+
+    posTransactions.forEach((tx: any) => {
+      const txDate = new Date(tx.created_at);
+      if (txDate >= d && txDate < nextDay) {
+        dailyPos += Number(tx.amount || 0);
+      }
+    });
     
     return {
       date: d.toLocaleDateString('id-ID', { weekday: 'short' }),
