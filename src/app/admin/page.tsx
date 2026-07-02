@@ -1060,70 +1060,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Top 5 Users List */}
-          {topUsers.length > 0 && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#64748b', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Pengunjung Teraktif
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {topUsers.map((u, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1px solid #f1f5f9' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: i < 3 ? '#eff6ff' : '#f1f5f9', color: i < 3 ? '#3b82f6' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                        {i + 1}
-                      </div>
-                      <span style={{ fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{u.name}</span>
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600', backgroundColor: '#e2e8f0', padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>
-                      {u.count}x
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* Arrivals Report List */}
-          <div style={{ marginTop: '2rem' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#64748b', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Laporan Frekuensi & Kedatangan (Grup Keluarga)
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-              <div style={{ flex: 1, backgroundColor: '#fdf4ff', padding: '1rem', borderRadius: '0.75rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#86198f' }}>Total Kedatangan (Group)</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#86198f' }}>{arrivalsData.length}</div>
-              </div>
-            </div>
-
-            <div style={{ overflowX: 'auto', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #f1f5f9' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#e2e8f0', color: '#475569' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Tanggal</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Nama (Kepala Keluarga)</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Jumlah Pax Masuk</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {arrivalsData.slice(0, 10).map((arr, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '0.75rem' }}>{arr.date}</td>
-                      <td style={{ padding: '0.75rem', fontWeight: '500' }}>{arr.group_name}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontWeight: 'bold' }}>
-                          {arr.paxCount} Pax
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {arrivalsData.length === 0 && (
-                    <tr><td colSpan={3} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada data kedatangan</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Detailed Lists have been moved to Business Leads & Member Database */}
         </div>
 
       </div>
