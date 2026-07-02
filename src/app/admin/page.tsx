@@ -270,6 +270,9 @@ export default function AdminDashboard() {
       fetchTransactions();
     } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'BUSINESS_LEADS' || activeTab === 'MEMBERS_DATABASE') {
       fetchLoyaltyData();
+    } else if (activeTab === 'FINANCIAL_REPORTS') {
+      fetchTransactions();
+      fetchLoyaltyData();
     }
   }, [activeTab, trxFilter]);
 
