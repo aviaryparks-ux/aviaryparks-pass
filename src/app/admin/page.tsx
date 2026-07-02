@@ -275,13 +275,14 @@ export default function AdminDashboard() {
 
   async function fetchLoyaltyData() {
     try {
-      const rRes = await fetch('/api/admin/loyalty/rewards');
+      const [rRes, pRes, mRes] = await Promise.all([
+        fetch('/api/admin/loyalty/rewards'),
+        fetch('/api/admin/loyalty/pos-transactions'),
+        fetch('/api/admin/loyalty/mutations')
+      ]);
+      
       if (rRes.ok) { const j = await rRes.json(); setRewardsCatalog(j.data || []); }
-      
-      const pRes = await fetch('/api/admin/loyalty/pos-transactions');
       if (pRes.ok) { const j = await pRes.json(); setPosTransactions(j.data || []); }
-      
-      const mRes = await fetch('/api/admin/loyalty/mutations');
       if (mRes.ok) { const j = await mRes.json(); setPointMutations(j.data || []); }
     } catch(e) {
       console.log('Loyalty API error', e);
@@ -501,36 +502,40 @@ export default function AdminDashboard() {
   }
 
   async function fetchData() {
-    // 1. Fetch Users
-    const resM = await fetch('/api/admin/members'); const jsonM = await resM.json(); const membersData = jsonM.data;
-    if (membersData) {
-      const primaries = membersData.filter((m: any) => m.role === 'PRIMARY');
-      const dependents = membersData.filter((m: any) => m.role !== 'PRIMARY');
+    try {
+      const [resM, vRes] = await Promise.all([
+        fetch('/api/admin/members'),
+        fetch('/api/admin/visits'),
+        fetchPackages()
+      ]);
       
-      let groupedUsers: any[] = [];
-      
-      // Push primary then their dependents
-      primaries.forEach((p: any) => {
-        groupedUsers.push(p);
-        const related = dependents.filter((d: any) => d.group_id === p.group_id);
-        groupedUsers.push(...related);
-      });
-      
-      // Push any dependents that somehow don't have a primary in the fetched data (orphan check)
-      const orphaned = dependents.filter((d: any) => !primaries.find((p: any) => p.group_id === d.group_id));
-      groupedUsers.push(...orphaned);
-      
-      setUsers(groupedUsers);
+      const jsonM = await resM.json(); 
+      const membersData = jsonM.data;
+      if (membersData) {
+        const primaries = membersData.filter((m: any) => m.role === 'PRIMARY');
+        const dependents = membersData.filter((m: any) => m.role !== 'PRIMARY');
+        
+        let groupedUsers: any[] = [];
+        
+        primaries.forEach((p: any) => {
+          groupedUsers.push(p);
+          const related = dependents.filter((d: any) => d.group_id === p.group_id);
+          groupedUsers.push(...related);
+        });
+        
+        const orphaned = dependents.filter((d: any) => !primaries.find((p: any) => p.group_id === d.group_id));
+        groupedUsers.push(...orphaned);
+        
+        setUsers(groupedUsers);
+      }
+
+      const vJson = await vRes.json();
+      if (vJson.data) setRawVisits(vJson.data);
+    } catch (e) {
+      console.error('Error fetching dashboard data:', e);
+    } finally {
+      setLoading(false);
     }
-
-    // 2. Fetch Packages
-    await fetchPackages();
-
-    // 3. Fetch Visits & Aggregate for Chart
-    const vRes = await fetch('/api/admin/visits'); const vJson = await vRes.json(); const vData = vJson.data;
-    if (vData) setRawVisits(vData);
-
-    setLoading(false);
   }
 
   const addPackage = async (e: React.FormEvent) => {
