@@ -748,75 +748,72 @@ export default function AdminDashboard() {
           </div>
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', whiteSpace: 'nowrap' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>Dashboard</p>
-            <div 
-              onClick={() => setActiveTab('DASHBOARD')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'DASHBOARD' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'DASHBOARD' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'DASHBOARD' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'DASHBOARD' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>DASHBOARD</p>
+            <div onClick={() => setActiveTab('DASHBOARD')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'DASHBOARD' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'DASHBOARD' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'DASHBOARD' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'DASHBOARD' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              Dashboard
+              Dashboard (Overview)
             </div>
 
             <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>DATABASE</p>
-            <div 
-              onClick={() => setActiveTab('MEMBERS_DATABASE')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'MEMBERS_DATABASE' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'MEMBERS_DATABASE' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'MEMBERS_DATABASE' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'MEMBERS_DATABASE' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <div onClick={() => setActiveTab('MEMBERS_DATABASE')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'MEMBERS_DATABASE' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'MEMBERS_DATABASE' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'MEMBERS_DATABASE' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'MEMBERS_DATABASE' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               Database Member
             </div>
+            <div onClick={() => setActiveTab('BUSINESS_LEADS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'BUSINESS_LEADS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'BUSINESS_LEADS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'BUSINESS_LEADS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'BUSINESS_LEADS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+              Database Leads
+            </div>
 
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>MANAJEMEN TIKET</p>
-            <div 
-              onClick={() => setActiveTab('TICKET_PACKAGES')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TICKET_PACKAGES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TICKET_PACKAGES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TICKET_PACKAGES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TICKET_PACKAGES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>MANAJEMEN TIKET & OPERASIONAL</p>
+            <div onClick={() => setActiveTab('TICKET_PACKAGES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TICKET_PACKAGES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TICKET_PACKAGES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TICKET_PACKAGES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TICKET_PACKAGES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
               Paket Tiket
             </div>
-            <div 
-              onClick={() => setActiveTab('TRANSACTIONS')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TRANSACTIONS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TRANSACTIONS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TRANSACTIONS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TRANSACTIONS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <div onClick={() => setActiveTab('TRANSACTIONS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TRANSACTIONS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TRANSACTIONS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TRANSACTIONS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TRANSACTIONS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
               Transaksi Penjualan
             </div>
-            <div 
-              onClick={() => setActiveTab('LOYALTY_PROGRAM')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LOYALTY_PROGRAM' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LOYALTY_PROGRAM' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LOYALTY_PROGRAM' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LOYALTY_PROGRAM' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <div onClick={() => setActiveTab('LOYALTY_PROGRAM')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LOYALTY_PROGRAM' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LOYALTY_PROGRAM' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LOYALTY_PROGRAM' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LOYALTY_PROGRAM' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Loyalty & Rewards
             </div>
-            <div 
-              onClick={() => setActiveTab('BUSINESS_LEADS')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'BUSINESS_LEADS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'BUSINESS_LEADS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'BUSINESS_LEADS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'BUSINESS_LEADS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
-              Business Leads
+
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>MONITORING GATE</p>
+            <div onClick={() => setActiveTab('LIVE_SCAN')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LIVE_SCAN' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LIVE_SCAN' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LIVE_SCAN' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LIVE_SCAN' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="10" x="7" y="7" rx="1"/></svg>
+              Live Scan & Log Masuk <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
             </div>
-            
+            <div onClick={() => setActiveTab('DEVICE_MANAGEMENT')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'DEVICE_MANAGEMENT' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'DEVICE_MANAGEMENT' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'DEVICE_MANAGEMENT' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'DEVICE_MANAGEMENT' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Manajemen Perangkat <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
+            </div>
+
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>LAPORAN (REPORTS)</p>
+            <div onClick={() => setActiveTab('FINANCIAL_REPORTS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'FINANCIAL_REPORTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'FINANCIAL_REPORTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'FINANCIAL_REPORTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'FINANCIAL_REPORTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+              Penjualan & Keuangan <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
+            </div>
+            <div onClick={() => setActiveTab('VISITOR_ANALYTICS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'VISITOR_ANALYTICS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'VISITOR_ANALYTICS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'VISITOR_ANALYTICS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'VISITOR_ANALYTICS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              Analitik Pengunjung <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
+            </div>
+
             <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>PENGATURAN</p>
-            <div 
-              onClick={() => setActiveTab('EVENTS')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'EVENTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'EVENTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'EVENTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'EVENTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <div onClick={() => setActiveTab('EVENTS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'EVENTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'EVENTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'EVENTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'EVENTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
               Event & Pengumuman
             </div>
-            <div 
-              onClick={() => setActiveTab('SCHEDULES')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SCHEDULES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SCHEDULES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SCHEDULES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SCHEDULES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <div onClick={() => setActiveTab('SCHEDULES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SCHEDULES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SCHEDULES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SCHEDULES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SCHEDULES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               Jadwal Aktivitas
             </div>
-            <div 
-              onClick={() => setActiveTab('SYSTEM_USERS')}
-              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SYSTEM_USERS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SYSTEM_USERS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SYSTEM_USERS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SYSTEM_USERS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}
-            >
+            <div onClick={() => setActiveTab('SYSTEM_USERS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SYSTEM_USERS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SYSTEM_USERS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SYSTEM_USERS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SYSTEM_USERS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
               User Admin
+            </div>
+            <div onClick={() => setActiveTab('SYSTEM_CONFIG')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SYSTEM_CONFIG' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SYSTEM_CONFIG' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SYSTEM_CONFIG' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SYSTEM_CONFIG' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Konfigurasi Sistem <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
             </div>
           </nav>
 
@@ -1841,6 +1838,16 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {['LIVE_SCAN', 'DEVICE_MANAGEMENT', 'FINANCIAL_REPORTS', 'VISITOR_ANALYTICS', 'SYSTEM_CONFIG'].includes(activeTab) && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', animation: 'fadeIn 0.3s ease-out' }}>
+          <div style={{ backgroundColor: '#fffbeb', padding: '1.5rem', borderRadius: '50%', marginBottom: '1.5rem', display: 'inline-flex' }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.5rem' }}>Fitur Segera Hadir</h2>
+          <p style={{ color: '#64748b', maxWidth: '400px', fontSize: '1rem' }}>Modul ini sedang dalam tahap pengembangan dan akan segera tersedia pada pembaruan sistem berikutnya.</p>
         </div>
       )}
 
