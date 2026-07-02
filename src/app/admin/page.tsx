@@ -594,6 +594,23 @@ export default function AdminDashboard() {
   const topSpendersCount = Object.values(memberTotals).filter(v => (v as number) > 1000000).length;
   const ltv = uniqueMembersCount > 0 ? totalRevenue / uniqueMembersCount : 0;
 
+  const peakHoursMap: Record<string, number> = {};
+  rawVisits.forEach(v => {
+    if(!v.visited_at) return;
+    const hour = new Date(v.visited_at).getHours();
+    const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+    peakHoursMap[hourStr] = (peakHoursMap[hourStr] || 0) + 1;
+  });
+  const peakHoursData = Object.keys(peakHoursMap).sort().map(h => ({ time: h, visits: peakHoursMap[h] }));
+
+  const revenueLocationMap: Record<string, number> = {};
+  posTransactions.forEach(t => {
+    const loc = t.location || 'Lainnya';
+    revenueLocationMap[loc] = (revenueLocationMap[loc] || 0) + Number(t.amount);
+  });
+  const revenueLocationData = Object.keys(revenueLocationMap).map(loc => ({ name: loc, value: revenueLocationMap[loc] })).sort((a,b) => b.value - a.value);
+  const PIE_COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
+
   const handleExportCSV = () => {
     const headers = ['Nama', 'NIK', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Usia', 'Jenis Kelamin'];
     const csvRows = [headers.join(',')];
@@ -1898,11 +1915,11 @@ export default function AdminDashboard() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {revenueLocationData.map((entry, index) => (
+                      {revenueLocationData.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `Rp ${value.toLocaleString('id-ID')}`} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                    <Tooltip formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
                     <Legend verticalAlign="bottom" height={36} iconType="circle" />
                   </PieChart>
                 </ResponsiveContainer>
