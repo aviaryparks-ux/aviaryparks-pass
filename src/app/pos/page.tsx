@@ -9,6 +9,9 @@ export default function POSPage() {
   const [statusMsg, setStatusMsg] = useState('Memuat model & data...');
   const [identifiedUser, setIdentifiedUser] = useState<any>(null);
   
+  const [scanMode, setScanMode] = useState<'FACE' | 'BARCODE'>('FACE');
+  const [barcodeInput, setBarcodeInput] = useState('');
+  
   const [subtotal, setSubtotal] = useState<number | ''>('');
   const [rewards, setRewards] = useState<any[]>([]);
   const [selectedReward, setSelectedReward] = useState<any>(null);
@@ -104,12 +107,33 @@ export default function POSPage() {
     }
   };
 
+  const handleBarcodeSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && barcodeInput.trim() !== '') {
+      try {
+        const res = await fetch(`/api/visitor/members?id=${barcodeInput.trim()}&single=true`);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.data) {
+            setIdentifiedUser(result.data);
+            fetchRewards(result.data.id);
+            setBarcodeInput('');
+          } else {
+            alert('Member tidak ditemukan!');
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Gagal mencari member');
+      }
+    }
+  };
+
   const resetTransaction = () => {
     setIdentifiedUser(null);
     setSubtotal('');
     setSelectedReward(null);
     setRewards([]);
-    setStatusMsg('Sistem POS siap. Arahkan wajah pengunjung ke kamera.');
+    setStatusMsg('Sistem POS siap. Arahkan wajah pengunjung ke kamera atau scan barcode.');
   };
 
   const calculateTotal = () => {
@@ -172,19 +196,42 @@ export default function POSPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Identifikasi Member</h2>
-            <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', backgroundColor: 'black', aspectRatio: '4/3', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                muted 
-                playsInline
-                onPlay={handleVideoPlay}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-              <div style={{ position: 'absolute', top: '1rem', left: '1rem', right: '1rem', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.875rem', backdropFilter: 'blur(4px)', textAlign: 'center' }}>
-                {statusMsg}
-              </div>
+            
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <button onClick={() => setScanMode('FACE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'FACE' ? '#0f172a' : 'white', color: scanMode === 'FACE' ? 'white' : '#64748b', cursor: 'pointer' }}>Kamera Wajah</button>
+              <button onClick={() => setScanMode('BARCODE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'BARCODE' ? '#0f172a' : 'white', color: scanMode === 'BARCODE' ? 'white' : '#64748b', cursor: 'pointer' }}>Scanner QR/Barcode</button>
             </div>
+
+            {scanMode === 'FACE' ? (
+              <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', backgroundColor: 'black', aspectRatio: '4/3', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  muted 
+                  playsInline
+                  onPlay={handleVideoPlay}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div style={{ position: 'absolute', top: '1rem', left: '1rem', right: '1rem', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.875rem', backdropFilter: 'blur(4px)', textAlign: 'center' }}>
+                  {statusMsg}
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: '1rem', padding: '3rem 1.5rem', textAlign: 'center' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" style={{ marginBottom: '1rem' }}><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#334155' }}>Gunakan Scanner QR</h3>
+                <p style={{ margin: '0 0 1.5rem 0', color: '#64748b', fontSize: '0.875rem' }}>Arahkan scanner ke QR Code E-Card pelanggan atau ketik Member ID secara manual lalu tekan Enter.</p>
+                <input 
+                  autoFocus
+                  type="text" 
+                  value={barcodeInput}
+                  onChange={e => setBarcodeInput(e.target.value)}
+                  onKeyDown={handleBarcodeSubmit}
+                  placeholder="Scan Barcode disini..."
+                  style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                />
+              </div>
+            )}
             {identifiedUser && (
               <button 
                 onClick={resetTransaction}
