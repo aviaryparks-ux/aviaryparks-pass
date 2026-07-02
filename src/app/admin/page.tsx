@@ -540,6 +540,21 @@ export default function AdminDashboard() {
     }
   };
 
+  // --- Analytics Calculations ---
+  const memberTotals: Record<string, number> = {};
+  let totalRevenue = 0;
+  
+  posTransactions.forEach(t => {
+    const amount = Number(t.amount) || 0;
+    if (!memberTotals[t.member_id]) memberTotals[t.member_id] = 0;
+    memberTotals[t.member_id] += amount;
+    totalRevenue += amount;
+  });
+
+  const uniqueMembersCount = Object.keys(memberTotals).length;
+  const topSpendersCount = Object.values(memberTotals).filter(v => (v as number) > 1000000).length;
+  const ltv = uniqueMembersCount > 0 ? totalRevenue / uniqueMembersCount : 0;
+
   return (
     <div style={{ position: 'relative', display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', color: '#334155' }}>
       
@@ -1711,22 +1726,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'BUSINESS_LEADS' && (() => {
-        const memberTotals: Record<string, number> = {};
-        let totalRevenue = 0;
-        
-        posTransactions.forEach(t => {
-          const amount = Number(t.amount) || 0;
-          if (!memberTotals[t.member_id]) memberTotals[t.member_id] = 0;
-          memberTotals[t.member_id] += amount;
-          totalRevenue += amount;
-        });
-
-        const uniqueMembersCount = Object.keys(memberTotals).length;
-        const topSpendersCount = Object.values(memberTotals).filter(v => v > 1000000).length;
-        const ltv = uniqueMembersCount > 0 ? totalRevenue / uniqueMembersCount : 0;
-
-        return (
+      {activeTab === 'BUSINESS_LEADS' && (
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Business Leads & Analitik Lifetime Value</h2>
           
@@ -1783,7 +1783,7 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
-      })()}
+      )}
       </div>
       </main>
     </div>
