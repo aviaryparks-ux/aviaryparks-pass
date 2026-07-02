@@ -700,7 +700,8 @@ export default function AdminDashboard() {
   let totalPosRevenue = 0;
 
   filteredTransactions.forEach((tx: any) => {
-    if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+    const isPaid = !tx.payment_status || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.payment_status) || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.status);
+    if (isPaid) {
       totalTicketRevenue += Number(tx.amount || tx.total_amount || 0);
     }
   });
@@ -742,7 +743,8 @@ export default function AdminDashboard() {
       let dPos = 0;
       
       filteredTransactions.forEach((tx: any) => {
-        if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+        const isPaid = !tx.payment_status || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.payment_status) || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.status);
+        if (isPaid) {
           const txDate = new Date(tx.created_at);
           if (txDate.getHours() >= hourStart && txDate.getHours() < hourEnd) dTicket += Number(tx.amount || tx.total_amount || 0);
         }
@@ -772,7 +774,8 @@ export default function AdminDashboard() {
         let dTicket = 0;
         let dPos = 0;
         filteredTransactions.forEach((tx: any) => {
-          if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+          const isPaid = !tx.payment_status || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.payment_status) || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.status);
+          if (isPaid) {
             const txDate = new Date(tx.created_at);
             if (txDate >= d && txDate < nextMonth) dTicket += Number(tx.amount || tx.total_amount || 0);
           }
@@ -790,7 +793,8 @@ export default function AdminDashboard() {
         let dTicket = 0;
         let dPos = 0;
         filteredTransactions.forEach((tx: any) => {
-          if (tx.payment_status === 'PAID' || tx.payment_status === 'SUCCESS' || tx.payment_status === 'COMPLETED' || tx.status === 'PAID') {
+          const isPaid = !tx.payment_status || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.payment_status) || ['PAID', 'SUCCESS', 'COMPLETED'].includes(tx.status);
+          if (isPaid) {
             const txDate = new Date(tx.created_at);
             if (txDate >= d && txDate < nextDay) dTicket += Number(tx.amount || tx.total_amount || 0);
           }
