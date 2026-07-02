@@ -627,7 +627,27 @@ export default function AdminDashboard() {
     revenueLocationMap[loc] = (revenueLocationMap[loc] || 0) + Number(t.amount);
   });
   const revenueLocationData = Object.keys(revenueLocationMap).map(loc => ({ name: loc, value: revenueLocationMap[loc] })).sort((a,b) => b.value - a.value);
-  const PIE_COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
+  
+  const provinceMap: Record<string, number> = {};
+  const ageGroupMap: Record<string, number> = { '<20': 0, '21-35': 0, '36-50': 0, '>50': 0 };
+
+  users.forEach(u => {
+    const demo = extractDemographics(u.nik);
+    if (demo.province && demo.province !== 'Unknown' && demo.province !== 'Lainnya') {
+      provinceMap[demo.province] = (provinceMap[demo.province] || 0) + 1;
+    }
+    if (typeof demo.age === 'number' && !isNaN(demo.age)) {
+      if (demo.age < 20) ageGroupMap['<20']++;
+      else if (demo.age <= 35) ageGroupMap['21-35']++;
+      else if (demo.age <= 50) ageGroupMap['36-50']++;
+      else ageGroupMap['>50']++;
+    }
+  });
+
+  const provinceData = Object.keys(provinceMap).map(name => ({ name, value: provinceMap[name] })).sort((a, b) => b.value - a.value).slice(0, 5);
+  const ageGroupData = Object.keys(ageGroupMap).map(name => ({ name, value: ageGroupMap[name] }));
+
+  const PIE_COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#06b6d4'];
 
   const handleExportCSV = () => {
     const headers = ['Nama', 'NIK', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Usia', 'Jenis Kelamin', 'Asal Daerah'];
@@ -1939,6 +1959,50 @@ export default function AdminDashboard() {
                       ))}
                     </Pie>
                     <Tooltip formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            {/* Top 5 Province Chart */}
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Top 5 Asal Daerah Pengunjung</h3>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={provinceData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                    <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} width={80} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                    <Bar dataKey="value" fill="#ec4899" radius={[0, 4, 4, 0]} name="Total Pengunjung" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Age Demographics Pie Chart */}
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Demografi Umur Pengunjung</h3>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={ageGroupData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      dataKey="value"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    >
+                      {ageGroupData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
                     <Legend verticalAlign="bottom" height={36} iconType="circle" />
                   </PieChart>
                 </ResponsiveContainer>
