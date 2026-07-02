@@ -290,6 +290,17 @@ export default function DashboardTab({
         {/* RIGHT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
+          {/* Card: Loyalty Points Balance */}
+          <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderRadius: '1rem', padding: '1.5rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.9, fontWeight: '500', marginBottom: '0.25rem' }}>Total Aviary Points</p>
+              <h3 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{user?.points_balance || 0} <span style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.8 }}>Poin</span></h3>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.75rem', borderRadius: '50%', backdropFilter: 'blur(4px)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+          </div>
+          
           {/* Card: Ringkasan Kunjungan Anggota */}
           <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
