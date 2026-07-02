@@ -192,3 +192,6 @@ body { top: 0px !important; position: static !important; }
 .goog-tooltip { display: none !important; }
 .goog-tooltip:hover { display: none !important; }
 .goog-text-highlight { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+@media print { nav { display: none !important; } .hide-on-print { display: none !important; } body { background: white !important; margin: 0 !important; } }
+
+@media print { aside { display: none !important; } .hide-on-print { display: none !important; } body, main, div { overflow: visible !important; height: auto !important; } }

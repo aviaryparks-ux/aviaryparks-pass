@@ -2021,7 +2021,7 @@ export default function AdminDashboard() {
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Laporan Penjualan & Keuangan</h2>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div className="hide-on-print" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               {financeFilter === 'CUSTOM' && (
                 <input 
                   type="date" 
@@ -2041,7 +2041,7 @@ export default function AdminDashboard() {
                 <option value="ALL">Semua Waktu</option>
                 <option value="CUSTOM">Pilih Tanggal...</option>
               </select>
-              <button style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button onClick={() => window.print()} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Export
               </button>
