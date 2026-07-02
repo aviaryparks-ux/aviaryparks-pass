@@ -719,7 +719,7 @@ export default function AdminDashboard() {
 
       {/* SIDEBAR */}
       <aside style={{ 
-        position: 'relative', zIndex: 1, width: '260px', overflow: 'hidden',
+        position: 'relative', zIndex: 1, width: '280px', overflow: 'hidden',
         backgroundColor: '#022c22', display: 'flex', flexDirection: 'column',
         boxShadow: '4px 0 24px rgba(0,0,0,0.05)'
       }}>
@@ -730,7 +730,7 @@ export default function AdminDashboard() {
           opacity: 0.1, pointerEvents: 'none', zIndex: 0
         }}></div>
         
-        <div style={{ position: 'relative', zIndex: 1, width: '260px', padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ position: 'relative', zIndex: 1, width: '280px', padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
           
           {/* Hanging Logo Tab */}
           <div style={{ 
@@ -747,7 +747,7 @@ export default function AdminDashboard() {
             <img src="/logo.png" alt="Aviary Park Indonesia" style={{ height: '70px', width: 'auto' }} />
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', whiteSpace: 'nowrap' }}>
             <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>Dashboard</p>
             <div 
               onClick={() => setActiveTab('DASHBOARD')}
