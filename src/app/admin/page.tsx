@@ -753,6 +753,8 @@ export default function AdminDashboard() {
   let restoRevenue = 0;
   let souvenirRevenue = 0;
   let ridesRevenue = 0;
+  
+  const terminalRevenueMap: Record<string, number> = {};
 
   filteredPosTransactions.forEach((tx: any) => {
     const amt = Number(tx.amount || 0);
@@ -760,7 +762,18 @@ export default function AdminDashboard() {
     if (tx.location === 'RESTO') restoRevenue += amt;
     else if (tx.location === 'SOUVENIR') souvenirRevenue += amt;
     else ridesRevenue += amt;
+    
+    let tName = tx.terminal_name || tx.location || 'Terminal Tidak Diketahui';
+    if (tName === 'RESTO') tName = 'F&B (Lainnya)';
+    else if (tName === 'SOUVENIR') tName = 'Souvenir (Lainnya)';
+    else if (tName === 'WAHANA') tName = 'Wahana (Lainnya)';
+    
+    terminalRevenueMap[tName] = (terminalRevenueMap[tName] || 0) + amt;
   });
+  
+  const terminalRevenueData = Object.keys(terminalRevenueMap)
+    .map(k => ({ name: k, value: terminalRevenueMap[k] }))
+    .sort((a, b) => b.value - a.value);
 
   const financialTotalRevenue = totalTicketRevenue + totalPosRevenue;
 
@@ -2158,6 +2171,26 @@ export default function AdminDashboard() {
                     <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), '']} />
                     <Legend iconType="circle" layout="vertical" verticalAlign="bottom" align="center" />
                   </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            
+            {/* Terminal Performance Bar Chart */}
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Performa Omset per Mesin Kasir / Wahana</h3>
+              <div style={{ width: '100%', height: '350px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={terminalRevenueData} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={60} />
+                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val: any) => `Rp ${val / 1000000}Jt`} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), 'Omset']} />
+                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]}>
+                      {terminalRevenueData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>

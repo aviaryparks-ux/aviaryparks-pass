@@ -52,3 +52,6 @@ INSERT INTO pos_terminals (name, category) VALUES
 ('?? Restoran & Cafe (F&B)', 'RESTO'), 
 ('?? Toko Merchandise (Souvenir)', 'SOUVENIR'), 
 ('?? Wahana Bermain (Wahana)', 'WAHANA');
+
+-- 6. Add terminal_name to pos_transactions
+ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS terminal_name text;
