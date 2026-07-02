@@ -1671,7 +1671,7 @@ export default function AdminDashboard() {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #8b5cf6' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Top Spenders (Total > Rp 1jt)</p>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Top Spenders (Total &gt; Rp 1jt)</p>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
                 {posTransactions.length > 0 ? 'Sedang dihitung...' : '0'} Member
               </h3>
