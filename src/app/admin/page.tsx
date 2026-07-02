@@ -1774,8 +1774,7 @@ export default function AdminDashboard() {
                     <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '1rem 1.5rem', color: '#334155', fontWeight: '500', fontSize: '0.875rem' }}>{t.id.split('-')[0]}</td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontSize: '0.875rem' }}>
-                        <span style={{ fontWeight: 'bold', color: '#334155' }}>{t.member_name}</span><br/>
-                        <span style={{ fontSize: '0.7rem' }}>{t.member_id.substring(0, 8)}...</span>
+                        <span style={{ fontWeight: 'bold', color: '#334155' }}>{t.member_name}</span>
                       </td>
                       <td style={{ padding: '1rem 1.5rem', color: '#059669', fontWeight: '600' }}>Rp {Number(t.amount).toLocaleString('id-ID')}</td>
                       <td style={{ padding: '1rem 1.5rem', color: '#475569', fontSize: '0.875rem' }}>{t.location}</td>
