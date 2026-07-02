@@ -15,6 +15,7 @@ import TransactionsTab from './_components/TransactionsTab';
 import EventsTab from './_components/EventsTab';
 import SchedulesTab from './_components/SchedulesTab';
 import ProfileTab from './_components/ProfileTab';
+import LoyaltyTab from './_components/LoyaltyTab';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 
 export default function Dashboard() {
@@ -201,6 +202,8 @@ export default function Dashboard() {
         return <EventsTab />;
       case 'schedules':
         return <SchedulesTab />;
+      case 'loyalty':
+        return <LoyaltyTab user={user} />;
       case 'profile':
         return <ProfileTab user={user} />;
       default:
