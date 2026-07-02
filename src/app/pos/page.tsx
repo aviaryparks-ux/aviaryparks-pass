@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
+import jsQR from 'jsqr';
 import Link from 'next/link';
 
 export default function POSPage() {
@@ -64,24 +65,60 @@ export default function POSPage() {
       isScanningRef.current = true;
 
       try {
-        const detection = await faceapi.detectSingleFace(videoRef.current)
-          .withFaceLandmarks()
-          .withFaceDescriptor();
+        const video = videoRef.current;
+        let qrFound = false;
 
-        if (detection) {
-          const descriptorArray = Array.from(detection.descriptor);
-          
-          const res = await fetch('/api/gate/match', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ descriptorArray })
-          });
-          
-          if (res.ok) {
-            const result = await res.json();
-            if (result.data) {
-              setIdentifiedUser(result.data);
-              fetchRewards(result.data.id);
+        // --- 1. QR CODE SCANNING ---
+        // Create an offscreen canvas to get image data for jsQR
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert",
+            });
+
+            if (code && code.data) {
+              qrFound = true;
+              const res = await fetch(`/api/visitor/members?id=${code.data}&single=true`);
+              if (res.ok) {
+                const result = await res.json();
+                if (result.data) {
+                  setIdentifiedUser(result.data);
+                  fetchRewards(result.data.id);
+                  setStatusMsg('QR Terdeteksi: ' + result.data.name);
+                }
+              }
+            }
+          }
+        }
+
+        // --- 2. FACE RECOGNITION (Fallback if no QR) ---
+        if (!qrFound) {
+          const detection = await faceapi.detectSingleFace(video)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+          if (detection) {
+            const descriptorArray = Array.from(detection.descriptor);
+            
+            const res = await fetch('/api/gate/match', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ descriptorArray })
+            });
+            
+            if (res.ok) {
+              const result = await res.json();
+              if (result.data) {
+                setIdentifiedUser(result.data);
+                fetchRewards(result.data.id);
+                setStatusMsg('Wajah Dikenali: ' + result.data.name);
+              }
             }
           }
         }
@@ -198,8 +235,8 @@ export default function POSPage() {
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Identifikasi Member</h2>
             
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-              <button onClick={() => setScanMode('FACE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'FACE' ? '#0f172a' : 'white', color: scanMode === 'FACE' ? 'white' : '#64748b', cursor: 'pointer' }}>Kamera Wajah</button>
-              <button onClick={() => setScanMode('BARCODE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'BARCODE' ? '#0f172a' : 'white', color: scanMode === 'BARCODE' ? 'white' : '#64748b', cursor: 'pointer' }}>Scanner QR/Barcode</button>
+              <button onClick={() => setScanMode('FACE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'FACE' ? '#0f172a' : 'white', color: scanMode === 'FACE' ? 'white' : '#64748b', cursor: 'pointer' }}>Kamera Cerdas (Wajah & QR)</button>
+              <button onClick={() => setScanMode('BARCODE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'BARCODE' ? '#0f172a' : 'white', color: scanMode === 'BARCODE' ? 'white' : '#64748b', cursor: 'pointer' }}>Scanner Alat Fisik</button>
             </div>
 
             {scanMode === 'FACE' ? (
