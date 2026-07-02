@@ -214,7 +214,7 @@ export default function DashboardTab({
                         <img 
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${activeUser.nik || activeUser.id}`} 
                           alt="QR Code" 
-                          style={{ width: '10cqi', height: '10cqi', objectFit: 'contain' }}
+                          style={{ width: '20cqi', height: '20cqi', objectFit: 'contain' }}
                         />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>

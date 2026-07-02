@@ -137,7 +137,7 @@ export default function PrintCard() {
                 <img 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${user.nik || user.id}`} 
                   alt="QR Code" 
-                  style={{ width: '10mm', height: '10mm', objectFit: 'contain' }}
+                  style={{ width: '18mm', height: '18mm', objectFit: 'contain' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
