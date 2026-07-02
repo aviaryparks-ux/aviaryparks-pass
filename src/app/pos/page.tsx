@@ -16,6 +16,7 @@ export default function POSPage() {
   const [barcodeInput, setBarcodeInput] = useState('');
   
   const [subtotal, setSubtotal] = useState<number | ''>('');
+  const [posLocation, setPosLocation] = useState<string>('RESTO');
   const [rewards, setRewards] = useState<any[]>([]);
   const [selectedReward, setSelectedReward] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -213,7 +214,8 @@ export default function POSPage() {
         body: JSON.stringify({
           member_id: identifiedUser.id,
           subtotal: Number(subtotal),
-          reward_id: selectedReward ? selectedReward.id : null
+          reward_id: selectedReward ? selectedReward.id : null,
+          location: posLocation
         })
       });
       
@@ -312,9 +314,23 @@ export default function POSPage() {
                 </div>
               </div>
 
+              {/* Terminal Location */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Lokasi Terminal POS</label>
+                <select 
+                  value={posLocation} 
+                  onChange={e => setPosLocation(e.target.value)}
+                  style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#f8fafc', fontWeight: '500' }}
+                >
+                  <option value="RESTO">🍔 Restoran & Cafe (F&B)</option>
+                  <option value="SOUVENIR">🎁 Toko Merchandise (Souvenir)</option>
+                  <option value="WAHANA">🎢 Wahana Bermain (Wahana)</option>
+                </select>
+              </div>
+
               {/* Input Belanja */}
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Total Belanja F&B (Rp)</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Total Nominal Transaksi (Rp)</label>
                 <input 
                   type="number" 
                   value={subtotal} 

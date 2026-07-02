@@ -11,7 +11,7 @@ const RATIO = parseInt(process.env.NEXT_PUBLIC_POINT_EARN_RATIO || '10000');
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { member_id, subtotal, reward_id } = body;
+    const { member_id, subtotal, reward_id, location } = body;
     let finalTotal = subtotal;
     let pointsToDeduct = 0;
     let rewardName = '';
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     // 4. Insert POS Transaction
     const { data: posTx, error: posErr } = await supabaseAdmin.from('pos_transactions').insert({
       member_id,
-      location: 'F&B Restaurant',
+      location: location || 'RESTO',
       amount: finalTotal,
       points_earned: pointsEarned
     }).select().single();
