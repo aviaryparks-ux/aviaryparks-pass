@@ -216,7 +216,7 @@ export default function AdminDashboard() {
       fetchSchedules();
     } else if (activeTab === 'TRANSACTIONS') {
       fetchTransactions();
-    } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'BUSINESS_LEADS') {
+    } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'BUSINESS_LEADS' || activeTab === 'MEMBERS_DATABASE') {
       fetchLoyaltyData();
     }
   }, [activeTab, trxFilter]);
@@ -1022,6 +1022,8 @@ export default function AdminDashboard() {
                     <th style={{ padding: '1rem' }}>Nama</th>
                     <th style={{ padding: '1rem' }}>NIK</th>
                     <th style={{ padding: '1rem' }}>Tipe</th>
+                    <th style={{ padding: '1rem' }}>Visits</th>
+                    <th style={{ padding: '1rem' }}>F&B / Wahana</th>
                     <th style={{ padding: '1rem' }}>Email / WA</th>
                     <th style={{ padding: '1rem' }}>Status</th>
                     <th style={{ padding: '1rem' }}>Biometrik</th>
@@ -1069,6 +1071,12 @@ export default function AdminDashboard() {
                           </td>
                           <td style={{ padding: '1rem' }}>{u.nik}</td>
                           <td style={{ padding: '1rem', fontSize: '0.75rem' }}>{u.role}</td>
+                          <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0f172a' }}>
+                            {visits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length}x
+                          </td>
+                          <td style={{ padding: '1rem', color: '#059669', fontWeight: '600', fontSize: '0.85rem' }}>
+                            Rp {(memberTotals[u.id] || 0).toLocaleString('id-ID')}
+                          </td>
                           <td style={{ padding: '1rem' }}>
                             <div>{u.email}</div>
                             <a href={`https://wa.me/${u.phone?.replace(/\D/g, '') || ''}`} target="_blank" rel="noopener noreferrer" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none', fontSize: '0.85rem', marginTop: '0.25rem', fontWeight: '500' }}>
