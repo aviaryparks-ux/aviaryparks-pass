@@ -75,15 +75,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Akses ditolak! Akun ini tidak memiliki akses Gate.' }, { status: 403 });
     }
 
-    // Success! Generate JWT Token
-    const token = await new SignJWT({ 
-      username: data.username, 
+    // Success! Generate JWT Token (reduced from 24h to 8h for better security)
+    const token = await new SignJWT({
+      username: data.username,
       role: data.role,
       sub: data.id
     })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('24h')
+    .setExpirationTime('8h')
     .sign(getJwtSecretKey());
 
     // Default routing based on role if no specific callbackUrl was provided (or if it's just '/')
@@ -114,8 +114,9 @@ export async function POST(request: NextRequest) {
 
     return response;
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('Login error:', err);
-    return NextResponse.json({ error: `Terjadi kesalahan sistem internal: ${err.message}` }, { status: 500 });
+    return NextResponse.json({ error: `Terjadi kesalahan sistem internal: ${message}` }, { status: 500 });
   }
 }

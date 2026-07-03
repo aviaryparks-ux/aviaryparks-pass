@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     const hasMissingFace = groupMembers?.some((m) => !m.face_descriptor);
 
-    // 5. Generate JWT visitor token (berlaku 7 hari)
+    // 5. Generate JWT visitor token (reduced from 7d to 3d for better security)
     const token = await new SignJWT({
       memberId: member.id,
       groupId: member.group_id,
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
-      .setExpirationTime('7d')
+      .setExpirationTime('72h') // 3 days
       .setSubject(member.id)
       .sign(getJwtSecretKey());
 
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 hari
+      maxAge: 60 * 60 * 24 * 3, // 3 hari
     });
 
     return response;

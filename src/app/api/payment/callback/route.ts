@@ -13,7 +13,6 @@ export async function POST(request: Request) {
     const amount = params.get('amount');
     const merchantOrderId = params.get('merchantOrderId');
     const signature = params.get('signature');
-    const reference = params.get('reference');
     const resultCode = params.get('resultCode');
 
     if (!merchantCode || !amount || !merchantOrderId || !signature) {
@@ -42,9 +41,30 @@ export async function POST(request: Request) {
     // resultCode "00" indicates success
     if (resultCode === '00') {
       console.log(`Payment Success for order: ${merchantOrderId}`);
-      
-      // Update transaction status
-      await supabaseAdmin.from('transactions').update({ status: 'SUCCESS' }).eq('merchant_order_id', merchantOrderId);
+
+      // ── IDEMPOTENCY CHECK: Cegah double-processing jika Duitku call beberapa kali ──
+      const { data: existingTx } = await supabaseAdmin
+        .from('transactions')
+        .select('status')
+        .eq('merchant_order_id', merchantOrderId)
+        .single();
+
+      // Jika sudah SUCCESS, langsung return tanpa proses ulang
+      if (existingTx?.status === 'SUCCESS') {
+        console.log(`Order ${merchantOrderId} already processed, skipping.`);
+        return NextResponse.json({ success: true }, { status: 200 });
+      }
+
+      // Update transaction status to SUCCESS (atomic operation)
+      const { error: updateError } = await supabaseAdmin
+        .from('transactions')
+        .update({ status: 'SUCCESS' })
+        .eq('merchant_order_id', merchantOrderId);
+
+      if (updateError) {
+        console.error('Failed to update transaction status:', updateError);
+        return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+      }
 
       // Parse groupId from uniqueOrderId (format: groupId-timestamp)
       // Since groupId is a UUID (contains dashes), we must take the first 5 segments

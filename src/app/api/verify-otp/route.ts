@@ -14,6 +14,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email dan OTP diperlukan.' }, { status: 400 });
     }
 
+    // ── SECURITY: Rate limit - Max 5 failed attempts per email per hour ──
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentAttempts } = await supabase
+      .from('email_otps')
+      .select('id')
+      .eq('email', email)
+      .eq('used', false) // Belum digunakan (attempts yang salah)
+      .gte('created_at', oneHourAgo);
+
+    if (recentAttempts && recentAttempts.length >= 5) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak percobaan salah. Harap tunggu 1 jam atau minta OTP baru.' },
+        { status: 429 }
+      );
+    }
+
     // 1. Cari OTP yang valid
     const { data: otpData, error: otpError } = await supabase
       .from('email_otps')
