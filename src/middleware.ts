@@ -15,8 +15,15 @@ const getAllowedOrigins = (): string[] => {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const allowed = [baseUrl];
 
+  // Allow Vercel deployments automatically
+  if (process.env.VERCEL_URL) {
+    allowed.push(`https://${process.env.VERCEL_URL}`);
+    // Also allow the specific production domain if known
+    allowed.push('https://aviaryparks-pass.vercel.app');
+  }
+
   // Allow localhost variations in development
-  if (baseUrl.includes('localhost')) {
+  if (baseUrl.includes('localhost') || process.env.NODE_ENV !== 'production') {
     allowed.push('http://localhost:3000');
     allowed.push('http://127.0.0.1:3000');
   }
