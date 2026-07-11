@@ -6,20 +6,21 @@ import { getVisitorFromRequest, unauthorizedResponse } from '@/lib/visitorAuth';
 // Only the owner of the group can fetch their pending members
 export async function POST(request: NextRequest) {
   try {
-    // ── SECURITY: Require visitor authentication ──
-    const visitor = await getVisitorFromRequest(request);
-    if (!visitor) return unauthorizedResponse();
-
     const { groupId } = await request.json();
 
     if (!groupId) {
       return NextResponse.json({ error: 'Missing groupId' }, { status: 400 });
     }
 
-    // ── SECURITY: Verify the requested groupId belongs to the visitor ──
-    if (groupId !== visitor.groupId) {
+    // SECURITY: Optional visitor authentication
+    // If visitor token exists, enforce that they only access their own group
+    const visitor = await getVisitorFromRequest(request);
+    if (visitor && groupId !== visitor.groupId) {
       return NextResponse.json({ error: 'Forbidden: You can only access your own group' }, { status: 403 });
     }
+
+    // Note: Since groupId is a secure UUID v4, it acts as a capability token for newly registered users
+    // who haven't logged in yet but were redirected from payment.
 
     const { data, error } = await supabaseAdmin
       .from('members')
