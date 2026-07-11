@@ -398,6 +398,21 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Poll data when on LIVE_SCAN tab
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (activeTab === 'LIVE_SCAN') {
+      interval = setInterval(() => {
+        fetch('/api/admin/visits').then(r => r.json()).then(json => {
+          if (json.success && json.data) {
+            setRawVisits(json.data);
+          }
+        }).catch(console.error);
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
   useEffect(() => {
     fetchData();
 
