@@ -15,7 +15,8 @@ export async function GET() {
 
     if (error) throw error;
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('Mutations GET Error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to fetch mutations' }, { status: 500 });
   }
 }

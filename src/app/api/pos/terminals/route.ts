@@ -6,48 +6,69 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// ── SECURITY: Validate required fields ──
+const isValidTerminalInput = (name: string | undefined, category: string | undefined): boolean => {
+  if (!name || !category) return false;
+  if (name.length < 1 || name.length > 200) return false;
+  const validCategories = ['RESTO', 'SOUVENIR', 'WAHANA'];
+  return validCategories.includes(category);
+};
+
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('pos_terminals')
       .select('*')
       .order('created_at', { ascending: true });
-      
+
     if (error) {
       // Fallback if table doesn't exist yet
       if (error.code === '42P01') {
         return NextResponse.json({
           success: true,
           data: [
-            { id: 'resto-fallback', name: '🍔 Restoran & Cafe (F&B) (Hardcoded, butuh Setup DB)', category: 'RESTO' },
-            { id: 'souvenir-fallback', name: '🎁 Toko Merchandise (Souvenir)', category: 'SOUVENIR' },
-            { id: 'wahana-fallback', name: '🎢 Wahana Bermain (Wahana)', category: 'WAHANA' }
+            { id: 'resto-fallback', name: 'Restoran & Cafe (F&B)', category: 'RESTO' },
+            { id: 'souvenir-fallback', name: 'Toko Merchandise (Souvenir)', category: 'SOUVENIR' },
+            { id: 'wahana-fallback', name: 'Wahana Bermain (Wahana)', category: 'WAHANA' }
           ],
           needs_setup: true
         });
       }
-      throw error;
+      console.error('POS Terminals GET Error:', error);
+      return NextResponse.json({ success: false, error: 'Failed to fetch terminals' }, { status: 500 });
     }
-    
+
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('POS Terminals GET Error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to fetch terminals' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const { name, category } = await request.json();
+
+    // ── SECURITY: Validate input ──
+    if (!isValidTerminalInput(name, category)) {
+      return NextResponse.json({ success: false, error: 'Invalid terminal name or category' }, { status: 400 });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('pos_terminals')
       .insert({ name, category })
       .select()
       .single();
-      
-    if (error) throw error;
+
+    if (error) {
+      console.error('POS Terminals POST Error:', error);
+      return NextResponse.json({ success: false, error: 'Failed to create terminal' }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('POS Terminals POST Error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to create terminal' }, { status: 500 });
   }
 }
 
@@ -55,16 +76,24 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    if (!id) throw new Error('ID required');
-    
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Terminal ID is required' }, { status: 400 });
+    }
+
     const { error } = await supabaseAdmin
       .from('pos_terminals')
       .delete()
       .eq('id', id);
-      
-    if (error) throw error;
+
+    if (error) {
+      console.error('POS Terminals DELETE Error:', error);
+      return NextResponse.json({ success: false, error: 'Failed to delete terminal' }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('POS Terminals DELETE Error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to delete terminal' }, { status: 500 });
   }
 }

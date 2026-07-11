@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
+import FinancialReports from './_components/FinancialReports';
 
 const PROVINCE_MAP: Record<string, string> = {
   '11': 'Aceh', '12': 'Sumut', '13': 'Sumbar', '14': 'Riau', '15': 'Jambi', '16': 'Sumsel', '17': 'Bengkulu', '18': 'Lampung', '19': 'Babel', '21': 'Kep. Riau',
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
       d.setDate(d.getDate() - i);
       dates.push(`${d.getDate()}/${d.getMonth() + 1}`);
     }
-    
+
     const vCounts: Record<string, number> = {};
     const userVisitsCount: Record<string, { count: number; name: string }> = {};
     const arrivalsMap: Record<string, { date: string; group_id: string; group_name: string; paxCount: number; members: Set<string> }> = {};
@@ -94,7 +95,7 @@ export default function AdminDashboard() {
       const d = new Date(timeStr);
       const date = `${d.getDate()}/${d.getMonth() + 1}`;
       vCounts[date] = (vCounts[date] || 0) + 1;
-      
+
       if (v.member_id) {
         const member = users.find(u => u.id === v.member_id);
         const name = member ? member.name : 'Unknown User';
@@ -120,7 +121,7 @@ export default function AdminDashboard() {
         }
       }
     });
-    
+
     const sCounts: Record<string, { Lunas: number; BelumLunas: number }> = {};
     users.forEach(m => {
       const timeStr = m.created_at.endsWith('Z') || m.created_at.includes('+') ? m.created_at : m.created_at + 'Z';
@@ -134,7 +135,7 @@ export default function AdminDashboard() {
     const topUsers = Object.values(userVisitsCount)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-      
+
     const arrivalsData = Object.values(arrivalsMap).sort((a, b) => b.date.localeCompare(a.date));
 
     return {
@@ -168,7 +169,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // System Users State
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'BUSINESS_LEADS' | 'LIVE_SCAN' | 'DEVICE_MANAGEMENT' | 'FINANCIAL_REPORTS' | 'VISITOR_ANALYTICS' | 'SYSTEM_CONFIG' | 'POS_TERMINALS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'FINANCIAL' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'LIVE_SCAN' | 'AUDIT_LOGS' | 'POS_TERMINALS'>('DASHBOARD');
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   
   // Events State
@@ -237,6 +238,122 @@ export default function AdminDashboard() {
   const [showRewardForm, setShowRewardForm] = useState(false);
   const [newReward, setNewReward] = useState({ name: '', description: '', points_required: 100, reward_type: 'VOUCHER_50K', is_active: true });
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
+
+  // Dashboard Stats useMemo (separate to avoid hoisting issues)
+  const dashboardStats = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    // Revenue Today vs Yesterday
+    let revenueToday = 0;
+    let revenueYesterday = 0;
+
+    transactions.forEach(t => {
+      const tDate = new Date(t.created_at);
+      const isPaid = ['PAID', 'SUCCESS', 'COMPLETED'].includes(t.payment_status || t.status);
+      const amount = Number(t.amount || t.total_amount || 0);
+
+      if (isPaid) {
+        if (tDate >= todayStart && tDate < tomorrowStart) {
+          revenueToday += amount;
+        } else if (tDate >= yesterdayStart && tDate < todayStart) {
+          revenueYesterday += amount;
+        }
+      }
+    });
+
+    // POS Revenue Today
+    posTransactions.forEach(t => {
+      const tDate = new Date(t.created_at);
+      if (tDate >= todayStart && tDate < tomorrowStart) {
+        revenueToday += Number(t.amount || 0);
+      } else if (tDate >= yesterdayStart && tDate < todayStart) {
+        revenueYesterday += Number(t.amount || 0);
+      }
+    });
+
+    const revenueGrowth = revenueYesterday > 0
+      ? ((revenueToday - revenueYesterday) / revenueYesterday * 100)
+      : revenueToday > 0 ? 100 : 0;
+
+    // Conversion Rate (PENDING → SUCCESS)
+    const totalTransactions = transactions.length;
+    const successfulTransactions = transactions.filter(t =>
+      ['PAID', 'SUCCESS', 'COMPLETED'].includes(t.payment_status || t.status)
+    ).length;
+    const pendingTransactions = transactions.filter(t =>
+      ['PENDING', 'PENDING_PAYMENT'].includes(t.payment_status || t.status)
+    ).length;
+    const conversionRate = totalTransactions > 0
+      ? (successfulTransactions / totalTransactions * 100)
+      : 0;
+
+    // Expired Memberships Warning
+    const expiredMembers = users.filter(m => {
+      if (!m.activation_date) return false;
+      const expiry = new Date(m.activation_date);
+      expiry.setFullYear(expiry.getFullYear() + 1);
+      return expiry < now && m.status === 'ACTIVE';
+    });
+
+    const soonExpiring = users.filter(m => {
+      if (!m.activation_date || m.status !== 'ACTIVE') return false;
+      const expiry = new Date(m.activation_date);
+      expiry.setFullYear(expiry.getFullYear() + 1);
+      const daysUntilExpiry = Math.floor((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
+    });
+
+    // Top Performing Package
+    const packageSales: Record<string, { count: number; name: string; revenue: number }> = {};
+    transactions.forEach(t => {
+      const pkgName = t.package_name || 'Lainnya';
+      if (!packageSales[pkgName]) {
+        packageSales[pkgName] = { count: 0, name: pkgName, revenue: 0 };
+      }
+      packageSales[pkgName].count += 1;
+      if (['PAID', 'SUCCESS', 'COMPLETED'].includes(t.payment_status || t.status)) {
+        packageSales[pkgName].revenue += Number(t.amount || t.total_amount || 0);
+      }
+    });
+    const topPackage = Object.values(packageSales)
+      .sort((a, b) => b.revenue - a.revenue)[0] || null;
+
+    // Check if today is holiday or weekend
+    const dayOfWeek = now.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // Indonesian holidays (basic check for common ones)
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const holidays = [
+      { month: 1, day: 1, name: 'Tahun Baru' },
+      { month: 8, day: 17, name: 'HUT RI' },
+      { month: 12, day: 25, name: 'Natal' },
+    ];
+    const todayHoliday = holidays.find(h => h.month === month && h.day === day);
+
+    return {
+      revenueToday,
+      revenueYesterday,
+      revenueGrowth,
+      conversionRate,
+      totalTransactions,
+      successfulTransactions,
+      pendingTransactions,
+      expiredMembers: expiredMembers.length,
+      soonExpiring: soonExpiring.length,
+      expiredMemberDetails: expiredMembers.slice(0, 5),
+      soonExpiringDetails: soonExpiring.slice(0, 5),
+      topPackage,
+      isWeekend,
+      todayHoliday,
+    };
+  }, [transactions, posTransactions, users]);
 
   // Load saved tab on mount
   useEffect(() => {
@@ -309,12 +426,10 @@ export default function AdminDashboard() {
       fetchSchedules();
     } else if (activeTab === 'POS_TERMINALS') {
       fetchPosTerminals();
-    } else if (activeTab === 'TRANSACTIONS') {
+    } else if (activeTab === 'TRANSACTIONS' || activeTab === 'FINANCIAL') {
       fetchTransactions();
-    } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'BUSINESS_LEADS' || activeTab === 'MEMBERS_DATABASE') {
       fetchLoyaltyData();
-    } else if (activeTab === 'FINANCIAL_REPORTS') {
-      fetchTransactions();
+    } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'MEMBERS_DATABASE') {
       fetchLoyaltyData();
     }
   }, [activeTab, trxFilter]);
@@ -524,7 +639,8 @@ export default function AdminDashboard() {
     });
     
     if (!res.ok) {
-      toast.error('Gagal menambah akun admin!');
+      const data = await res.json();
+      toast.error('Gagal: ' + (data.error || 'Terjadi kesalahan'));
       return;
     } else {
       setNewSysUser({ username: '', password: '', role: 'GATE' });
@@ -971,82 +1087,65 @@ export default function AdminDashboard() {
           </div>
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', whiteSpace: 'nowrap' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>DASHBOARD</p>
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>LAPORAN & ANALITIK</p>
             <div onClick={() => setActiveTab('DASHBOARD')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'DASHBOARD' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'DASHBOARD' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'DASHBOARD' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'DASHBOARD' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               Dashboard (Overview)
             </div>
-
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>DATABASE</p>
-            <div onClick={() => setActiveTab('MEMBERS_DATABASE')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'MEMBERS_DATABASE' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'MEMBERS_DATABASE' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'MEMBERS_DATABASE' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'MEMBERS_DATABASE' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              Database Member
-            </div>
-            <div onClick={() => setActiveTab('BUSINESS_LEADS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'BUSINESS_LEADS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'BUSINESS_LEADS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'BUSINESS_LEADS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'BUSINESS_LEADS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
-              Database Leads
-            </div>
-
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>MANAJEMEN TIKET & OPERASIONAL</p>
-            <div onClick={() => setActiveTab('TICKET_PACKAGES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TICKET_PACKAGES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TICKET_PACKAGES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TICKET_PACKAGES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TICKET_PACKAGES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-              Paket Tiket
+            <div onClick={() => setActiveTab('FINANCIAL')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'FINANCIAL' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'FINANCIAL' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'FINANCIAL' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'FINANCIAL' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Laporan Keuangan
             </div>
             <div onClick={() => setActiveTab('TRANSACTIONS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TRANSACTIONS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TRANSACTIONS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TRANSACTIONS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TRANSACTIONS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
               Transaksi Penjualan
             </div>
+
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>LOYALITAS & PENGUNJUNG</p>
             <div onClick={() => setActiveTab('LOYALTY_PROGRAM')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LOYALTY_PROGRAM' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LOYALTY_PROGRAM' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LOYALTY_PROGRAM' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LOYALTY_PROGRAM' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Loyalty & Rewards
             </div>
-
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>MONITORING GATE</p>
+            <div onClick={() => setActiveTab('MEMBERS_DATABASE')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'MEMBERS_DATABASE' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'MEMBERS_DATABASE' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'MEMBERS_DATABASE' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'MEMBERS_DATABASE' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Database Member
+            </div>
             <div onClick={() => setActiveTab('LIVE_SCAN')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LIVE_SCAN' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LIVE_SCAN' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LIVE_SCAN' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LIVE_SCAN' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="10" x="7" y="7" rx="1"/></svg>
-              Live Scan & Log Masuk <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
-            </div>
-            <div onClick={() => setActiveTab('DEVICE_MANAGEMENT')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'DEVICE_MANAGEMENT' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'DEVICE_MANAGEMENT' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'DEVICE_MANAGEMENT' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'DEVICE_MANAGEMENT' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              Manajemen Perangkat <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
+              Live Scan & Log Masuk
             </div>
 
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>LAPORAN (REPORTS)</p>
-            <div onClick={() => setActiveTab('FINANCIAL_REPORTS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'FINANCIAL_REPORTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'FINANCIAL_REPORTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'FINANCIAL_REPORTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'FINANCIAL_REPORTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
-              Penjualan & Keuangan <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
-            </div>
-            <div onClick={() => setActiveTab('VISITOR_ANALYTICS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'VISITOR_ANALYTICS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'VISITOR_ANALYTICS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'VISITOR_ANALYTICS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'VISITOR_ANALYTICS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              Analitik Pengunjung <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
-            </div>
-
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>PENGATURAN</p>
-            <div onClick={() => setActiveTab('EVENTS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'EVENTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'EVENTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'EVENTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'EVENTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
-              Event & Pengumuman
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>OPERASIONAL HARIAN</p>
+            <div onClick={() => setActiveTab('AUDIT_LOGS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'AUDIT_LOGS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'AUDIT_LOGS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'AUDIT_LOGS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'AUDIT_LOGS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              Log Aktivitas
             </div>
             <div onClick={() => setActiveTab('SCHEDULES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SCHEDULES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SCHEDULES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SCHEDULES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SCHEDULES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               Jadwal Aktivitas
             </div>
+            <div onClick={() => setActiveTab('EVENTS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'EVENTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'EVENTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'EVENTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'EVENTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+              Event & Pengumuman
+            </div>
+
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>PENGATURAN SISTEM</p>
+            <div onClick={() => setActiveTab('TICKET_PACKAGES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TICKET_PACKAGES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TICKET_PACKAGES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TICKET_PACKAGES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TICKET_PACKAGES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+              Paket Tiket
+            </div>
             <div onClick={() => setActiveTab('SYSTEM_USERS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SYSTEM_USERS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SYSTEM_USERS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SYSTEM_USERS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SYSTEM_USERS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
               User Admin
             </div>
-            <div onClick={() => setActiveTab('SYSTEM_CONFIG')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SYSTEM_CONFIG' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SYSTEM_CONFIG' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SYSTEM_CONFIG' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SYSTEM_CONFIG' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Konfigurasi Sistem <span style={{fontSize: '0.65rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>Baru</span>
-            </div>
-            <button 
-            onClick={() => setActiveTab('POS_TERMINALS')} 
+            <button
+            onClick={() => setActiveTab('POS_TERMINALS')}
             style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: 'none', background: activeTab === 'POS_TERMINALS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'POS_TERMINALS' ? 'white' : '#94a3b8', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'POS_TERMINALS' ? '600' : '500', transition: 'all 0.2s' }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
             Terminal POS
           </button>
-          
-        </nav>
+            </nav>
 
           <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
             <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>
@@ -1128,44 +1227,181 @@ export default function AdminDashboard() {
           {activeTab === 'DASHBOARD' && (
             <>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-            
+          {/* Weather / Holiday Indicator */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+            <div style={{
+              padding: '0.75rem 1.25rem',
+              borderRadius: '1rem',
+              backgroundColor: dashboardStats.todayHoliday ? '#fef3c7' : (dashboardStats.isWeekend ? '#dbeafe' : '#f0fdf4'),
+              border: `1px solid ${dashboardStats.todayHoliday ? '#f59e0b' : (dashboardStats.isWeekend ? '#3b82f6' : '#10b981')}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span style={{ fontSize: '1.25rem' }}>
+                {dashboardStats.todayHoliday ? '🎉' : (dashboardStats.isWeekend ? '📅' : '☀️')}
+              </span>
+              <span style={{
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                color: dashboardStats.todayHoliday ? '#92400e' : (dashboardStats.isWeekend ? '#1e40af' : '#065f46')
+              }}>
+                {dashboardStats.todayHoliday
+                  ? `🎊 ${dashboardStats.todayHoliday.name} - Potensi Kunjungan Tinggi!`
+                  : (dashboardStats.isWeekend
+                    ? '🗓️ Akhir Pekat - Perkiraan Pengunjung Meningkat'
+                    : '📆 Hari Biasa - Operasional Normal')}
+              </span>
+            </div>
+          </div>
+
+          {/* Peringatan Membership Banner (Muncul Jika Ada Expired) */}
+          {(dashboardStats.expiredMembers > 0 || dashboardStats.soonExpiring > 0) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              {dashboardStats.expiredMembers > 0 && (
+                <div style={{ padding: '0.75rem 1.25rem', borderRadius: '0.75rem', backgroundColor: '#fee2e2', border: '1px solid #fca5a5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '600', color: '#b91c1c', fontSize: '0.875rem' }}>⚠️ Terdapat {dashboardStats.expiredMembers} membership yang telah expired.</span>
+                </div>
+              )}
+              {dashboardStats.soonExpiring > 0 && (
+                <div style={{ padding: '0.75rem 1.25rem', borderRadius: '0.75rem', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '600', color: '#b45309', fontSize: '0.875rem' }}>⏳ {dashboardStats.soonExpiring} membership akan segera expire dalam 30 hari ke depan.</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Row 1: Main Stats Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+
             {/* Card 1: Total Member */}
-            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', zIndex: 2 }}>
-                <div style={{ width: '64px', height: '64px', borderRadius: '1rem', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                </div>
+            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1rem', position: 'relative', overflow: 'hidden', borderTop: '4px solid #10b981' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <p style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 0.25rem 0', fontWeight: '600' }}>Total Member</p>
-                  <p style={{ fontSize: '2.5rem', fontWeight: '800', color: '#059669', margin: 0, lineHeight: 1 }}>{users.length}</p>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.5rem 0 0 0' }}>Member terdaftar di sistem</p>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem 0', fontWeight: '600' }}>Total Member</p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669', margin: 0, lineHeight: 1 }}>{users.length}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.5rem 0 0 0' }}>terdaftar di sistem</p>
                 </div>
-              </div>
-              <div style={{ position: 'absolute', right: 0, bottom: 0, opacity: 0.9, zIndex: 1, pointerEvents: 'none', height: '100%', width: '45%' }}>
-                <img src="/member_card_bg.png" style={{ height: '100%', width: '100%', objectFit: 'cover', objectPosition: 'left center' }} />
+                <div style={{ backgroundColor: '#ecfdf5', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
               </div>
             </div>
 
             {/* Card 2: Total Kunjungan */}
-            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', zIndex: 2 }}>
-                <div style={{ width: '64px', height: '64px', borderRadius: '1rem', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
-                </div>
+            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1rem', position: 'relative', overflow: 'hidden', borderTop: '4px solid #3b82f6' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <p style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 0.25rem 0', fontWeight: '600' }}>Total Kunjungan</p>
-                  <p style={{ fontSize: '2.5rem', fontWeight: '800', color: '#3b82f6', margin: 0, lineHeight: 1 }}>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem 0', fontWeight: '600' }}>Total Kunjungan</p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: '800', color: '#3b82f6', margin: 0, lineHeight: 1 }}>
                     {visitsData.reduce((acc, curr) => acc + curr.Kunjungan, 0)}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.5rem 0 0 0' }}>Total kunjungan (all time)</p>
+                  <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.5rem 0 0 0' }}>
+                   Hari ini: {visitsData[visitsData.length - 1]?.Kunjungan || 0}x
+                  </p>
                 </div>
-              </div>
-              <div style={{ position: 'absolute', right: 0, bottom: 0, opacity: 0.9, zIndex: 1, pointerEvents: 'none', height: '100%', width: '45%' }}>
-                <img src="/visit_card_bg.png" style={{ height: '100%', width: '100%', objectFit: 'cover', objectPosition: 'left center' }} />
+                <div style={{ backgroundColor: '#eff6ff', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+                </div>
               </div>
             </div>
 
+            {/* Card 3: Revenue Today */}
+            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1rem', position: 'relative', overflow: 'hidden', borderTop: '4px solid #8b5cf6' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem 0', fontWeight: '600' }}>Pendapatan Hari Ini</p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: '800', color: '#7c3aed', margin: 0, lineHeight: 1 }}>
+                    Rp {dashboardStats.revenueToday.toLocaleString('id-ID')}
+                  </p>
+                  <p style={{ fontSize: '0.7rem', color: dashboardStats.revenueGrowth >= 0 ? '#059669' : '#ef4444', margin: '0.5rem 0 0 0', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    {dashboardStats.revenueGrowth >= 0 ? '📈' : '📉'}
+                    {dashboardStats.revenueGrowth >= 0 ? '+' : ''}{dashboardStats.revenueGrowth.toFixed(1)}% vs kemarin
+                  </p>
+                </div>
+                <div style={{ backgroundColor: '#f5f3ff', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: Conversion Rate */}
+            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1rem', position: 'relative', overflow: 'hidden', borderTop: '4px solid #f59e0b' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem 0', fontWeight: '600' }}>Conversion Rate</p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: '800', color: '#d97706', margin: 0, lineHeight: 1 }}>
+                    {dashboardStats.conversionRate.toFixed(0)}%
+                  </p>
+                  <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.5rem 0 0 0' }}>
+                    {dashboardStats.successfulTransactions} paid / {dashboardStats.pendingTransactions} pending
+                  </p>
+                </div>
+                <div style={{ backgroundColor: '#fef3c7', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Paket & Quick Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+
+            {/* Card 6: Top Performing Package */}
+            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1.25rem', borderLeft: '4px solid #10b981' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0, fontWeight: '600' }}>Paket Terlaris</p>
+                </div>
+                <span style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '700' }}>
+                  🏆 Top Package
+                </span>
+              </div>
+
+              {dashboardStats.topPackage ? (
+                <div>
+                  <div style={{ backgroundColor: '#f0fdf4', padding: '1rem', borderRadius: '0.75rem', textAlign: 'center', marginBottom: '0.75rem' }}>
+                    <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#065f46' }}>
+                      {dashboardStats.topPackage.name}
+                    </p>
+                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.5rem', fontWeight: '800', color: '#059669' }}>
+                      {dashboardStats.topPackage.revenue >= 1000000 ? `Rp ${(dashboardStats.topPackage.revenue / 1000000).toFixed(1)} Jt` : `Rp ${dashboardStats.topPackage.revenue.toLocaleString('id-ID')}`}
+                    </p>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                      {dashboardStats.topPackage.count} transaksi
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', margin: '1rem 0', fontStyle: 'italic' }}>
+                  Belum ada data penjualan
+                </p>
+              )}
+            </div>
+
+            {/* Card 7: Quick Stats */}
+            <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', padding: '1.25rem', borderLeft: '4px solid #3b82f6' }}>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1rem 0', fontWeight: '600' }}>Statistik Cepat</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Total Transaksi</span>
+                  <span style={{ fontWeight: '700', color: '#334155' }}>{dashboardStats.totalTransactions}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Pending</span>
+                  <span style={{ fontWeight: '700', color: '#f59e0b' }}>{dashboardStats.pendingTransactions}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Success</span>
+                  <span style={{ fontWeight: '700', color: '#10b981' }}>{dashboardStats.successfulTransactions}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Kemarin Revenue</span>
+                  <span style={{ fontWeight: '700', color: '#334155' }}>{dashboardStats.revenueYesterday >= 1000000 ? `Rp ${(dashboardStats.revenueYesterday / 1000000).toFixed(1)} Jt` : `Rp ${dashboardStats.revenueYesterday.toLocaleString('id-ID')}`}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
       {/* Area Grafik */}
@@ -1640,14 +1876,29 @@ export default function AdminDashboard() {
                 <input type="text" value={newSysUser.username} onChange={e => setNewSysUser({...newSysUser, username: e.target.value})} placeholder="Username unik..." style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} required />
               </div>
               <div style={{ flex: '1 1 200px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>Kata Sandi (Password)</label>
-                <input type="password" value={newSysUser.password} onChange={e => setNewSysUser({...newSysUser, password: e.target.value})} placeholder="Katasandi rahasia..." style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} required />
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>
+                  {newSysUser.role === 'CASHIER' ? 'PIN POS (Angka)' : 'Kata Sandi (Password)'}
+                </label>
+                <input 
+                  type={newSysUser.role === 'CASHIER' ? 'text' : 'password'} 
+                  value={newSysUser.password} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (newSysUser.role === 'CASHIER' && val && !/^\d+$/.test(val)) return;
+                    setNewSysUser({...newSysUser, password: val});
+                  }} 
+                  placeholder={newSysUser.role === 'CASHIER' ? '6 Digit PIN (Misal: 123123)' : 'Katasandi rahasia...'} 
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} 
+                  required 
+                  maxLength={newSysUser.role === 'CASHIER' ? 6 : undefined}
+                />
               </div>
               <div style={{ flex: '1 1 150px' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>Role (Akses)</label>
                 <select value={newSysUser.role} onChange={e => setNewSysUser({...newSysUser, role: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
                   <option value="GATE">GATE (Tiketing)</option>
                   <option value="ADMIN">ADMIN (Super Admin)</option>
+                  <option value="CASHIER">CASHIER (Kasir POS)</option>
                 </select>
               </div>
               <button type="submit" style={{ padding: '0.75rem 1.5rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer' }}>+ Tambah User</button>
@@ -2072,329 +2323,145 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {['LIVE_SCAN', 'DEVICE_MANAGEMENT', 'VISITOR_ANALYTICS', 'SYSTEM_CONFIG'].includes(activeTab) && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', animation: 'fadeIn 0.3s ease-out' }}>
-          <div style={{ backgroundColor: '#fffbeb', padding: '1.5rem', borderRadius: '50%', marginBottom: '1.5rem', display: 'inline-flex' }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.5rem' }}>Fitur Segera Hadir</h2>
-          <p style={{ color: '#64748b', maxWidth: '400px', fontSize: '1rem' }}>Modul ini sedang dalam tahap pengembangan dan akan segera tersedia pada pembaruan sistem berikutnya.</p>
-        </div>
-      )}
+      {activeTab === 'LIVE_SCAN' && (() => {
+        // Sort visits descending
+        const sortedVisits = [...rawVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
+        const latestVisit = sortedVisits.length > 0 ? sortedVisits[0] : null;
+        
+        let latestUser: any = null;
+        if (latestVisit) {
+          latestUser = users.find(u => u.id === latestVisit.member_id);
+        }
 
-      {activeTab === 'FINANCIAL_REPORTS' && (
-        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Laporan Penjualan & Keuangan</h2>
-            <div className="hide-on-print" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              {financeFilter === 'CUSTOM' && (
-                <input 
-                  type="date" 
-                  value={financeCustomDate}
-                  onChange={(e) => setFinanceCustomDate(e.target.value)}
-                  style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none' }}
-                />
-              )}
-              <select 
-                value={financeFilter}
-                onChange={(e) => setFinanceFilter(e.target.value as any)}
-                style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', cursor: 'pointer', backgroundColor: 'white', fontWeight: '500', color: '#334155' }}
-              >
-                <option value="TODAY">Hari Ini</option>
-                <option value="MONTH">Bulan Ini</option>
-                <option value="YEAR">Tahun Ini</option>
-                <option value="ALL">Semua Waktu</option>
-                <option value="CUSTOM">Pilih Tanggal...</option>
-              </select>
-              <button onClick={() => window.print()} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Export
-              </button>
-            </div>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #3b82f6' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Total Pendapatan</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Rp {financialTotalRevenue.toLocaleString('id-ID')}</h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Penjualan Tiket</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Rp {totalTicketRevenue.toLocaleString('id-ID')}</h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #f59e0b' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>F&B dan Souvenir</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Rp {totalPosRevenue.toLocaleString('id-ID')}</h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #8b5cf6' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Total Transaksi</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{filteredTransactions.length + filteredPosTransactions.length} trx</h3>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Tren Penjualan (7 Hari Terakhir)</h3>
-              <div style={{ width: '100%', height: '300px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} tickFormatter={(value) => (value / 1000000) + ' Jt'} />
-                    <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), '']} />
-                    <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
-                    <Bar dataKey="Tiket" stackId="a" fill="#10b981" radius={[0, 0, 4, 4]} barSize={40} />
-                    <Bar dataKey="F&B / Retail" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+        return (
+          <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>🟢 Live Scan Monitor</h2>
+                <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Pantau pergerakan pengunjung di pintu gerbang secara real-time</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="live-indicator" style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
+                <span style={{ fontSize: '0.9rem', color: '#10b981', fontWeight: 'bold' }}>SYSTEM ACTIVE</span>
               </div>
             </div>
 
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Komposisi Pendapatan</h3>
-              <div style={{ width: '100%', height: '300px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={revenueCompositionData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {revenueCompositionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), '']} />
-                    <Legend iconType="circle" layout="vertical" verticalAlign="bottom" align="center" />
-                  </PieChart>
-                </ResponsiveContainer>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
+              {/* Left Side: Spotlight */}
+              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '1rem', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center' }}>
+                <h3 style={{ fontSize: '1rem', color: '#64748b', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Kunjungan Terakhir</h3>
+                
+                {latestVisit ? (
+                  <div key={latestVisit.visited_at} style={{ animation: 'pulse 0.5s ease-out' }}>
+                    <div style={{ width: '120px', height: '120px', backgroundColor: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', fontWeight: 'bold', margin: '0 auto 1.5rem auto' }}>
+                      {latestUser && latestUser.name ? latestUser.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+                      {latestUser ? latestUser.name : 'Unknown User'}
+                    </h2>
+                    <p style={{ color: '#4f46e5', fontWeight: '600', margin: '0 0 1rem 0' }}>{latestUser ? latestUser.role : '-'}</p>
+                    
+                    <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '0.5rem 1rem', borderRadius: '2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      Akses Diberikan
+                    </div>
+                    <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '1.5rem' }}>
+                      {new Date(latestVisit.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' })} WIB
+                    </p>
+                  </div>
+                ) : (
+                  <p style={{ color: '#94a3b8' }}>Belum ada data kunjungan hari ini.</p>
+                )}
+              </div>
+
+              {/* Right Side: Log Table */}
+              <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a' }}>Log Aktivitas Gerbang</h3>
+                </div>
+                <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                      <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
+                        <th style={{ padding: '1rem' }}>Waktu</th>
+                        <th style={{ padding: '1rem' }}>Pengunjung</th>
+                        <th style={{ padding: '1rem' }}>Tipe</th>
+                        <th style={{ padding: '1rem' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedVisits.slice(0, 50).map((visit, idx) => {
+                        const user = users.find(u => u.id === visit.member_id);
+                        return (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx === 0 ? '#f0fdf4' : 'white', transition: 'background-color 1s' }}>
+                            <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#475569' }}>
+                              {new Date(visit.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' })}
+                            </td>
+                            <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>
+                              {user ? user.name : 'Unknown User'}
+                            </td>
+                            <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
+                              <span style={{ backgroundColor: user?.role === 'PRIMARY' ? '#eff6ff' : '#f8fafc', color: user?.role === 'PRIMARY' ? '#2563eb' : '#64748b', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontWeight: '600' }}>
+                                {user ? user.role : '-'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                Success
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {sortedVisits.length === 0 && (
+                        <tr>
+                          <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Tidak ada log kunjungan.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
             
-            {/* Terminal Performance Bar Chart */}
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Performa Omset per Mesin Kasir / Wahana</h3>
-              <div style={{ width: '100%', height: '350px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={terminalRevenueData} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={60} />
-                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val: any) => `Rp ${val / 1000000}Jt`} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} formatter={(value: any) => ['Rp ' + Number(value || 0).toLocaleString('id-ID'), 'Omset']} />
-                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]}>
-                      {terminalRevenueData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <style dangerouslySetInnerHTML={{__html: `
+              @keyframes pulse {
+                0% { transform: scale(0.95); opacity: 0.5; }
+                50% { transform: scale(1.05); opacity: 1; }
+                100% { transform: scale(1); opacity: 1; }
+              }
+              .live-indicator {
+                animation: blink 1.5s infinite;
+              }
+              @keyframes blink {
+                0% { opacity: 1; }
+                50% { opacity: 0.3; }
+                100% { opacity: 1; }
+              }
+            `}} />
           </div>
+        );
+      })()}
 
-          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>Riwayat Transaksi Terbaru</h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.875rem' }}>
-                    <th style={{ padding: '1rem 0', fontWeight: '600' }}>Waktu</th>
-                    <th style={{ padding: '1rem', fontWeight: '600' }}>Tipe</th>
-                    <th style={{ padding: '1rem', fontWeight: '600' }}>Nominal</th>
-                    <th style={{ padding: '1rem', fontWeight: '600' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allRecentTransactions.map((trx, idx) => (
-                    <tr key={idx} style={{ borderBottom: idx !== allRecentTransactions.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                      <td style={{ padding: '1rem 0', color: '#334155' }}>
-                        {trx.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} {trx.date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ backgroundColor: trx.type === 'Tiket' ? '#d1fae5' : '#fef3c7', color: trx.type === 'Tiket' ? '#059669' : '#d97706', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600' }}>
-                          {trx.type}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>Rp {trx.amount.toLocaleString('id-ID')}</td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ backgroundColor: trx.status === 'PAID' ? '#d1fae5' : '#e2e8f0', color: trx.status === 'PAID' ? '#059669' : '#64748b', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600' }}>
-                          {trx.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {allRecentTransactions.length === 0 && (
-                    <tr>
-                      <td colSpan={4} style={{ padding: '2rem 0', textAlign: 'center', color: '#94a3b8' }}>Belum ada data transaksi</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'BUSINESS_LEADS' && (
-        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5rem' }}>Business Leads & Analitik Lifetime Value</h2>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #8b5cf6' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Top Spenders (Total &gt; Rp 1jt)</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                {topSpendersCount} Member
-              </h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Rata-rata Pengeluaran Ekstra (LTV)</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                Rp {ltv.toLocaleString('id-ID')} / Member
-              </h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #f59e0b' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Tingkat Retensi Kunjungan</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                {(() => {
-                  const visitors = new Set();
-                  const repeatVisitors = new Set();
-                  rawVisits.forEach(v => {
-                    if (visitors.has(v.member_id)) repeatVisitors.add(v.member_id);
-                    visitors.add(v.member_id);
-                  });
-                  const retentionRate = visitors.size > 0 ? ((repeatVisitors.size / visitors.size) * 100).toFixed(1) : 0;
-                  return retentionRate;
-                })()}% Repeat Visitors
-              </h3>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-            {/* Peak Hours Chart */}
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Distribusi Jam Sibuk (Kunjungan)</h3>
-              <div style={{ height: '300px', width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={peakHoursData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                    <Bar dataKey="visits" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Total Kunjungan" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Revenue by Location Pie Chart */}
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Distribusi Omset F&B / Wahana</h3>
-              <div style={{ height: '300px', width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={revenueLocationData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {revenueLocationData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-            {/* Top 5 Province Chart */}
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Top 5 Asal Daerah Pengunjung</h3>
-              <div style={{ height: '300px', width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={provinceData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
-                    <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} width={80} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                    <Bar dataKey="value" fill="#ec4899" radius={[0, 4, 4, 0]} name="Total Pengunjung" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Age Demographics Pie Chart */}
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', marginBottom: '1rem' }}>Demografi Umur Pengunjung</h3>
-              <div style={{ height: '300px', width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={ageGroupData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      dataKey="value"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
-                    >
-                      {ageGroupData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '0.5rem', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
-            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a' }}>Top Spenders (Whales) - Transaksi F&B / Wahana</h3>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', fontSize: '0.875rem' }}>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>ID Transaksi</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Nama Member</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Total (Rp)</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Lokasi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {posTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Belum ada data riwayat transaksi kasir (POS).</td>
-                  </tr>
-                ) : (
-                  posTransactions.map(t => (
-                    <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '1rem 1.5rem', color: '#334155', fontWeight: '500', fontSize: '0.875rem' }}>{t.id.split('-')[0]}</td>
-                      <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontSize: '0.875rem' }}>
-                        <span style={{ fontWeight: 'bold', color: '#334155' }}>{t.member_name}</span>
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem', color: '#059669', fontWeight: '600' }}>Rp {Number(t.amount).toLocaleString('id-ID')}</td>
-                      <td style={{ padding: '1rem 1.5rem', color: '#475569', fontSize: '0.875rem' }}>{t.location}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {activeTab === 'FINANCIAL' && (
+      <FinancialReports
+        transactions={transactions}
+        posTransactions={posTransactions}
+        filteredTransactions={filteredTransactions}
+        filteredPosTransactions={filteredPosTransactions}
+        financialTotalRevenue={financialTotalRevenue}
+        totalTicketRevenue={totalTicketRevenue}
+        totalPosRevenue={totalPosRevenue}
+        revenueCompositionData={revenueCompositionData}
+        trendData={trendData}
+        terminalRevenueData={terminalRevenueData}
+        allRecentTransactions={allRecentTransactions}
+        financeFilter={financeFilter}
+        setFinanceFilter={setFinanceFilter}
+        PIE_COLORS={PIE_COLORS}
+        pointMutations={pointMutations}
+      />
       )}
 
       {/* Member Detail Modal */}
@@ -2495,6 +2562,16 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'AUDIT_LOGS' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', animation: 'fadeIn 0.3s ease-out' }}>
+            <div style={{ padding: '1.5rem', backgroundColor: '#e2e8f0', borderRadius: '50%', marginBottom: '1.5rem' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.5rem' }}>Audit Logs</h2>
+            <p style={{ color: '#64748b', maxWidth: '400px' }}>Fitur Log Aktivitas sedang dalam tahap pengembangan.</p>
           </div>
         )}
       </div>

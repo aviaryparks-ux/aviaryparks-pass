@@ -1,39 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import nodemailer from 'nodemailer';
 import crypto from 'crypto';
-
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 15000, // 15 detik batas waktu
-});
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
+    const { phone } = await req.json();
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: 'Format email tidak valid.' }, { status: 400 });
+    if (!phone) {
+      return NextResponse.json({ error: 'Nomor telepon tidak valid.' }, { status: 400 });
     }
 
-    // Cek apakah email terdaftar sebagai member yang sudah AKTIF
+    // Hanya hapus karakter non-angka
+    let cleanPhone = phone.replace(/[^0-9]/g, '');
+
+    // Cari member aktif dengan nomor telepon yang cocok (cek cleanPhone atau versi 62/0 nya)
+    let altPhone = cleanPhone;
+    if (cleanPhone.startsWith('0')) {
+      altPhone = '62' + cleanPhone.slice(1);
+    } else if (cleanPhone.startsWith('62')) {
+      altPhone = '0' + cleanPhone.slice(2);
+    }
+
     const { data: member, error: memberError } = await supabaseAdmin
       .from('members')
-      .select('id, email, name, status')
-      .eq('email', email.toLowerCase().trim())
+      .select('id, phone, name, status')
+      .or(`phone.eq.${cleanPhone},phone.eq.${altPhone}`)
       .eq('status', 'ACTIVE')
       .limit(1)
       .single();
 
     if (memberError || !member) {
       return NextResponse.json({
-        error: 'Email tidak ditemukan atau akun belum aktif. Pastikan pembayaran sudah selesai.',
+        error: 'Nomor WhatsApp tidak ditemukan atau akun belum aktif. Pastikan pembayaran sudah selesai.',
       }, { status: 404 });
     }
 
@@ -54,12 +53,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Email-based rate limit
+    // Phone-based rate limit (We use the 'email' column to store phone number)
     const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
     const { data: recentOtp } = await supabaseAdmin
       .from('email_otps')
       .select('created_at')
-      .eq('email', email)
+      .eq('email', member.phone)
       .gte('created_at', oneMinuteAgo)
       .limit(1);
 
@@ -68,13 +67,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Hapus OTP lama dan buat yang baru
-    await supabaseAdmin.from('email_otps').delete().eq('email', email);
+    await supabaseAdmin.from('email_otps').delete().eq('email', member.phone);
 
     const otp = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
 
     const { error: insertError } = await supabaseAdmin.from('email_otps').insert({
-      email,
+      email: member.phone, // Menyimpan nomor WA di kolom email
       otp,
       expires_at: expiresAt.toISOString(),
       used: false,
@@ -83,39 +82,23 @@ export async function POST(req: NextRequest) {
     
     if (insertError) {
       console.error('Error inserting OTP:', insertError);
-      return NextResponse.json({ error: 'Terjadi kesalahan saat membuat kode OTP (Cek tabel email_otps di database).' }, { status: 500 });
+      return NextResponse.json({ error: 'Terjadi kesalahan saat membuat kode OTP.' }, { status: 500 });
     }
 
-    // Kirim email OTP login via Nodemailer
-    try {
-      await transporter.sendMail({
-        from: `"Aviary Park" <${process.env.EMAIL_USER}>`,
-        to: email, 
-        subject: `Kode Masuk Aviary Park — ${otp}`,
-        html: `
-          <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; background: #f0fdf4; padding: 2rem; border-radius: 16px;">
-            <div style="text-align: center; margin-bottom: 2rem;">
-              <h1 style="color: #064e3b; font-size: 1.4rem; font-weight: 800; margin: 0 0 0.25rem 0;">Aviary Park Indonesia</h1>
-              <p style="color: #64748b; font-size: 0.9rem; margin: 0;">Member Dashboard Access</p>
-            </div>
-            <div style="background: white; border-radius: 12px; padding: 2rem; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-              <p style="color: #334155; margin-bottom: 0.5rem; font-size: 1rem;">Halo <strong>${member.name}</strong>,</p>
-              <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1.5rem;">Gunakan kode berikut untuk masuk ke Dashboard Anda:</p>
-              <div style="background: #064e3b; color: white; font-size: 2.5rem; font-weight: 800; letter-spacing: 0.5rem; padding: 1rem 2rem; border-radius: 12px; display: inline-block; margin-bottom: 1.5rem;">
-                ${otp}
-              </div>
-              <p style="color: #64748b; font-size: 0.85rem; margin: 0;">Kode ini berlaku selama <strong>10 menit</strong>.</p>
-              <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem;">Jangan bagikan kode ini kepada siapapun.</p>
-            </div>
-          </div>
-        `,
-      });
-    } catch (emailError) {
-      console.error('Nodemailer Error:', emailError);
-      return NextResponse.json({ error: 'Gagal mengirim email OTP. Silakan coba lagi.' }, { status: 500 });
+    // Kirim WA OTP via Fonnte
+    const waMessage = `*Aviary Park Indonesia*\n\nHalo *${member.name}*,\n\nBerikut adalah kode rahasia (OTP) untuk masuk ke Dasbor Pengunjung Anda:\n\n*${otp}*\n\nKode ini berlaku selama 10 menit. Jangan berikan kode ini kepada siapa pun!`;
+    
+    let targetWa = member.phone;
+    if (targetWa.startsWith('0')) {
+      targetWa = '62' + targetWa.slice(1);
+    }
+    const sent = await sendWhatsAppMessage(targetWa, waMessage);
+    
+    if (!sent) {
+      return NextResponse.json({ error: 'Gagal mengirim pesan WhatsApp. Pastikan token Fonnte valid.' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Kode verifikasi telah dikirim ke email Anda.' });
+    return NextResponse.json({ success: true, message: 'Kode verifikasi telah dikirim ke WhatsApp Anda.' });
   } catch (err) {
     console.error('Visitor Login Request Error:', err);
     return NextResponse.json({ error: 'Terjadi kesalahan server.' }, { status: 500 });

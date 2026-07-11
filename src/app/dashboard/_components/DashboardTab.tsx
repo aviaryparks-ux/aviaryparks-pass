@@ -371,18 +371,18 @@ export default function DashboardTab({
                   <p style={{ fontSize: '0.75rem', fontWeight: '600' }}>{t('invite_family') || 'Undang Keluarga'}</p>
                 </div>
                 <div 
-                  onClick={() => setCurrentTab && setCurrentTab('events')}
+                  onClick={() => window.location.href = '?tab=loyalty'}
                   style={{ textAlign: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}
                   onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 >
                   <div style={{ width: '48px', height: '48px', background: '#f8fafc', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem', color: '#059669' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   </div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: '600' }}>{t('view_events') || 'Lihat Event'}</p>
+                  <p style={{ fontSize: '0.75rem', fontWeight: '600' }}>Tukar Kupon/Reward</p>
                 </div>
                 <div 
-                  onClick={() => toast(t('promo_coming_soon') || 'Nantikan "Promo Menarik" eksklusif untuk member Annual Pass di update selanjutnya!', { icon: '🎁' })}
+                  onClick={() => window.location.href = '?tab=events'}
                   style={{ textAlign: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}
                   onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}

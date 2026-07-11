@@ -55,3 +55,34 @@ INSERT INTO pos_terminals (name, category) VALUES
 
 -- 6. Add terminal_name to pos_transactions
 ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS terminal_name text;
+
+-- 7. Add image_url to rewards_catalog
+ALTER TABLE rewards_catalog ADD COLUMN IF NOT EXISTS image_url text;
+
+-- 8. Add expires_in_days to rewards_catalog
+ALTER TABLE rewards_catalog ADD COLUMN IF NOT EXISTS expires_in_days INTEGER DEFAULT 30;
+
+-- 9. Create table for Member Vouchers
+CREATE TABLE IF NOT EXISTS member_vouchers (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  member_id UUID NOT NULL,
+  reward_id UUID NOT NULL REFERENCES rewards_catalog(id),
+  voucher_code VARCHAR(50) NOT NULL UNIQUE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'USED', 'EXPIRED'
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. Add invoice_number to pos_transactions
+ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
+
+-- 11. Create table for Audit Logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES system_users(id) ON DELETE SET NULL,
+  action VARCHAR(50) NOT NULL,
+  target_table VARCHAR(50) NOT NULL,
+  details JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

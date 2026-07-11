@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validasi role yang diizinkan
-    const allowedRoles = ['ADMIN', 'GATE'];
+    const allowedRoles = ['ADMIN', 'GATE', 'CASHIER'];
     if (!allowedRoles.includes(user.role)) {
       return NextResponse.json({ success: false, error: 'Role tidak valid' }, { status: 400 });
     }
@@ -44,8 +44,9 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
     return NextResponse.json({ success: true, data });
-  } catch (error: unknown) {
-    return NextResponse.json({ success: false, error: 'Failed to insert system_user' }, { status: 500 });
+  } catch (error: any) {
+    console.error("Insert error:", error);
+    return NextResponse.json({ success: false, error: error.message || 'Failed to insert system_user' }, { status: 500 });
   }
 }
 

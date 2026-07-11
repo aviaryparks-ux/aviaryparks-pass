@@ -72,11 +72,12 @@ export async function middleware(request: NextRequest) {
 
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
   const isGateRoute = pathname.startsWith('/gate') || pathname.startsWith('/api/gate');
+  const isPosRoute = pathname.startsWith('/pos') || pathname.startsWith('/api/pos');
   const isVisitorApiRoute = pathname.startsWith('/api/visitor');
   const isVisitorPageRoute = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
 
-  // ── Admin & Gate: cek system_token ──────────────────────────────────────
-  if (isAdminRoute || isGateRoute) {
+  // ── Admin, Gate, & POS: cek system_token ──────────────────────────────────────
+  if (isAdminRoute || isGateRoute || isPosRoute) {
     const token = request.cookies.get('system_token')?.value;
 
     if (!token) {
@@ -95,6 +96,9 @@ export async function middleware(request: NextRequest) {
       }
       if (isGateRoute && payload.role !== 'GATE' && payload.role !== 'ADMIN') {
         throw new Error('Not Gate');
+      }
+      if (isPosRoute && payload.role !== 'CASHIER' && payload.role !== 'ADMIN') {
+        throw new Error('Not Cashier');
       }
 
       return NextResponse.next();
@@ -138,8 +142,10 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/gate/:path*',
+    '/pos/:path*',
     '/api/admin/:path*',
     '/api/gate/:path*',
+    '/api/pos/:path*',
     '/dashboard',
     '/dashboard/:path*',
     '/api/visitor/:path*',

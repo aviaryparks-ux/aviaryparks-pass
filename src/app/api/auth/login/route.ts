@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
 
     const isGate = callbackUrl?.startsWith('/gate');
     const isAdmin = callbackUrl?.startsWith('/admin');
+    const isPos = callbackUrl?.startsWith('/pos');
 
     // Check role mapping
     if (isAdmin && data.role !== 'ADMIN') {
@@ -73,6 +74,10 @@ export async function POST(request: NextRequest) {
 
     if (isGate && data.role !== 'GATE' && data.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Akses ditolak! Akun ini tidak memiliki akses Gate.' }, { status: 403 });
+    }
+
+    if (isPos && data.role !== 'CASHIER' && data.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Akses ditolak! Akun ini tidak memiliki akses POS.' }, { status: 403 });
     }
 
     // Success! Generate JWT Token (reduced from 24h to 8h for better security)
@@ -91,6 +96,7 @@ export async function POST(request: NextRequest) {
     if (!finalRedirect) {
       if (data.role === 'ADMIN') finalRedirect = '/admin';
       else if (data.role === 'GATE') finalRedirect = '/gate';
+      else if (data.role === 'CASHIER') finalRedirect = '/pos';
       else finalRedirect = '/';
     }
 

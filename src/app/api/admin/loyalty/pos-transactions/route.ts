@@ -21,8 +21,8 @@ export async function GET() {
       .select('id, name')
       .in('id', memberIds);
 
-    const memberMap: any = {};
-    if (members) members.forEach(m => memberMap[m.id] = m.name);
+    const memberMap: Record<string, string> = {};
+    if (members) members.forEach(m => { memberMap[m.id] = m.name; });
 
     const enrichedData = (data || []).map(t => ({
       ...t,
@@ -30,7 +30,8 @@ export async function GET() {
     }));
 
     return NextResponse.json({ success: true, data: enrichedData });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('POS Transactions GET Error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to fetch transactions' }, { status: 500 });
   }
 }

@@ -4,12 +4,12 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-type Step = 'email' | 'otp';
+type Step = 'phone' | 'otp';
 
 export default function Login() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [step, setStep] = useState<Step>('phone');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -34,7 +34,7 @@ export default function Login() {
       const res = await fetch('/api/auth/visitor-login/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+        body: JSON.stringify({ phone }),
       });
       const data = await res.json();
       if (!res.ok) { setErrorMsg(data.error || 'Gagal mengirim kode. Coba lagi.'); return; }
@@ -54,7 +54,7 @@ export default function Login() {
       const res = await fetch('/api/auth/visitor-login/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: otpValue }),
+        body: JSON.stringify({ phone, otp: otpValue }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -77,7 +77,7 @@ export default function Login() {
       const res = await fetch('/api/auth/visitor-login/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ phone }),
       });
       const data = await res.json();
       if (!res.ok) { setErrorMsg(data.error || 'Gagal mengirim ulang kode.'); return; }
@@ -109,8 +109,8 @@ export default function Login() {
     otpRefs.current[Math.min(pasted.length, 5)]?.focus();
   };
 
-  const maskedEmail = email
-    ? email.replace(/^(.{1})(.*)(@.*)$/, (_, a, b, c) => `${a}${'*'.repeat(Math.min(b.length, 4))}${c}`)
+  const maskedPhone = phone
+    ? phone.replace(/^(.{4})(.*)(.{3})$/, (_, a, b, c) => `${a}${'*'.repeat(b.length)}${c}`)
     : '';
 
   const isOtpFilled = otp.every((d) => d !== '');
@@ -136,18 +136,18 @@ export default function Login() {
       <div style={{ position: 'relative', zIndex: 10, height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
         <div className="mobile-px-4 mobile-py-4" style={{ backgroundColor: '#ffffff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)', maxWidth: '420px', width: '100%', padding: '2.5rem 2rem' }}>
 
-          {step === 'email' && (
+          {step === 'phone' && (
             <div className="step-card">
               <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg,#064e3b,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: '1.5rem' }}>✉️</div>
+                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg,#064e3b,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: '1.5rem', color: 'white' }}>💬</div>
                 <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#064e3b', margin: '0 0 0.4rem' }}>Masuk ke Dashboard</h2>
-                <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>Kami akan mengirim kode verifikasi ke email terdaftar Anda.</p>
+                <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>Kami akan mengirim kode OTP ke WhatsApp Anda.</p>
               </div>
               {errorMsg && <div style={{ background: '#fef2f2', color: '#dc2626', padding: '0.875rem 1rem', borderRadius: '10px', marginBottom: '1.25rem', fontSize: '0.85rem', border: '1px solid #fecaca', display: 'flex', gap: '0.5rem' }}><span>⚠️</span><span>{errorMsg}</span></div>}
               <form onSubmit={handleRequestOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155', fontSize: '0.875rem' }}>Alamat Email</label>
-                  <input type="email" required placeholder="nama@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155', fontSize: '0.875rem' }}>Nomor WhatsApp</label>
+                  <input type="tel" required placeholder="Contoh: 08123456789" value={phone} onChange={(e) => setPhone(e.target.value)}
                     style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '1rem', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
                     onFocus={(e) => (e.target.style.borderColor = '#059669')} onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')} />
                 </div>
@@ -166,8 +166,8 @@ export default function Login() {
             <div className="step-card">
               <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg,#064e3b,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: '1.5rem' }}>🔐</div>
-                <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#064e3b', margin: '0 0 0.4rem' }}>Cek Email Anda</h2>
-                <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>Kode 6 digit dikirim ke<br /><strong style={{ color: '#334155' }}>{maskedEmail}</strong></p>
+                <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#064e3b', margin: '0 0 0.4rem' }}>Cek WhatsApp Anda</h2>
+                <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>Kode 6 digit dikirim ke<br /><strong style={{ color: '#334155' }}>{maskedPhone}</strong></p>
               </div>
               {errorMsg && <div style={{ background: '#fef2f2', color: '#dc2626', padding: '0.875rem 1rem', borderRadius: '10px', marginBottom: '1.25rem', fontSize: '0.85rem', border: '1px solid #fecaca', display: 'flex', gap: '0.5rem' }}><span>⚠️</span><span>{errorMsg}</span></div>}
               <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -188,9 +188,9 @@ export default function Login() {
                   style={{ background: 'none', border: 'none', color: countdown > 0 ? '#94a3b8' : '#059669', fontWeight: '600', fontSize: '0.875rem', cursor: countdown > 0 ? 'default' : 'pointer', padding: 0 }}>
                   {countdown > 0 ? `Kirim ulang kode (${countdown}s)` : 'Kirim ulang kode'}
                 </button>
-                <button onClick={() => { setStep('email'); setErrorMsg(''); setOtp(['','','','','','']); }}
+                <button onClick={() => { setStep('phone'); setErrorMsg(''); setOtp(['','','','','','']); }}
                   style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}>
-                  ← Ubah email
+                  ← Ubah nomor
                 </button>
               </div>
             </div>

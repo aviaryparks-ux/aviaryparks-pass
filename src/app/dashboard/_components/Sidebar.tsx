@@ -96,7 +96,7 @@ export default function Sidebar({
         </a>
         <a href="#" onClick={(e) => { e.preventDefault(); setCurrentTab('loyalty'); }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: currentTab === 'loyalty' ? 'rgba(255,255,255,0.1)' : 'transparent', color: currentTab === 'loyalty' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: currentTab === 'loyalty' ? '600' : '400', textDecoration: 'none', borderLeft: currentTab === 'loyalty' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Loyalty & Promo
+          Tukar Kupon/Reward
         </a>
       </nav>
 
