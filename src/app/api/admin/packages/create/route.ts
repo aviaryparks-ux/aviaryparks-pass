@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { AuditLogger } from '@/lib/AuditLogger';
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (data && data.length > 0) {
+      await AuditLogger.log(request, 'CREATE', 'PACKAGE', data[0].id, data[0]);
     }
 
     return NextResponse.json({ success: true, data });

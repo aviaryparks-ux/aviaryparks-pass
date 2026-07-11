@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import bcrypt from 'bcryptjs';
+import { AuditLogger } from '@/lib/AuditLogger';
 
 export async function GET() {
   try {
@@ -43,6 +44,11 @@ export async function POST(request: NextRequest) {
     }]).select('id, username, role, created_at');
 
     if (error) throw error;
+
+    if (data && data.length > 0) {
+      await AuditLogger.log(request, 'CREATE', 'SYSTEM_USER', data[0].id, { username: user.username, role: user.role });
+    }
+
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error("Insert error:", error);
@@ -58,6 +64,9 @@ export async function DELETE(request: NextRequest) {
 
     const { error } = await supabaseAdmin.from('system_users').delete().eq('id', id);
     if (error) throw error;
+
+    await AuditLogger.log(request, 'DELETE', 'SYSTEM_USER', id, { user_id: id });
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     return NextResponse.json({ success: false, error: 'Failed to delete system_user' }, { status: 500 });

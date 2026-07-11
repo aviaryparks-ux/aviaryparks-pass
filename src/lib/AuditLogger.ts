@@ -8,13 +8,42 @@ export class AuditLogger {
    * @param targetTable Tabel yang terdampak
    * @param details Data spesifik yang relevan dengan tindakan ini
    */
-  static async log(userId: string | null, action: string, targetTable: string, details: any) {
+  static async log(request: Request, actionType: string, entityType: string, entityId: string | null = null, details: any = null) {
     try {
+      // Extract admin or cashier token
+      let token = null;
+      
+      // Since request in NextJS might be a NextRequest or standard Request, we handle cookies
+      if (typeof (request as any).cookies?.get === 'function') {
+        token = (request as any).cookies.get('system_token')?.value;
+      } else {
+        const cookieHeader = request.headers.get('cookie') || '';
+        const match = cookieHeader.match(/system_token=([^;]+)/);
+        if (match) token = match[1];
+      }
+
+      let actorId = null;
+      let actorName = 'SYSTEM';
+
+      if (token) {
+        try {
+          const { jwtVerify } = await import('jose');
+          const secret = process.env.JWT_SECRET || '';
+          const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+          actorId = payload.userId as string;
+          actorName = (payload.name as string) || (payload.role as string) || 'UNKNOWN';
+        } catch (e) {
+          console.warn('Failed to parse system_token for AuditLog');
+        }
+      }
+
       await supabaseAdmin.from('audit_logs').insert({
-        user_id: userId,
-        action,
-        target_table: targetTable,
-        details
+        actor_id: actorId,
+        actor_name: actorName,
+        action_type: actionType,
+        entity_type: entityType,
+        entity_id: entityId,
+        details: details
       });
     } catch (error) {
       console.error('Failed to write audit log:', error);

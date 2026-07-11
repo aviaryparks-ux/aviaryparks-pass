@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
+import { AuditLogger } from '@/lib/AuditLogger';
 
 // ── SECURITY: Whitelist allowed fields for schedules ──
 const ALLOWED_SCHEDULE_FIELDS = ['title', 'description', 'start_time', 'end_time', 'location', 'image_url', 'status'];
@@ -50,6 +51,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create schedule' }, { status: 500 });
     }
 
+    if (data && data.length > 0) {
+      await AuditLogger.log(request, 'CREATE', 'SCHEDULE', data[0].id, sanitized);
+    }
+
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
     console.error('Schedules POST Error:', error);
@@ -85,6 +90,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update schedule' }, { status: 500 });
     }
 
+    await AuditLogger.log(request, 'UPDATE', 'SCHEDULE', id, sanitized);
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Schedules PUT Error:', error);
@@ -112,6 +119,8 @@ export async function DELETE(request: NextRequest) {
       console.error('Schedules DELETE Error:', error);
       return NextResponse.json({ error: 'Failed to delete schedule' }, { status: 500 });
     }
+
+    await AuditLogger.log(request, 'DELETE', 'SCHEDULE', id, { schedule_id: id });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

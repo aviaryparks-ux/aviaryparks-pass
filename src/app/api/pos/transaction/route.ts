@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { NotificationService } from '@/lib/NotificationService';
+import { AuditLogger } from '@/lib/AuditLogger';
 const RATIO = parseInt(process.env.NEXT_PUBLIC_POINT_EARN_RATIO || '10000');
 
 // ── SECURITY: Allowed fields for reward_id lookup ──
@@ -147,6 +148,14 @@ export async function POST(request: Request) {
       
       NotificationService.sendWhatsApp(member.phone, waMessage).catch(console.error);
     }
+
+    await AuditLogger.log(request, 'CREATE', 'POS_TRANSACTION', posTx.id, {
+      member_id,
+      amount: finalTotal,
+      points_earned: pointsEarned,
+      points_deducted: pointsToDeduct,
+      terminal: finalTerminalName
+    });
 
     return NextResponse.json({
       success: true,

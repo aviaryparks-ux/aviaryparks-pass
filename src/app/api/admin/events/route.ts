@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
+import { AuditLogger } from '@/lib/AuditLogger';
 
 // ── SECURITY: Whitelist allowed fields for events ──
 const ALLOWED_EVENT_FIELDS = ['title', 'description', 'content', 'event_date', 'image_url', 'status'];
@@ -49,6 +50,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
     }
 
+    if (data && data.length > 0) {
+      await AuditLogger.log(request, 'CREATE', 'EVENT', data[0].id, sanitized);
+    }
+
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
     console.error('Events POST Error:', error);
@@ -84,6 +89,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
     }
 
+    await AuditLogger.log(request, 'UPDATE', 'EVENT', id, sanitized);
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Events PUT Error:', error);
@@ -111,6 +118,8 @@ export async function DELETE(request: NextRequest) {
       console.error('Events DELETE Error:', error);
       return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
     }
+
+    await AuditLogger.log(request, 'DELETE', 'EVENT', id, { event_id: id });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
