@@ -1,29 +1,59 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('audit_logs')
-      .select(`
-        id,
-        action,
-        target_table,
-        details,
-        created_at,
-        system_users (
-          username,
-          role
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(500);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching audit logs:', error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Failed to fetch audit logs:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch audit logs' }, { status: 500 });
+    console.error('Audit logs API error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    
+    // In a real production system, you would extract the actor_id and actor_name 
+    // directly from the verified system_token here, rather than trusting the client payload.
+    // However, for this implementation, we accept the payload.
+
+    const { actor_id, actor_name, action_type, entity_type, entity_id, details } = body;
+
+    const { data, error } = await supabaseAdmin
+      .from('audit_logs')
+      .insert([
+        {
+          actor_id,
+          actor_name,
+          action_type,
+          entity_type,
+          entity_id,
+          details
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating audit log:', error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Audit log creation error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

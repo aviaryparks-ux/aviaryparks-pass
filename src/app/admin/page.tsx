@@ -161,6 +161,11 @@ export default function AdminDashboard() {
   const [liveScanDateFilter, setLiveScanDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
   const [liveScanCurrentPage, setLiveScanCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Audit Logs State
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLogsPage, setAuditLogsPage] = useState(1);
+  const [auditFilterAction, setAuditFilterAction] = useState('ALL');
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
@@ -443,6 +448,8 @@ export default function AdminDashboard() {
       fetchEvents();
     } else if (activeTab === 'SCHEDULES') {
       fetchSchedules();
+    } else if (activeTab === 'AUDIT_LOGS') {
+      fetchAuditLogs();
     } else if (activeTab === 'POS_TERMINALS') {
       fetchPosTerminals();
     } else if (activeTab === 'TRANSACTIONS' || activeTab === 'FINANCIAL') {
@@ -452,6 +459,18 @@ export default function AdminDashboard() {
       fetchLoyaltyData();
     }
   }, [activeTab, trxFilter]);
+
+  const fetchAuditLogs = async () => {
+    try {
+      const res = await fetch('/api/admin/audit-logs');
+      const json = await res.json();
+      if (json.success && json.data) {
+        setAuditLogs(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch audit logs', err);
+    }
+  };
 
   async function fetchLoyaltyData() {
     try {
@@ -2636,15 +2655,106 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === 'AUDIT_LOGS' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', animation: 'fadeIn 0.3s ease-out' }}>
-            <div style={{ padding: '1.5rem', backgroundColor: '#e2e8f0', borderRadius: '50%', marginBottom: '1.5rem' }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        {activeTab === 'AUDIT_LOGS' && (() => {
+          // Filter logic
+          const filteredLogs = auditLogs.filter(log => {
+            if (auditFilterAction !== 'ALL' && log.action_type !== auditFilterAction) return false;
+            return true;
+          });
+          
+          const logsPerPage = 15;
+          const totalLogsPages = Math.ceil(filteredLogs.length / logsPerPage);
+          const currentLogs = filteredLogs.slice((auditLogsPage - 1) * logsPerPage, auditLogsPage * logsPerPage);
+
+          return (
+            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>🛡️ Audit Logs</h2>
+                  <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Rekam jejak aktivitas pegawai dan administrator sistem</p>
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Filter Aksi:</label>
+                  <select 
+                    value={auditFilterAction}
+                    onChange={(e) => { setAuditFilterAction(e.target.value); setAuditLogsPage(1); }}
+                    style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', backgroundColor: 'white' }}
+                  >
+                    <option value="ALL">Semua Aksi</option>
+                    <option value="CREATE">CREATE (Tambah Data)</option>
+                    <option value="UPDATE">UPDATE (Ubah Data)</option>
+                    <option value="DELETE">DELETE (Hapus Data)</option>
+                    <option value="LOGIN">LOGIN (Masuk Sistem)</option>
+                  </select>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
+                        <th style={{ padding: '1rem 1.5rem' }}>Waktu Kejadian</th>
+                        <th style={{ padding: '1rem 1.5rem' }}>Aktor (Pegawai)</th>
+                        <th style={{ padding: '1rem 1.5rem' }}>Tipe Aksi</th>
+                        <th style={{ padding: '1rem 1.5rem' }}>Entitas / Modul</th>
+                        <th style={{ padding: '1rem 1.5rem' }}>Detail Perubahan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentLogs.map((log, idx) => (
+                        <tr key={log.id || idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s', backgroundColor: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
+                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', color: '#475569' }}>
+                            <div style={{ fontWeight: '600' }}>{new Date(log.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}</div>
+                            <div style={{ fontSize: '0.75rem' }}>{new Date(log.created_at).toLocaleTimeString('id-ID')} WIB</div>
+                          </td>
+                          <td style={{ padding: '1rem 1.5rem', fontWeight: '600', color: '#0f172a' }}>
+                            {log.actor_name}
+                          </td>
+                          <td style={{ padding: '1rem 1.5rem' }}>
+                            <span style={{ 
+                              padding: '0.2rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 'bold',
+                              backgroundColor: log.action_type === 'CREATE' ? '#dcfce7' : log.action_type === 'UPDATE' ? '#fef08a' : log.action_type === 'DELETE' ? '#fee2e2' : '#e0e7ff',
+                              color: log.action_type === 'CREATE' ? '#166534' : log.action_type === 'UPDATE' ? '#854d0e' : log.action_type === 'DELETE' ? '#991b1b' : '#3730a3'
+                            }}>
+                              {log.action_type}
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', color: '#334155', fontWeight: '500' }}>
+                            {log.entity_type}
+                            {log.entity_id && <span style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block' }}>ID: {log.entity_id.substring(0,8)}...</span>}
+                          </td>
+                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: '#475569', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {log.details ? JSON.stringify(log.details) : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                      {currentLogs.length === 0 && (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                            Tidak ada log aktivitas yang ditemukan.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalLogsPages > 1 && (
+                  <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Halaman {auditLogsPage} dari {totalLogsPages}</span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={() => setAuditLogsPage(p => Math.max(1, p - 1))} disabled={auditLogsPage === 1} style={{ padding: '0.4rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.25rem', cursor: auditLogsPage === 1 ? 'not-allowed' : 'pointer' }}>Sebelumnya</button>
+                      <button onClick={() => setAuditLogsPage(p => Math.min(totalLogsPages, p + 1))} disabled={auditLogsPage === totalLogsPages} style={{ padding: '0.4rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.25rem', cursor: auditLogsPage === totalLogsPages ? 'not-allowed' : 'pointer' }}>Selanjutnya</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.5rem' }}>Audit Logs</h2>
-            <p style={{ color: '#64748b', maxWidth: '400px' }}>Fitur Log Aktivitas sedang dalam tahap pengembangan.</p>
-          </div>
-        )}
+          );
+        })()}
       </div>
       </main>
     </div>
