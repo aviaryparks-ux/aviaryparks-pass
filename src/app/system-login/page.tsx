@@ -16,11 +16,11 @@ function SystemLoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Determine which area they are trying to access
+  // Determine which area they are trying to access (Optional context)
   const isGate = callbackUrl.startsWith('/gate');
   const isAdmin = callbackUrl.startsWith('/admin');
   
-  const roleName = isAdmin ? 'Super Admin' : (isGate ? 'Ticketing Gate' : 'Sistem Internal');
+  const roleName = 'Sistem Terpusat';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
