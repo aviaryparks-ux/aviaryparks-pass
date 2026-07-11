@@ -101,8 +101,8 @@ export async function middleware(request: NextRequest) {
       if (isAdminRoute && payload.role !== 'ADMIN') {
         throw new Error('Not Admin');
       }
-      if (isGateRoute && payload.role !== 'GATE' && payload.role !== 'ADMIN') {
-        throw new Error('Not Gate');
+      if (isGateRoute && payload.role !== 'GATE' && payload.role !== 'ADMIN' && payload.role !== 'CASHIER') {
+        throw new Error('Not Gate/Cashier');
       }
       if (isPosRoute && payload.role !== 'CASHIER' && payload.role !== 'ADMIN') {
         throw new Error('Not Cashier');
