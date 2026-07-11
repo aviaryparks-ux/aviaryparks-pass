@@ -1,28 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import nodemailer from 'nodemailer';
 import crypto from 'crypto';
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-// Gunakan crypto.randomInt() — cryptographically secure, bukan Math.random()
-function generateOTP(): string {
-  return crypto.randomInt(100000, 999999).toString();
-}
-
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
+    const { email, phone } = await req.json();
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Email tidak valid.' }, { status: 400 });
+    }
+
+    if (!phone || phone.length < 9) {
+      return NextResponse.json({ error: 'Nomor WhatsApp tidak valid.' }, { status: 400 });
     }
 
     const forwardedFor = req.headers.get('x-forwarded-for');
@@ -64,12 +54,12 @@ export async function POST(req: NextRequest) {
     // Hapus OTP lama untuk email ini
     await supabaseAdmin.from('email_otps').delete().eq('email', email);
 
-    const otp = generateOTP();
+    const otp = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
 
     // Simpan OTP ke database
     const { error: dbError } = await supabaseAdmin.from('email_otps').insert({
-      email,
+      email, // we keep using email as the identifier in DB for registration
       otp,
       expires_at: expiresAt.toISOString(),
       used: false,
@@ -81,40 +71,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Gagal menyimpan OTP.' }, { status: 500 });
     }
 
-    // Kirim email via Nodemailer
-    try {
-      await transporter.sendMail({
-        from: `"Aviary Park" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Kode Verifikasi Aviary Park - ' + otp,
-        html: `
-          <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; background: #f0fdf4; padding: 2rem; border-radius: 16px;">
-            <div style="text-align: center; margin-bottom: 2rem;">
-              <h1 style="color: #064e3b; font-size: 1.4rem; font-weight: 800; margin: 0 0 0.25rem 0;">Aviary Park Indonesia</h1>
-              <p style="color: #64748b; font-size: 0.9rem; margin: 0;">Annual Pass Registration</p>
-            </div>
-
-            <div style="background: white; border-radius: 12px; padding: 2rem; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-              <p style="color: #334155; margin-bottom: 1rem; font-size: 1rem;">Kode verifikasi email Anda:</p>
-              <div style="background: #064e3b; color: white; font-size: 2.5rem; font-weight: 800; letter-spacing: 0.5rem; padding: 1rem 2rem; border-radius: 12px; display: inline-block; margin-bottom: 1.5rem;">
-                ${otp}
-              </div>
-              <p style="color: #64748b; font-size: 0.85rem; margin: 0;">Kode ini berlaku selama <strong>10 menit</strong>.</p>
-              <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem;">Jangan bagikan kode ini kepada siapapun.</p>
-            </div>
-
-            <p style="text-align: center; color: '#94a3b8'; font-size: 0.75rem; margin-top: 1.5rem;">
-              Jika Anda tidak merasa mendaftar ke Aviary Park, abaikan email ini.
-            </p>
-          </div>
-        `,
-      });
-    } catch (emailError) {
-      console.error('Email Error:', emailError);
-      return NextResponse.json({ error: 'Gagal mengirim email. Pastikan konfigurasi Gmail sudah benar.' }, { status: 500 });
+    // Kirim OTP via WhatsApp
+    const waMessage = `*Aviary Park Indonesia*\n\nHalo,\n\nTerima kasih telah mendaftar Annual Pass Aviary Park. Berikut adalah kode verifikasi (OTP) pendaftaran Anda:\n\n*${otp}*\n\nKode ini berlaku selama 10 menit. Jangan berikan kode ini kepada siapa pun!`;
+    
+    let targetWa = phone.replace(/[^0-9]/g, '');
+    if (targetWa.startsWith('0')) {
+      targetWa = '62' + targetWa.slice(1);
+    }
+    
+    const sent = await sendWhatsAppMessage(targetWa, waMessage);
+    
+    if (!sent) {
+      return NextResponse.json({ error: 'Gagal mengirim pesan WhatsApp. Pastikan nomor valid.' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'OTP terkirim ke email Anda.' });
+    return NextResponse.json({ success: true, message: 'OTP terkirim ke WhatsApp Anda.' });
   } catch (err) {
     console.error('Send OTP Error:', err);
     return NextResponse.json({ error: 'Terjadi kesalahan server.' }, { status: 500 });

@@ -139,7 +139,7 @@ export default function Register() {
       const res = await fetch('/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: primary.email }),
+        body: JSON.stringify({ email: primary.email, phone: primary.phone }),
       });
 
       const result = await res.json();
@@ -243,7 +243,7 @@ export default function Register() {
     const res = await fetch('/api/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: primary.email }),
+      body: JSON.stringify({ email: primary.email, phone: primary.phone }),
     });
     if (res.ok) {
       setResendCooldown(60);
