@@ -156,6 +156,10 @@ export default function AdminDashboard() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedMemberDetail, setSelectedMemberDetail] = useState<any>(null);
+  
+  // Live Scan state
+  const [liveScanDateFilter, setLiveScanDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [liveScanCurrentPage, setLiveScanCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const toggleGroup = (groupId: string) => {
@@ -2324,14 +2328,27 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'LIVE_SCAN' && (() => {
-        // Sort visits descending
-        const sortedVisits = [...rawVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
-        const latestVisit = sortedVisits.length > 0 ? sortedVisits[0] : null;
+        // Filter and sort visits
+        const filteredVisits = rawVisits.filter(v => {
+          if (!liveScanDateFilter) return true;
+          return v.visited_at.startsWith(liveScanDateFilter);
+        });
+        const sortedVisits = [...filteredVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
+        
+        // Latest global visit for spotlight (ignores date filter to always show latest action if needed, or respects it. We'll respect the global rawVisits for spotlight to maintain real-time feel)
+        const globalSortedVisits = [...rawVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
+        const latestVisit = globalSortedVisits.length > 0 ? globalSortedVisits[0] : null;
         
         let latestUser: any = null;
         if (latestVisit) {
           latestUser = users.find(u => u.id === latestVisit.member_id);
         }
+
+        // Pagination
+        const itemsPerPage = 15;
+        const totalPages = Math.ceil(sortedVisits.length / itemsPerPage);
+        const startIndex = (liveScanCurrentPage - 1) * itemsPerPage;
+        const currentVisits = sortedVisits.slice(startIndex, startIndex + itemsPerPage);
 
         return (
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
@@ -2376,26 +2393,42 @@ export default function AdminDashboard() {
 
               {/* Right Side: Log Table */}
               <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a' }}>Log Aktivitas Gerbang</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Filter Tanggal:</label>
+                    <input 
+                      type="date" 
+                      value={liveScanDateFilter}
+                      onChange={(e) => {
+                        setLiveScanDateFilter(e.target.value);
+                        setLiveScanCurrentPage(1);
+                      }}
+                      style={{ padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                    />
+                    {liveScanDateFilter && (
+                      <button onClick={() => { setLiveScanDateFilter(''); setLiveScanCurrentPage(1); }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}>Tampilkan Semua</button>
+                    )}
+                  </div>
                 </div>
-                <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                <div style={{ flex: 1, overflowY: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                       <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
-                        <th style={{ padding: '1rem' }}>Waktu</th>
+                        <th style={{ padding: '1rem' }}>Waktu & Tanggal</th>
                         <th style={{ padding: '1rem' }}>Pengunjung</th>
                         <th style={{ padding: '1rem' }}>Tipe</th>
                         <th style={{ padding: '1rem' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedVisits.slice(0, 50).map((visit, idx) => {
+                      {currentVisits.map((visit, idx) => {
                         const user = users.find(u => u.id === visit.member_id);
                         return (
-                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx === 0 ? '#f0fdf4' : 'white', transition: 'background-color 1s' }}>
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx === 0 && liveScanCurrentPage === 1 && !liveScanDateFilter ? '#f0fdf4' : 'white', transition: 'background-color 1s' }}>
                             <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#475569' }}>
-                              {new Date(visit.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' })}
+                              <div style={{ fontWeight: '600', color: '#0f172a' }}>{new Date(visit.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' })}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.1rem' }}>{new Date(visit.visited_at).toLocaleDateString('id-ID')}</div>
                             </td>
                             <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>
                               {user ? user.name : 'Unknown User'}
@@ -2414,14 +2447,37 @@ export default function AdminDashboard() {
                           </tr>
                         );
                       })}
-                      {sortedVisits.length === 0 && (
+                      {currentVisits.length === 0 && (
                         <tr>
-                          <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Tidak ada log kunjungan.</td>
+                          <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Tidak ada log kunjungan pada tanggal ini.</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Halaman {liveScanCurrentPage} dari {totalPages} (Total {sortedVisits.length} data)</span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        onClick={() => setLiveScanCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={liveScanCurrentPage === 1}
+                        style={{ padding: '0.4rem 0.75rem', border: '1px solid #cbd5e1', backgroundColor: liveScanCurrentPage === 1 ? '#f1f5f9' : 'white', color: liveScanCurrentPage === 1 ? '#94a3b8' : '#334155', borderRadius: '0.25rem', cursor: liveScanCurrentPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}
+                      >
+                        Sebelumnya
+                      </button>
+                      <button 
+                        onClick={() => setLiveScanCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={liveScanCurrentPage === totalPages}
+                        style={{ padding: '0.4rem 0.75rem', border: '1px solid #cbd5e1', backgroundColor: liveScanCurrentPage === totalPages ? '#f1f5f9' : 'white', color: liveScanCurrentPage === totalPages ? '#94a3b8' : '#334155', borderRadius: '0.25rem', cursor: liveScanCurrentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}
+                      >
+                        Selanjutnya
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
