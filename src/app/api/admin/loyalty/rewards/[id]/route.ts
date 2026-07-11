@@ -1,30 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { AuditLogger } from '@/lib/AuditLogger';
-import { jwtVerify } from 'jose';
 
-const getJwtSecretKey = () => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET not set');
-  return new TextEncoder().encode(secret);
-};
 
-async function getAdminId(request: Request): Promise<string | null> {
-  try {
-    // @ts-ignore - next/server Request has cookies in NextRequest but this is standard Request
-    const cookies = (request as any).cookies;
-    if (cookies) {
-      const token = cookies.get('system_token')?.value;
-      if (token) {
-        const { payload } = await jwtVerify(token, getJwtSecretKey());
-        return payload.sub as string;
-      }
-    }
-  } catch (e) {
-    // ignore
-  }
-  return null;
-}
 
 // ── SECURITY: Whitelist allowed fields for reward updates ──
 const ALLOWED_REWARD_FIELDS = ['name', 'description', 'points_required', 'reward_type', 'is_active', 'image_url', 'expires_in_days'];
@@ -84,8 +62,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Failed to update reward' }, { status: 500 });
     }
 
-    const adminId = await getAdminId(request);
-    await AuditLogger.log(adminId, 'UPDATE_REWARD', 'rewards_catalog', { reward_id: id, changes: sanitized });
+    await AuditLogger.log(request, 'UPDATE_REWARD', 'rewards_catalog', id, { changes: sanitized });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
@@ -113,8 +90,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Failed to delete reward' }, { status: 500 });
     }
 
-    const adminId = await getAdminId(request);
-    await AuditLogger.log(adminId, 'DELETE_REWARD', 'rewards_catalog', { reward_id: id });
+    await AuditLogger.log(request, 'DELETE_REWARD', 'rewards_catalog', id, { reward_id: id });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
