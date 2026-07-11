@@ -114,9 +114,9 @@ export async function POST(request: Request) {
     // Duitku might require HTTPS for callback URL even in sandbox.
     const callbackUrl = process.env.DUITKU_CALLBACK_URL || 'https://www.aviarypark-test.com/api/payment/callback';
     
-    // Gunakan NEXT_PUBLIC_BASE_URL dari env, bukan dari Origin header
-    // (Origin header bisa dimanipulasi oleh attacker)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    // Gunakan NEXT_PUBLIC_BASE_URL dari env, atau Origin header sebagai fallback
+    const origin = request.headers.get('origin');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || origin || 'http://localhost:3000';
     const returnUrl = `${baseUrl}/face-setup`;
 
     const payload = {
