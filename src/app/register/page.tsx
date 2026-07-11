@@ -279,18 +279,18 @@ export default function Register() {
             textAlign: 'center'
           }}>
             {/* Icon */}
-            <div style={{ width: '64px', height: '64px', backgroundColor: '#e6f4ea', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 1.25rem' }}>
-              <span style={{ fontSize: '2rem' }}>📧</span>
+            <div style={{ width: '64px', height: '64px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 1.25rem' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
             </div>
 
             <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#064e3b', marginBottom: '0.5rem' }}>
-              Verifikasi Email
+              Verifikasi WhatsApp
             </h2>
             <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
               Kode OTP 6 digit telah dikirim ke:
             </p>
             <p style={{ color: '#059669', fontWeight: '700', fontSize: '0.95rem', marginBottom: '1.75rem' }}>
-              {primary.email}
+              {primary.phone}
             </p>
 
             {/* OTP Input */}
@@ -361,7 +361,7 @@ export default function Register() {
                 onClick={() => { setStep('form'); setOtpValue(''); setOtpError(''); }}
                 style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.85rem', cursor: 'pointer' }}
               >
-                ← Ubah Email
+                ← Ubah Nomor WA
               </button>
               <button
                 onClick={handleResendOtp}
