@@ -1615,6 +1615,7 @@ export default function AdminDashboard() {
                     <th style={{ padding: '1rem' }}>Segmen CRM & Demografi</th>
                     <th style={{ padding: '1rem' }}>Visits</th>
                     <th style={{ padding: '1rem' }}>F&B / Wahana</th>
+                    <th style={{ padding: '1rem' }}>Poin Member</th>
                     <th style={{ padding: '1rem' }}>Email / WA</th>
                     <th style={{ padding: '1rem' }}>Status</th>
                     <th style={{ padding: '1rem' }}>Biometrik</th>
@@ -1685,6 +1686,12 @@ export default function AdminDashboard() {
                           </td>
                           <td style={{ padding: '1rem', color: '#059669', fontWeight: '600', fontSize: '0.85rem' }}>
                             Rp {(memberTotals[u.id] || 0).toLocaleString('id-ID')}
+                          </td>
+                          <td style={{ padding: '1rem', fontWeight: 'bold', color: '#f59e0b', fontSize: '0.85rem' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                              {u.points_balance || 0}
+                            </span>
                           </td>
                           <td style={{ padding: '1rem' }}>
                             <div>{u.email}</div>
