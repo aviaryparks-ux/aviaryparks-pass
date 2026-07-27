@@ -45,7 +45,7 @@ ATURAN PENTING:
         getMemberAnalytics: tool({
           description: 'Ambil statistik dan daftar member, termasuk data umur, jenis kelamin, dan kota asal (berdasarkan NIK) serta pengunjung setia.',
           parameters: z.object({
-            limit: z.number().describe('Batas jumlah member yang diambil (default 50)'),
+            limit: z.number().optional().describe('Batas jumlah member yang diambil (default 50)'),
             status: z.enum(['ACTIVE', 'PENDING_PAYMENT', 'ALL']).optional().describe('Filter berdasarkan status member')
           }),
           execute: async ({ limit = 50, status = 'ALL' }) => {
@@ -79,10 +79,10 @@ ATURAN PENTING:
         getFinancialAnalytics: tool({
           description: 'Ambil data laporan keuangan, tren penjualan tiket, dan transaksi kasir (POS). Berguna untuk membuat grafik pendapatan.',
           parameters: z.object({
-            type: z.enum(['TICKET', 'POS', 'ALL']).describe('Jenis transaksi (Tiket masuk atau POS Kasir)'),
-            timeframe: z.enum(['TODAY', 'THIS_MONTH', 'ALL_TIME']).describe('Rentang waktu data')
+            type: z.enum(['TICKET', 'POS', 'ALL']).optional().describe('Jenis transaksi (Tiket masuk atau POS Kasir)'),
+            timeframe: z.enum(['TODAY', 'THIS_MONTH', 'ALL_TIME']).optional().describe('Rentang waktu data')
           }),
-          execute: async ({ type, timeframe }) => {
+          execute: async ({ type = 'ALL', timeframe = 'ALL_TIME' }) => {
             const now = new Date();
             let startDate = new Date(0); // ALL_TIME
             
