@@ -8,7 +8,7 @@ export default function AICopilot({ dashboardContext, onExportCsvRequest }: { da
   const [isOpen, setIsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
     api: '/api/admin/copilot',
     initialMessages: [
       { 
@@ -17,7 +17,10 @@ export default function AICopilot({ dashboardContext, onExportCsvRequest }: { da
         content: 'Halo! Saya AI Data Analyst Anda. Ada yang bisa saya bantu terkait laporan keuangan atau data pengunjung hari ini?' 
       }
     ],
-    maxToolRoundtrips: 3
+    maxToolRoundtrips: 3,
+    onError: (err) => {
+      console.error('Chat error:', err);
+    }
   });
 
   const scrollToBottom = () => {
@@ -176,6 +179,23 @@ export default function AICopilot({ dashboardContext, onExportCsvRequest }: { da
                 <div style={{ width: '8px', height: '8px', backgroundColor: '#94a3b8', borderRadius: '50%', animation: 'bounce 1s infinite 0.4s' }}></div>
               </div>
             )}
+            {error && (
+              <div style={{
+                alignSelf: 'center',
+                backgroundColor: '#fee2e2',
+                color: '#ef4444',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.5rem',
+                fontSize: '0.85rem',
+                maxWidth: '90%',
+                textAlign: 'center',
+                border: '1px solid #fca5a5'
+              }}>
+                <strong>Terjadi Kesalahan:</strong><br />
+                {error.message || 'Gagal menghubungi server AI.'}
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
 

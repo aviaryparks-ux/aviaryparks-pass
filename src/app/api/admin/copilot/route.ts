@@ -185,11 +185,11 @@ ATURAN PENTING:
         renderChart: tool({
           description: 'Render sebuah grafik (Bar Chart atau Line Chart) langsung di layar pengguna (Frontend). Jangan panggil tool ini jika Anda belum mengambil datanya terlebih dahulu.',
           parameters: z.object({
-            type: z.enum(['bar', 'line']).describe('Jenis grafik'),
+            type: z.enum(['bar', 'line', 'pie']).describe('Tipe grafik yang ingin digambar (bar, line, atau pie)'),
             title: z.string().describe('Judul grafik'),
             data: z.array(z.object({
-              label: z.string().describe('Label pada sumbu X (misal: "Senin", "Januari", "Tiket", "Resto")'),
-              value: z.number().describe('Nilai numerik pada sumbu Y')
+              label: z.string().describe('Label pada sumbu X atau kategori'),
+              value: z.number().describe('Nilai numerik')
             })).describe('Array data yang akan ditampilkan')
           }),
           execute: async (args) => {
