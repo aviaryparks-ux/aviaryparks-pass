@@ -191,15 +191,7 @@ ATURAN PENTING:
               label: z.string().describe('Label pada sumbu X atau kategori'),
               value: z.number().describe('Nilai numerik')
             })).describe('Array data yang akan ditampilkan')
-          }),
-          execute: async (args) => {
-            // Function ini sebenarnya hanya mengembalikan argumennya. 
-            // Frontend Vercel AI SDK (ui/react) akan membaca tool invocation ini dan merender UI khusus (ToolInvocation / UI component).
-            return {
-              success: true,
-              chartData: args
-            };
-          }
+          })
         })
       },
     });

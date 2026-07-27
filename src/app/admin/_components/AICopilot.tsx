@@ -132,22 +132,24 @@ export default function AICopilot({ dashboardContext, onExportCsvRequest }: { da
                 {/* Render Tool Invocations */}
                 {msg.toolInvocations?.map(toolInvocation => {
                   if (toolInvocation.toolName === 'renderChart') {
-                    if (toolInvocation.state === 'result') {
-                      const { chartData } = toolInvocation.result;
+                    // Client-side tool: baca dari args langsung.
+                    const chartData = toolInvocation.args;
+                    if (chartData && chartData.data && chartData.data.length > 0) {
                       return (
                         <div key={toolInvocation.toolCallId} style={{ alignSelf: 'center', width: '100%', padding: '0.5rem' }}>
                           <AIChart 
-                            type={chartData.type} 
+                            type={chartData.type || 'bar'} 
                             data={chartData.data} 
-                            title={chartData.title} 
+                            title={chartData.title || ''} 
                             color="#059669" 
                           />
                         </div>
                       );
                     } else {
                       return (
-                        <div key={toolInvocation.toolCallId} className="text-xs text-slate-400 italic">
-                          Menggambar grafik...
+                        <div key={toolInvocation.toolCallId} className="text-xs text-slate-400 italic flex items-center gap-1">
+                          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                          Menyiapkan data grafik...
                         </div>
                       );
                     }
