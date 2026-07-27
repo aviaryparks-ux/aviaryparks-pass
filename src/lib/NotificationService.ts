@@ -6,30 +6,42 @@ export class NotificationService {
   static async sendWhatsApp(phone: string, message: string): Promise<boolean> {
     try {
       // Membersihkan nomor telepon (ubah 0 jadi 62 jika perlu)
-      let targetPhone = phone;
+      let targetPhone = phone.replace(/[^0-9]/g, '');
       if (targetPhone.startsWith('0')) {
         targetPhone = '62' + targetPhone.substring(1);
       }
 
       console.log('====================================');
-      console.log(`[MOCK WHATSAPP] Mengirim ke: ${targetPhone}`);
+      console.log(`[WHATSAPP] Mengirim ke: ${targetPhone}`);
       console.log(`Pesan:\n${message}`);
       console.log('====================================');
 
-      // TODO: Integrasi Wablas / Fonnte
-      // const response = await fetch('https://api.fonnte.com/send', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': process.env.FONNTE_TOKEN || '',
-      //   },
-      //   body: new URLSearchParams({
-      //     target: targetPhone,
-      //     message: message
-      //   })
-      // });
-      // return response.ok;
+      const token = process.env.FONNTE_TOKEN;
+      if (!token) {
+        console.warn('FONNTE_TOKEN is not set in environment variables.');
+        return false;
+      }
 
-      return true;
+      const formData = new FormData();
+      formData.append('target', targetPhone);
+      formData.append('message', message);
+      formData.append('countryCode', '62');
+
+      const response = await fetch('https://api.fonnte.com/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': token,
+        },
+        body: formData
+      });
+      
+      const data = await response.json();
+      if (data.status) {
+        return true;
+      } else {
+        console.error('Fonnte API Error:', data.reason || data.detail || data);
+        return false;
+      }
     } catch (error) {
       console.error('Failed to send WhatsApp:', error);
       return false;

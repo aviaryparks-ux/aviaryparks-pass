@@ -13,11 +13,11 @@ export async function POST(request: Request) {
     const vectorString = `[${descriptorArray.join(',')}]`;
 
     // Call the RPC function 'match_face'
-    // Menggunakan threshold 0.96 (Sangat Ketat). Nilai kesamaan kosinus > 96%.
-    // Ini mencegah orang dengan bentuk wajah mirip bisa masuk menggunakan akun orang lain.
+    // Menaikkan threshold ke 0.93 agar lebih ketat (tidak mudah salah deteksi jika wajah tertutup)
+    // Sebelumnya 0.85 terlalu kendor.
     const { data, error } = await supabaseAdmin.rpc('match_face', {
       query_embedding: vectorString,
-      match_threshold: 0.96,
+      match_threshold: 0.93,
       match_count: 1
     });
 

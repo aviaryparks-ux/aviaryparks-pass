@@ -1,0 +1,779 @@
+{
+  "nodes": [
+    {
+      "id": "readme_md_aviary_park_pass",
+      "label": "Aviary Park Pass",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_md_touchless_entry",
+      "label": "Touchless Entry",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_md_resnet_34",
+      "label": "ResNet-34",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_md_pgvector",
+      "label": "pgvector",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_md_high_security",
+      "label": "High Security",
+      "file_type": "rationale",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_presentation_html_pitch_deck",
+      "label": "Investor Pitch Deck",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_presentation_html_facial_recognition",
+      "label": "Facial Recognition",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_presentation_html_resnet_34",
+      "label": "ResNet-34 AI Model",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_presentation_html_pgvector",
+      "label": "pgvector (AI Vector Database)",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_presentation_html_biometric_privacy",
+      "label": "Biometric Privacy Security",
+      "file_type": "rationale",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_aviary_hero_bg_nature_aviary_park",
+      "label": "Nature Aviary Park Welcome Sign",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_aviary_hero_bg_visitors",
+      "label": "Family Visitors",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_aviary_hero_bg_parrots",
+      "label": "Flying Parrots",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_aviary_hero_bg_image",
+      "label": "Aviary Park Hero Background",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_aviary_pattern_image",
+      "label": "Aviary Pattern Image",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_pattern.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_aviary_pattern_jungle_theme",
+      "label": "Tropical Jungle Leaf Pattern",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_pattern.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_file_icon",
+      "label": "File Icon",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\file.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_globe_globe",
+      "label": "Globe Icon",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\globe.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_hero_new_jpg_hero_image",
+      "label": "Aviary Park Hero Image",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_hero_new_jpg_aviary_park",
+      "label": "Aviary Park",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_hero_new_jpg_petualangan_alam_dan_edukasi",
+      "label": "Petualangan Alam dan Edukasi",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_hero_new_jpg_educational_tour",
+      "label": "Educational Tour",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_hornbill_card_bg_image",
+      "label": "Hornbill Card Background Image",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hornbill-card-bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_hornbill_card_bg_hornbill",
+      "label": "Hornbill",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hornbill-card-bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_logo_image",
+      "label": "Aviary Park Pass Logo",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\logo.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_member_card_bg",
+      "label": "Member Card Background",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\member_card_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_next_logo",
+      "label": "Next.js Logo",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\next.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_payment_bg_image",
+      "label": "Payment Background Image",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_payment_bg_hornbill",
+      "label": "Hornbill",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_payment_bg_negative_space",
+      "label": "Central Negative Space for UI Overlay",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_payment_bg2_image",
+      "label": "Payment Background Image",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg2.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_payment_bg2_hornbill",
+      "label": "Hornbill Bird",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg2.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_payment_bg2_tropical_theme",
+      "label": "Tropical Forest Theme",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg2.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_rangkong_image",
+      "label": "Rangkong Image",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\rangkong.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_rangkong_hornbill",
+      "label": "Hornbill",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\rangkong.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_rangkong_tropical_foliage",
+      "label": "Tropical Foliage",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\rangkong.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_register_bg_illustration",
+      "label": "Tropical Aviary Park Entrance Illustration",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\register_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_register_bg_aviary_park_brand",
+      "label": "Aviary Park Signage",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\register_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_register_bg_macaw_element",
+      "label": "Macaw Parrot Visual Element",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\register_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_vercel_logo",
+      "label": "Vercel Logo",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\vercel.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_visit_card_bg",
+      "label": "Visit Card Background",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\visit_card_bg.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_window_window_icon",
+      "label": "Window Icon",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\window.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "src_app_icon_image",
+      "label": "Aviary Park Indonesia Logo",
+      "file_type": "image",
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\src\\app\\icon.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "readme_md_aviary_park_pass",
+      "target": "readme_md_touchless_entry",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_md_touchless_entry",
+      "target": "readme_md_resnet_34",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_md_touchless_entry",
+      "target": "readme_md_pgvector",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_md_high_security",
+      "target": "readme_md_touchless_entry",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_presentation_html_pitch_deck",
+      "target": "public_presentation_html_facial_recognition",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_presentation_html_facial_recognition",
+      "target": "public_presentation_html_resnet_34",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_presentation_html_biometric_privacy",
+      "target": "public_presentation_html_facial_recognition",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_md_resnet_34",
+      "target": "public_presentation_html_resnet_34",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_md_touchless_entry",
+      "target": "public_presentation_html_facial_recognition",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_md_pgvector",
+      "target": "public_presentation_html_pgvector",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_aviary_hero_bg_image",
+      "target": "public_aviary_hero_bg_nature_aviary_park",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_aviary_hero_bg_image",
+      "target": "public_aviary_hero_bg_visitors",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_aviary_hero_bg_image",
+      "target": "public_aviary_hero_bg_parrots",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_aviary_pattern_image",
+      "target": "public_aviary_pattern_jungle_theme",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_pattern.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_hero_new_jpg_hero_image",
+      "target": "public_hero_new_jpg_aviary_park",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_hero_new_jpg_hero_image",
+      "target": "public_hero_new_jpg_petualangan_alam_dan_edukasi",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_hero_new_jpg_hero_image",
+      "target": "public_hero_new_jpg_educational_tour",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_hero_new_jpg_educational_tour",
+      "target": "public_hero_new_jpg_petualangan_alam_dan_edukasi",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_hornbill_card_bg_image",
+      "target": "public_hornbill_card_bg_hornbill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hornbill-card-bg.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_payment_bg_image",
+      "target": "public_payment_bg_hornbill",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_payment_bg_image",
+      "target": "public_payment_bg_negative_space",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_payment_bg2_image",
+      "target": "public_payment_bg2_hornbill",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg2.jpg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_payment_bg2_image",
+      "target": "public_payment_bg2_tropical_theme",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg2.jpg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_rangkong_image",
+      "target": "public_rangkong_hornbill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\rangkong.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_rangkong_image",
+      "target": "public_rangkong_tropical_foliage",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\rangkong.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_register_bg_illustration",
+      "target": "public_register_bg_aviary_park_brand",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\register_bg.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_register_bg_illustration",
+      "target": "public_register_bg_macaw_element",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\register_bg.png",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "public_aviary_hero_bg_composition",
+      "label": "Aviary Park Image Composition",
+      "nodes": [
+        "public_aviary_hero_bg_nature_aviary_park",
+        "public_aviary_hero_bg_visitors",
+        "public_aviary_hero_bg_parrots"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png"
+    },
+    {
+      "id": "public_hero_new_jpg_educational_experience",
+      "label": "Nature Education Experience",
+      "nodes": [
+        "public_hero_new_jpg_aviary_park",
+        "public_hero_new_jpg_petualangan_alam_dan_edukasi",
+        "public_hero_new_jpg_educational_tour"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "C:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg"
+    }
+  ],
+  "input_tokens": 1500,
+  "output_tokens": 1000
+}

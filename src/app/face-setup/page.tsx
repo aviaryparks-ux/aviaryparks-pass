@@ -80,10 +80,13 @@ export default function FaceSetup() {
           if (hasPending) {
             // Coba periksa ke Duitku secara langsung sebagai fallback jika webhook lambat/gagal
             try {
+              const urlParams = new URLSearchParams(window.location.search);
+              const urlResultCode = urlParams.get('resultCode') || '';
+              
               const res = await fetch('/api/payment/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ groupId: storedGroupId })
+                body: JSON.stringify({ groupId: storedGroupId, resultCode: urlResultCode })
               });
               const result = await res.json();
               if (result.success && result.status === 'ACTIVE') {

@@ -38,25 +38,24 @@ export async function POST(request: Request) {
     if (resultCode === '00') {
       console.log(`Payment Success for order: ${merchantOrderId}`);
 
-      const { data: existingTx } = await supabaseAdmin
-        .from('transactions')
-        .select('status')
-        .eq('merchant_order_id', merchantOrderId)
-        .single();
-
-      if (existingTx?.status === 'SUCCESS') {
-        console.log(`Order ${merchantOrderId} already processed, skipping.`);
-        return NextResponse.json({ success: true }, { status: 200 });
-      }
-
-      const { error: updateError } = await supabaseAdmin
+      // ── ATOMIC UPDATE: Cegah Race Condition ──
+      // Coba perbarui dari PENDING menjadi SUCCESS. Jika sudah bukan PENDING (atau tidak ada), ini akan me-return array kosong.
+      const { data: updateData, error: updateError } = await supabaseAdmin
         .from('transactions')
         .update({ status: 'SUCCESS' })
-        .eq('merchant_order_id', merchantOrderId);
+        .eq('merchant_order_id', merchantOrderId)
+        .eq('status', 'PENDING')
+        .select();
 
       if (updateError) {
         console.error('Failed to update transaction status:', updateError);
         return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+      }
+
+      // Jika updateData kosong, berarti pesanan sudah di-update oleh proses callback lain (Double callback).
+      if (!updateData || updateData.length === 0) {
+        console.log(`Order ${merchantOrderId} already processed or not found in PENDING state, skipping.`);
+        return NextResponse.json({ success: true }, { status: 200 });
       }
 
       const actualGroupId = merchantOrderId.split('-').slice(0, 5).join('-');

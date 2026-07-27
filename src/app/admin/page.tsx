@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 import FinancialReports from './_components/FinancialReports';
+import AICopilot from './_components/AICopilot';
 
 const PROVINCE_MAP: Record<string, string> = {
   '11': 'Aceh', '12': 'Sumut', '13': 'Sumbar', '14': 'Riau', '15': 'Jambi', '16': 'Sumsel', '17': 'Bengkulu', '18': 'Lampung', '19': 'Babel', '21': 'Kep. Riau',
@@ -87,6 +88,7 @@ export default function AdminDashboard() {
     }
 
     const vCounts: Record<string, number> = {};
+    const uniqueVisitsPerDate: Record<string, Set<string>> = {};
     const userVisitsCount: Record<string, { count: number; name: string }> = {};
     const arrivalsMap: Record<string, { date: string; group_id: string; group_name: string; paxCount: number; members: Set<string> }> = {};
 
@@ -94,7 +96,11 @@ export default function AdminDashboard() {
       const timeStr = v.visited_at.endsWith('Z') || v.visited_at.includes('+') ? v.visited_at : v.visited_at + 'Z';
       const d = new Date(timeStr);
       const date = `${d.getDate()}/${d.getMonth() + 1}`;
-      vCounts[date] = (vCounts[date] || 0) + 1;
+      
+      // Menghitung jumlah visitor UNIK per hari (bukan total berapa kali scan wajah)
+      if (!uniqueVisitsPerDate[date]) uniqueVisitsPerDate[date] = new Set();
+      if (v.member_id) uniqueVisitsPerDate[date].add(v.member_id);
+      vCounts[date] = uniqueVisitsPerDate[date].size;
 
       if (v.member_id) {
         const member = users.find(u => u.id === v.member_id);
@@ -167,6 +173,9 @@ export default function AdminDashboard() {
   const [auditLogsPage, setAuditLogsPage] = useState(1);
   const [auditFilterAction, setAuditFilterAction] = useState('ALL');
 
+  // Error Logs State
+  const [errorLogs, setErrorLogs] = useState<any[]>([]);
+
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
@@ -178,7 +187,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // System Users State
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'FINANCIAL' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'LIVE_SCAN' | 'AUDIT_LOGS' | 'POS_TERMINALS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'FINANCIAL' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'LIVE_SCAN' | 'AUDIT_LOGS' | 'ERROR_LOGS' | 'POS_TERMINALS'>('DASHBOARD');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   
   // Events State
@@ -450,6 +460,8 @@ export default function AdminDashboard() {
       fetchSchedules();
     } else if (activeTab === 'AUDIT_LOGS') {
       fetchAuditLogs();
+    } else if (activeTab === 'ERROR_LOGS') {
+      fetchErrorLogs();
     } else if (activeTab === 'POS_TERMINALS') {
       fetchPosTerminals();
     } else if (activeTab === 'TRANSACTIONS' || activeTab === 'FINANCIAL') {
@@ -469,6 +481,18 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error('Failed to fetch audit logs', err);
+    }
+  };
+
+  const fetchErrorLogs = async () => {
+    try {
+      const res = await fetch('/api/admin/error-logs');
+      const json = await res.json();
+      if (json.success && json.data) {
+        setErrorLogs(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch error logs', err);
     }
   };
 
@@ -1096,9 +1120,9 @@ export default function AdminDashboard() {
 
       {/* SIDEBAR */}
       <aside style={{ 
-        position: 'relative', zIndex: 1, width: '280px', overflow: 'hidden',
+        position: 'relative', zIndex: 1, width: isSidebarOpen ? '280px' : '0px', overflow: 'hidden',
         backgroundColor: '#022c22', display: 'flex', flexDirection: 'column',
-        boxShadow: '4px 0 24px rgba(0,0,0,0.05)'
+        boxShadow: '4px 0 24px rgba(0,0,0,0.05)', transition: 'width 0.3s ease'
       }}>
         {/* Plant Motif Pattern Overlay */}
         <div style={{
@@ -1107,7 +1131,7 @@ export default function AdminDashboard() {
           opacity: 0.1, pointerEvents: 'none', zIndex: 0
         }}></div>
         
-        <div style={{ position: 'relative', zIndex: 1, width: '280px', padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ position: 'relative', zIndex: 1, width: '280px', padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%', opacity: isSidebarOpen ? 1 : 0, transition: 'opacity 0.3s ease' }}>
           
           {/* Hanging Logo Tab */}
           <div style={{ 
@@ -1149,21 +1173,25 @@ export default function AdminDashboard() {
               Database Member
             </div>
             <div onClick={() => setActiveTab('LIVE_SCAN')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LIVE_SCAN' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LIVE_SCAN' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LIVE_SCAN' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LIVE_SCAN' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="10" x="7" y="7" rx="1"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
               Live Scan & Log Masuk
             </div>
 
             <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>OPERASIONAL HARIAN</p>
             <div onClick={() => setActiveTab('AUDIT_LOGS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'AUDIT_LOGS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'AUDIT_LOGS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'AUDIT_LOGS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'AUDIT_LOGS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
               Log Aktivitas
             </div>
+            <div onClick={() => setActiveTab('ERROR_LOGS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'ERROR_LOGS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'ERROR_LOGS' ? '#ffffff' : '#ef4444', borderRadius: '0.5rem', fontWeight: activeTab === 'ERROR_LOGS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'ERROR_LOGS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Log Error System
+            </div>
             <div onClick={() => setActiveTab('SCHEDULES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SCHEDULES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SCHEDULES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SCHEDULES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SCHEDULES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               Jadwal Aktivitas
             </div>
             <div onClick={() => setActiveTab('EVENTS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'EVENTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'EVENTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'EVENTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'EVENTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
               Event & Pengumuman
             </div>
 
@@ -1195,12 +1223,18 @@ export default function AdminDashboard() {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#f8fafc', position: 'relative' }}>
         
-        {/* TOP NAVBAR */}
-        <header style={{ height: 'auto', minHeight: '70px', backgroundColor: 'transparent', borderBottom: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem 2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        {/* TOPBAR */}
+        <header style={{ 
+          backgroundColor: 'white', padding: '1rem 2rem', 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+          zIndex: 10
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
@@ -1277,7 +1311,7 @@ export default function AdminDashboard() {
               gap: '0.5rem'
             }}>
               <span style={{ fontSize: '1.25rem' }}>
-                {dashboardStats.todayHoliday ? '🎉' : (dashboardStats.isWeekend ? '📅' : '☀️')}
+                {dashboardStats.todayHoliday ? '' : (dashboardStats.isWeekend ? '' : '')}
               </span>
               <span style={{
                 fontWeight: '600',
@@ -1285,10 +1319,10 @@ export default function AdminDashboard() {
                 color: dashboardStats.todayHoliday ? '#92400e' : (dashboardStats.isWeekend ? '#1e40af' : '#065f46')
               }}>
                 {dashboardStats.todayHoliday
-                  ? `🎊 ${dashboardStats.todayHoliday.name} - Potensi Kunjungan Tinggi!`
+                  ? `${dashboardStats.todayHoliday.name} - Potensi Kunjungan Tinggi!`
                   : (dashboardStats.isWeekend
-                    ? '🗓️ Akhir Pekat - Perkiraan Pengunjung Meningkat'
-                    : '📆 Hari Biasa - Operasional Normal')}
+                    ? 'Akhir Pekan - Perkiraan Pengunjung Meningkat'
+                    : 'Hari Biasa - Operasional Normal')}
               </span>
             </div>
           </div>
@@ -1298,12 +1332,12 @@ export default function AdminDashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
               {dashboardStats.expiredMembers > 0 && (
                 <div style={{ padding: '0.75rem 1.25rem', borderRadius: '0.75rem', backgroundColor: '#fee2e2', border: '1px solid #fca5a5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: '600', color: '#b91c1c', fontSize: '0.875rem' }}>⚠️ Terdapat {dashboardStats.expiredMembers} membership yang telah expired.</span>
+                  <span style={{ fontWeight: '600', color: '#b91c1c', fontSize: '0.875rem' }}>Terdapat {dashboardStats.expiredMembers} membership yang telah expired.</span>
                 </div>
               )}
               {dashboardStats.soonExpiring > 0 && (
                 <div style={{ padding: '0.75rem 1.25rem', borderRadius: '0.75rem', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: '600', color: '#b45309', fontSize: '0.875rem' }}>⏳ {dashboardStats.soonExpiring} membership akan segera expire dalam 30 hari ke depan.</span>
+                  <span style={{ fontWeight: '600', color: '#b45309', fontSize: '0.875rem' }}>{dashboardStats.soonExpiring} membership akan segera expire dalam 30 hari ke depan.</span>
                 </div>
               )}
             </div>
@@ -1353,7 +1387,6 @@ export default function AdminDashboard() {
                     Rp {dashboardStats.revenueToday.toLocaleString('id-ID')}
                   </p>
                   <p style={{ fontSize: '0.7rem', color: dashboardStats.revenueGrowth >= 0 ? '#059669' : '#ef4444', margin: '0.5rem 0 0 0', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {dashboardStats.revenueGrowth >= 0 ? '📈' : '📉'}
                     {dashboardStats.revenueGrowth >= 0 ? '+' : ''}{dashboardStats.revenueGrowth.toFixed(1)}% vs kemarin
                   </p>
                 </div>
@@ -1392,7 +1425,7 @@ export default function AdminDashboard() {
                   <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0, fontWeight: '600' }}>Paket Terlaris</p>
                 </div>
                 <span style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '700' }}>
-                  🏆 Top Package
+                  Top Package
                 </span>
               </div>
 
@@ -1682,7 +1715,7 @@ export default function AdminDashboard() {
                             })()}
                           </td>
                           <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0f172a' }}>
-                            {rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length}x
+                            {new Set(rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).map(v => new Date(v.visited_at).toLocaleDateString('id-ID'))).size}x
                           </td>
                           <td style={{ padding: '1rem', color: '#059669', fontWeight: '600', fontSize: '0.85rem' }}>
                             Rp {(memberTotals[u.id] || 0).toLocaleString('id-ID')}
@@ -2395,7 +2428,7 @@ export default function AdminDashboard() {
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>🟢 Live Scan Monitor</h2>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Live Scan Monitor</h2>
                 <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Pantau pergerakan pengunjung di pintu gerbang secara real-time</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -2574,7 +2607,15 @@ export default function AdminDashboard() {
               <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
                 <h3 style={{ fontSize: '1.1rem', color: '#334155', borderBottom: '3px solid #8b5cf6', display: 'inline-block', marginBottom: '1rem', paddingBottom: '0.25rem' }}>Riwayat Kunjungan Gerbang</h3>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '400px', overflowY: 'auto' }}>
-                  {rawVisits.filter(v => v.member_id === selectedMemberDetail.id || (selectedMemberDetail.role === 'PRIMARY' && v.member_id === selectedMemberDetail.group_id)).map((v, idx) => (
+                  {Object.values(rawVisits.filter(v => v.member_id === selectedMemberDetail.id || (selectedMemberDetail.role === 'PRIMARY' && v.member_id === selectedMemberDetail.group_id))
+                    .reduce((acc, curr) => {
+                      const dateStr = new Date(curr.visited_at).toLocaleDateString('id-ID');
+                      // Simpan hanya kunjungan pertama di hari itu
+                      if (!acc[dateStr] || new Date(curr.visited_at) < new Date(acc[dateStr].visited_at)) {
+                        acc[dateStr] = curr;
+                      }
+                      return acc;
+                    }, {} as Record<string, any>)).map((v: any, idx: number) => (
                     <li key={idx} style={{ padding: '0.75rem', backgroundColor: 'white', marginBottom: '0.5rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                       <span style={{ fontWeight: '500', color: '#1e293b' }}>{new Date(v.visited_at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
                       <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{new Date(v.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -2662,6 +2703,76 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {activeTab === 'ERROR_LOGS' && (() => {
+          const logsPerPage = 15;
+          // Reuse auditLogsPage state for pagination or create a separate one. For simplicity, we just show top 100 without pagination for now.
+          return (
+            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Error Logs</h2>
+                  <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Pantau system crash, bug, dan error yang terjadi pada user</p>
+                </div>
+                <button onClick={fetchErrorLogs} style={{ padding: '0.5rem 1rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                  Refresh Logs
+                </button>
+              </div>
+
+              <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
+                        <th style={{ padding: '1rem 1.5rem', width: '15%' }}>Waktu Kejadian</th>
+                        <th style={{ padding: '1rem 1.5rem', width: '40%' }}>Pesan Error</th>
+                        <th style={{ padding: '1rem 1.5rem', width: '20%' }}>Lokasi (URL)</th>
+                        <th style={{ padding: '1rem 1.5rem', width: '25%' }}>Info Pengguna</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {errorLogs.length === 0 ? (
+                        <tr><td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada catatan error. Sistem berjalan dengan baik!</td></tr>
+                      ) : errorLogs.map((log, idx) => (
+                        <tr key={log.id || idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s', backgroundColor: idx % 2 === 0 ? 'white' : '#fcfcfc' }}>
+                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', color: '#475569', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: '600' }}>{new Date(log.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}</div>
+                            <div style={{ fontSize: '0.75rem' }}>{new Date(log.created_at).toLocaleTimeString('id-ID')} WIB</div>
+                          </td>
+                          <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: '600', color: '#ef4444', marginBottom: '0.5rem' }}>{log.error_message}</div>
+                            {log.error_stack && (
+                              <details>
+                                <summary style={{ fontSize: '0.8rem', color: '#64748b', cursor: 'pointer' }}>Lihat Stack Trace</summary>
+                                <pre style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', fontSize: '0.75rem', color: '#334155', overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: '200px', overflowY: 'auto' }}>
+                                  {log.error_stack}
+                                </pre>
+                              </details>
+                            )}
+                          </td>
+                          <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top', fontSize: '0.85rem', color: '#3b82f6', wordBreak: 'break-all' }}>
+                            {log.url}
+                          </td>
+                          <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top', fontSize: '0.85rem', color: '#334155' }}>
+                            {log.user_info ? (
+                              <div>
+                                <span style={{ fontWeight: 'bold' }}>Tipe:</span> {log.user_info.type}<br/>
+                                {log.user_info.username && <><span style={{ fontWeight: 'bold' }}>Username:</span> {log.user_info.username}<br/></>}
+                                {log.user_info.id && <><span style={{ fontWeight: 'bold' }}>ID:</span> <span style={{ fontSize: '0.75rem' }}>{log.user_info.id}</span></>}
+                              </div>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Anonim / Tidak login</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {activeTab === 'AUDIT_LOGS' && (() => {
           // Filter logic
           const filteredLogs = auditLogs.filter(log => {
@@ -2677,7 +2788,7 @@ export default function AdminDashboard() {
             <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
-                  <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>🛡️ Audit Logs</h2>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Audit Logs</h2>
                   <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Rekam jejak aktivitas pegawai dan administrator sistem</p>
                 </div>
               </div>
@@ -2763,6 +2874,27 @@ export default function AdminDashboard() {
           );
         })()}
       </div>
+
+      <AICopilot 
+        dashboardContext={{
+          totalMembers: users.length,
+          totalRevenuePOS: totalRevenue,
+          totalRevenueTicket: transactions.filter(t => t.status === 'SUCCESS' || t.status === 'PAID').reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
+          totalRevenueAll: totalRevenue + transactions.filter(t => t.status === 'SUCCESS' || t.status === 'PAID').reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
+          totalUniqueVisitors: new Set(rawVisits.map(v => v.member_id).filter(Boolean)).size,
+          totalVisitDays: new Set(rawVisits.map(v => new Date(v.visited_at).toLocaleDateString('id-ID'))).size,
+          activeMembers: users.filter(u => u.status === 'ACTIVE').length,
+          pendingMembers: users.filter(u => u.status === 'PENDING_PAYMENT').length,
+          recentTransactions: transactions.slice(0, 10).map(t => ({ amount: t.amount, package: t.package_name, date: t.created_at, status: t.status, buyer: t.buyer_name })),
+          recentPosTransactions: posTransactions.slice(0, 10).map(t => ({ location: t.location, amount: t.amount, date: t.created_at })),
+          memberNames: users.slice(0, 20).map(u => ({ name: u.name, status: u.status, visits: rawVisits.filter(v => v.member_id === u.id).length, points: u.points_balance || 0 }))
+        }}
+        onExportCsvRequest={(action) => {
+          if (action.includes('CSV')) {
+            handleExportCSV();
+          }
+        }}
+      />
       </main>
     </div>
   );

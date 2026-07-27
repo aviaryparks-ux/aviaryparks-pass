@@ -49,13 +49,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const members = await request.json();
+    const visitor = await getVisitorFromRequest(request);
+    if (!visitor) return unauthorizedResponse();
+
+    let members = await request.json();
 
     if (!Array.isArray(members) || members.length === 0) {
       return NextResponse.json({ success: false, error: 'Invalid members data' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin.from('members').insert(members).select();
+    // ── SECURITY: Mencegah injeksi dengan memaksa group_id dan status ──
+    const sanitizedMembers = members.map((m: any) => ({
+      ...m,
+      group_id: visitor.groupId, // Wajib sesuai dengan visitor yang login
+      status: 'PENDING_PAYMENT', // Paksa menjadi pending payment
+      role: m.role === 'PRIMARY' ? 'SAUDARA' : (m.role || 'ANAK') // Cegah penambahan PRIMARY baru
+    }));
+
+    const { data, error } = await supabaseAdmin.from('members').insert(sanitizedMembers).select();
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });

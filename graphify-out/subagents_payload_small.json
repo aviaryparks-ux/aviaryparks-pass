@@ -1,0 +1,92 @@
+[
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 1\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\README.md\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\presentation.html\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_01.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 2\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_hero_bg.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_02.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 3\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\aviary_pattern.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_03.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 4\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\file.svg\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_04.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 5\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\globe.svg\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_05.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 6\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hero-new.jpg\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_06.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 7\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\hornbill-card-bg.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_07.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 8\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\logo.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_08.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 9\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\member_card_bg.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_09.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 10\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\next.svg\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_10.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 11\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_11.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 12\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\payment_bg2.jpg\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_12.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 13\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\rangkong.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_13.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 14\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\register_bg.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_14.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 15\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\vercel.svg\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_15.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 16\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\visit_card_bg.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_16.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 17\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\public\\window.svg\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_17.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    },
+    {
+        "Prompt":  "You are a graphify extraction subagent.\nRead the prompt template at C:\\Users\\Agung\\.gemini\\config\\skills\\graphify\\references\\extraction-spec.md.\nFollow all instructions in that file exactly, substituting these values:\nCHUNK_NUM: 18\nTOTAL_CHUNKS: 18\nDEEP_MODE: (off)\nFILE_LIST:\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\src\\app\\icon.png\n\nCHUNK_PATH (where you must save the JSON):\nC:\\Users\\Agung\\Documents\\FILE GENENERAL STAFF MANAGER\\project app\\aviary-park-pass\\graphify-out\\.graphify_chunk_18.json\n\nExecute the extraction and save the JSON file. Use Write tool. Do not add any preamble or markdown outside the JSON inside the file.",
+        "TypeName":  "self",
+        "Role":  "Semantic Extractor"
+    }
+]

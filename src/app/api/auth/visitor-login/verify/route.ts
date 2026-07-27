@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       name: 'visitor_token',
       value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https'),
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 3, // 3 hari

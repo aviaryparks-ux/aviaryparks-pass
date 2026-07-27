@@ -4,7 +4,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: Request) {
   try {
-    const { groupId } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const { groupId, resultCode } = body;
 
     if (!groupId) {
       return NextResponse.json({ error: 'Missing groupId' }, { status: 400 });
@@ -21,10 +22,11 @@ export async function POST(request: Request) {
     }
 
     if (pendingMembers && pendingMembers.length > 0) {
+
       // SIMULASI WEBHOOK UNTUK LOCALHOST
       // Gunakan env var khusus ENABLE_PAYMENT_SIMULATION=true di .env.local
-      // JANGAN set ini di production/staging!
-      if (process.env.ENABLE_PAYMENT_SIMULATION === 'true') {
+      // ATAU izinkan jika resultCode = '00' dari parameter URL Duitku (khusus untuk mode development)
+      if (process.env.ENABLE_PAYMENT_SIMULATION === 'true' || (process.env.NODE_ENV === 'development' && resultCode === '00')) {
         await supabaseAdmin
           .from('members')
           .update({ 

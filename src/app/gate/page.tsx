@@ -7,6 +7,7 @@ import Link from 'next/link';
 
 export default function GateScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [statusMsg, setStatusMsg] = useState('Memuat model & data pengunjung...');
   const [gateStatus, setGateStatus] = useState<'idle' | 'success' | 'denied' | 'loading'>('loading');
   const [identifiedUser, setIdentifiedUser] = useState<any>(null);
@@ -131,11 +132,28 @@ export default function GateScanner() {
       isScanningRef.current = true;
 
       try {
-        const detection = await faceapi.detectSingleFace(videoRef.current)
+        // Gunakan minConfidence 0.8 agar wajah yang tertutup tangan/tidak jelas diabaikan
+        const detection = await faceapi.detectSingleFace(
+          videoRef.current,
+          new faceapi.SsdMobilenetv1Options({ minConfidence: 0.8 })
+        )
           .withFaceLandmarks()
           .withFaceDescriptor();
 
         if (detection) {
+          // Draw Face Landmarks overlay to make it look like a high-tech scanner
+          if (canvasRef.current && videoRef.current) {
+            const displaySize = { width: videoRef.current.offsetWidth, height: videoRef.current.offsetHeight };
+            faceapi.matchDimensions(canvasRef.current, displaySize);
+            const resizedDetections = faceapi.resizeResults(detection, displaySize);
+            
+            const ctx = canvasRef.current.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+              faceapi.draw.drawFaceLandmarks(canvasRef.current, resizedDetections);
+            }
+          }
+
           const descriptorArray = Array.from(detection.descriptor);
           
           const res = await fetch('/api/gate/match', {
@@ -153,6 +171,11 @@ export default function GateScanner() {
             }
           }
         } else {
+          // Clear canvas if no face detected
+          if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          }
           // Opsional: kembali ke mode idle jika beberapa detik tidak ada wajah
         }
       } catch (err) {
@@ -558,6 +581,18 @@ export default function GateScanner() {
               position: 'absolute', 
               top: 0, left: 0,
               transform: 'scaleX(-1)' // Mirror effect to prevent confusion
+            }}
+          />
+          <canvas 
+            ref={canvasRef}
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              position: 'absolute', 
+              top: 0, left: 0,
+              transform: 'scaleX(-1)',
+              zIndex: 1,
+              pointerEvents: 'none'
             }}
           />
           

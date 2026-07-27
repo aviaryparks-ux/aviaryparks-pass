@@ -138,10 +138,13 @@ export default function Dashboard() {
 
         setFamilyMembers(familyData);
 
-        // 4. Ambil riwayat kunjungan seluruh grup
-        const memberIds = familyData.map((m) => m.id).join(',');
-        if (memberIds) {
-          const visitsRes = await fetch(`/api/visitor/visits?member_ids=${memberIds}`);
+        // 4. Ambil riwayat kunjungan seluruh grup (termasuk dirinya sendiri)
+        const allMemberIds = [memberId, ...familyData.map((m) => m.id)];
+        // Hilangkan duplikat dan gabungkan dengan koma
+        const uniqueMemberIds = Array.from(new Set(allMemberIds)).filter(Boolean).join(',');
+        
+        if (uniqueMemberIds) {
+          const visitsRes = await fetch(`/api/visitor/visits?member_ids=${uniqueMemberIds}`);
           const visitsJson = await visitsRes.json();
           if (visitsJson.data) setVisits(visitsJson.data);
         }

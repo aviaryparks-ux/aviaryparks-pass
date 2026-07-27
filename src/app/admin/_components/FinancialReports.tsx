@@ -165,7 +165,7 @@ export default function FinancialReports({
       {/* Header & Filter */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>💰 Laporan Keuangan (Enterprise)</h2>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Laporan Keuangan (Enterprise)</h2>
           <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Pantau Gross, Net, Pajak, dan Rekonsiliasi Kasir</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
@@ -204,9 +204,9 @@ export default function FinancialReports({
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e2e8f0', marginBottom: '2rem', overflowX: 'auto' }}>
         <button onClick={() => setActiveTab('RINGKASAN')} style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'RINGKASAN' ? '3px solid #10b981' : '3px solid transparent', color: activeTab === 'RINGKASAN' ? '#10b981' : '#64748b', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}>Ringkasan Total</button>
-        <button onClick={() => setActiveTab('ONLINE')} style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'ONLINE' ? '3px solid #3b82f6' : '3px solid transparent', color: activeTab === 'ONLINE' ? '#3b82f6' : '#64748b', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}>🌐 Online (Payment Gateway)</button>
-        <button onClick={() => setActiveTab('POS')} style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'POS' ? '3px solid #f59e0b' : '3px solid transparent', color: activeTab === 'POS' ? '#f59e0b' : '#64748b', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}>🏪 Kasir Fisik (POS)</button>
-        <button onClick={() => setActiveTab('POIN')} style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'POIN' ? '3px solid #8b5cf6' : '3px solid transparent', color: activeTab === 'POIN' ? '#8b5cf6' : '#64748b', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}>🎁 Transaksi Poin</button>
+        <button onClick={() => setActiveTab('ONLINE')} style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'ONLINE' ? '3px solid #3b82f6' : '3px solid transparent', color: activeTab === 'ONLINE' ? '#3b82f6' : '#64748b', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}>Online (Payment Gateway)</button>
+        <button onClick={() => setActiveTab('POS')} style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'POS' ? '3px solid #f59e0b' : '3px solid transparent', color: activeTab === 'POS' ? '#f59e0b' : '#64748b', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}>Kasir Fisik (POS)</button>
+        <button onClick={() => setActiveTab('POIN')} style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'POIN' ? '3px solid #8b5cf6' : '3px solid transparent', color: activeTab === 'POIN' ? '#8b5cf6' : '#64748b', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}>Transaksi Poin</button>
       </div>
 
       {/* TAB CONTENT: RINGKASAN */}
@@ -237,7 +237,7 @@ export default function FinancialReports({
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>📈 Tren Penjualan</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>Tren Penjualan</h3>
               <div style={{ height: '300px', width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -253,7 +253,7 @@ export default function FinancialReports({
               </div>
             </div>
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>📊 Komposisi Revenue</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>Komposisi Revenue</h3>
               <div style={{ height: '300px', width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
