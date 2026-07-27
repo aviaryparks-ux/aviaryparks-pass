@@ -52,7 +52,7 @@ async function fetchAllData() {
   const [membersRes, transactionsRes, visitsRes, posRes, pointsRes] = await Promise.all([
     supabaseAdmin.from('members').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('transactions').select('*').order('created_at', { ascending: false }),
-    supabaseAdmin.from('raw_visits').select('*').order('visited_at', { ascending: false }),
+    supabaseAdmin.from('visits').select('*').order('visited_at', { ascending: false }),
     supabaseAdmin.from('pos_transactions').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('point_mutations').select('*').order('created_at', { ascending: false }),
   ]);
