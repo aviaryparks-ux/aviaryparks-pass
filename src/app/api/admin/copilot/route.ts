@@ -1,352 +1,212 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createOpenAI } from '@ai-sdk/openai';
+import { streamText, tool } from 'ai';
+import { z } from 'zod';
+import { supabaseAdmin } from '@/lib/supabaseServer';
+import { parseNIK } from '@/lib/nikParser';
+
+// Allow streaming responses up to 60 seconds
+export const maxDuration = 60;
+
+const groq = createOpenAI({
+  baseURL: 'https://api.groq.com/openai/v1',
+  apiKey: process.env.GROQ_API_KEY || '',
+});
 
 // Helper: Format Rupiah
 function formatRp(n: number) {
   return 'Rp ' + n.toLocaleString('id-ID');
 }
 
-// Helper: Group data by month
-function groupByMonth(items: any[], dateField: string, amountField?: string) {
-  const groups: Record<string, { count: number; total: number }> = {};
-  items.forEach(item => {
-    const d = new Date(item[dateField]);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (!groups[key]) groups[key] = { count: 0, total: 0 };
-    groups[key].count++;
-    if (amountField) groups[key].total += Number(item[amountField]) || 0;
-  });
-  return groups;
-}
+export async function POST(req: Request) {
+  try {
+    const { messages } = await req.json();
 
-// Helper: Get today's data
-function filterToday(items: any[], dateField: string) {
-  const today = new Date().toLocaleDateString('id-ID');
-  return items.filter(item => new Date(item[dateField]).toLocaleDateString('id-ID') === today);
-}
+    if (!process.env.GROQ_API_KEY) {
+      return new Response(JSON.stringify({ 
+        error: "⚠️ API Key belum diatur. Masukkan `GROQ_API_KEY` ke dalam file `.env.local`."
+      }), { status: 400 });
+    }
 
-// Helper: Get this week's data
-function filterThisWeek(items: any[], dateField: string) {
-  const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  return items.filter(item => new Date(item[dateField]) >= weekAgo);
-}
+    const result = await streamText({
+      model: groq('llama-3.3-70b-versatile'),
+      messages,
+      system: `Anda adalah Aviary Assistant, AI Data Analyst dan Eksekutor khusus Aviary Park Indonesia.
+Anda HANYA boleh menjawab pertanyaan terkait Aviary Park, tiket, pendapatan, pengunjung, dan operasional.
+Anda memiliki akses ke berbagai tools (alat) untuk mengambil data langsung dari database secara real-time, menampilkan grafik, dan bahkan melakukan modifikasi data (approve member, tambah poin, dll).
 
-// Helper: Get this month's data
-function filterThisMonth(items: any[], dateField: string) {
-  const now = new Date();
-  return items.filter(item => {
-    const d = new Date(item[dateField]);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-}
+ATURAN PENTING:
+- Panggil tool/fungsi jika pertanyaan pengguna membutuhkan data yang belum Anda ketahui.
+- Saat menjawab, JANGAN bertele-tele. Jawab dengan format yang rapi dan profesional.
+- Jika pengguna meminta visualisasi data atau grafik tren (contoh: "Tampilkan grafik pendapatan bulan ini"), panggil tool \`renderChart\` untuk menampilkan grafik di antarmuka.
+- Jika data member butuh umur atau daerah asal, sistem telah mengekstraknya menggunakan nikParser dari database, gunakan data tersebut dengan bijak.
+- JANGAN PERNAH menampilkan/memberitahukan NIK lengkap ke pengguna, cukup sebutkan kota/tanggal lahirnya saja.
+- Jadilah asisten yang proaktif. Jika pengguna bertanya tentang penurunan pendapatan, coba sarankan promo atau taktik pemasaran.`,
+      tools: {
+        getMemberAnalytics: tool({
+          description: 'Ambil statistik dan daftar member, termasuk data umur, jenis kelamin, dan kota asal (berdasarkan NIK) serta pengunjung setia.',
+          parameters: z.object({
+            limit: z.number().describe('Batas jumlah member yang diambil (default 50)'),
+            status: z.enum(['ACTIVE', 'PENDING_PAYMENT', 'ALL']).optional().describe('Filter berdasarkan status member')
+          }),
+          execute: async ({ limit = 50, status = 'ALL' }) => {
+            let query = supabaseAdmin.from('members').select('*');
+            if (status !== 'ALL') query = query.eq('status', status);
+            
+            const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
+            if (error) return { error: error.message };
 
-// Generate CSV content from data
-function generateCSV(headers: string[], rows: string[][]): string {
-  const csvRows = [headers.join(';')];
-  rows.forEach(row => csvRows.push(row.join(';')));
-  return '\uFEFF' + csvRows.join('\n');
-}
+            // Augment with NIK parsed data
+            const augmentedMembers = data?.map(m => {
+              const nikData = m.nik ? parseNIK(m.nik) : null;
+              return {
+                id: m.id,
+                name: m.name,
+                status: m.status,
+                points_balance: m.points_balance,
+                age: nikData?.age,
+                gender: nikData?.gender,
+                province: nikData?.province,
+                birthdayThisMonth: nikData?.birthdayThisMonth
+              };
+            });
 
-async function fetchAllData() {
-  const [membersRes, transactionsRes, visitsRes, posRes, pointsRes] = await Promise.all([
-    supabaseAdmin.from('members').select('*').order('created_at', { ascending: false }),
-    supabaseAdmin.from('transactions').select('*').order('created_at', { ascending: false }),
-    supabaseAdmin.from('visits').select('*').order('visited_at', { ascending: false }),
-    supabaseAdmin.from('pos_transactions').select('*').order('created_at', { ascending: false }),
-    supabaseAdmin.from('point_mutations').select('*').order('created_at', { ascending: false }),
-  ]);
+            return {
+              totalFetched: data?.length || 0,
+              members: augmentedMembers
+            };
+          },
+        }),
+        getFinancialAnalytics: tool({
+          description: 'Ambil data laporan keuangan, tren penjualan tiket, dan transaksi kasir (POS). Berguna untuk membuat grafik pendapatan.',
+          parameters: z.object({
+            type: z.enum(['TICKET', 'POS', 'ALL']).describe('Jenis transaksi (Tiket masuk atau POS Kasir)'),
+            timeframe: z.enum(['TODAY', 'THIS_MONTH', 'ALL_TIME']).describe('Rentang waktu data')
+          }),
+          execute: async ({ type, timeframe }) => {
+            const now = new Date();
+            let startDate = new Date(0); // ALL_TIME
+            
+            if (timeframe === 'TODAY') {
+              startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            } else if (timeframe === 'THIS_MONTH') {
+              startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            }
 
-  return {
-    members: membersRes.data || [],
-    transactions: transactionsRes.data || [],
-    visits: visitsRes.data || [],
-    pos: posRes.data || [],
-    points: pointsRes.data || [],
-  };
-}
+            let ticketRevenue = 0;
+            let posRevenue = 0;
+            let ticketData = [];
+            let posData = [];
 
-function buildDataSummary(data: any) {
-  const { members, transactions, visits, pos, points } = data;
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            if (type === 'TICKET' || type === 'ALL') {
+              const { data } = await supabaseAdmin.from('transactions')
+                .select('amount, created_at, status')
+                .gte('created_at', startDate.toISOString())
+                .in('status', ['PAID', 'SUCCESS']);
+              ticketData = data || [];
+              ticketRevenue = ticketData.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            }
 
-  // Members
-  const activeMembers = members.filter((m: any) => m.status === 'ACTIVE');
-  const pendingMembers = members.filter((m: any) => m.status === 'PENDING_PAYMENT');
+            if (type === 'POS' || type === 'ALL') {
+              const { data } = await supabaseAdmin.from('pos_transactions')
+                .select('amount, created_at, location')
+                .gte('created_at', startDate.toISOString());
+              posData = data || [];
+              posRevenue = posData.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            }
 
-  // Transactions (tiket)
-  const paidTransactions = transactions.filter((t: any) => t.status === 'SUCCESS' || t.status === 'PAID');
-  const totalTicketRevenue = paidTransactions.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0);
-  const ticketByMonth = groupByMonth(paidTransactions, 'created_at', 'amount');
-  const todayTicket = filterToday(paidTransactions, 'created_at');
-  const weekTicket = filterThisWeek(paidTransactions, 'created_at');
-  const monthTicket = filterThisMonth(paidTransactions, 'created_at');
+            return {
+              timeframe,
+              totalTicketRevenue: formatRp(ticketRevenue),
+              totalPosRevenue: formatRp(posRevenue),
+              totalTransactionsCount: ticketData.length + posData.length
+            };
+          },
+        }),
+        approvePendingMember: tool({
+          description: 'Setujui (Approve) member yang berstatus PENDING_PAYMENT menjadi ACTIVE. Ini adalah fungsi aksi (WRITE).',
+          parameters: z.object({
+            memberName: z.string().describe('Nama member yang akan di-approve')
+          }),
+          execute: async ({ memberName }) => {
+            const { data: members } = await supabaseAdmin.from('members')
+              .select('id, name, status')
+              .ilike('name', `%${memberName}%`)
+              .eq('status', 'PENDING_PAYMENT')
+              .limit(1);
 
-  // POS
-  const totalPosRevenue = pos.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0);
-  const posByMonth = groupByMonth(pos, 'created_at', 'amount');
-  const todayPos = filterToday(pos, 'created_at');
-  const weekPos = filterThisWeek(pos, 'created_at');
-  const monthPos = filterThisMonth(pos, 'created_at');
+            if (!members || members.length === 0) {
+              return { success: false, message: `Member dengan nama mirip "${memberName}" berstatus PENDING_PAYMENT tidak ditemukan.` };
+            }
 
-  // POS by location
-  const posByLocation: Record<string, number> = {};
-  pos.forEach((t: any) => {
-    const loc = t.location || 'Unknown';
-    posByLocation[loc] = (posByLocation[loc] || 0) + (Number(t.amount) || 0);
-  });
+            const target = members[0];
+            const { error } = await supabaseAdmin.from('members')
+              .update({ status: 'ACTIVE' })
+              .eq('id', target.id);
 
-  // POS by terminal name (nama kasir/mesin)
-  const posByTerminal: Record<string, { count: number; total: number }> = {};
-  pos.forEach((t: any) => {
-    const terminal = t.terminal_name || t.location || 'Unknown';
-    if (!posByTerminal[terminal]) posByTerminal[terminal] = { count: 0, total: 0 };
-    posByTerminal[terminal].count++;
-    posByTerminal[terminal].total += Number(t.amount) || 0;
-  });
+            if (error) return { success: false, message: `Gagal menyetujui member: ${error.message}` };
+            return { success: true, message: `Berhasil mengubah status ${target.name} menjadi ACTIVE.` };
+          }
+        }),
+        addMemberPoints: tool({
+          description: 'Berikan/tambahkan saldo poin loyalitas ke seorang member secara manual. Ini adalah fungsi aksi (WRITE).',
+          parameters: z.object({
+            memberName: z.string().describe('Nama member yang akan diberi poin'),
+            points: z.number().describe('Jumlah poin yang akan ditambahkan')
+          }),
+          execute: async ({ memberName, points }) => {
+            const { data: members } = await supabaseAdmin.from('members')
+              .select('id, name, points_balance')
+              .ilike('name', `%${memberName}%`)
+              .limit(1);
 
-  // 10 transaksi POS terakhir dengan nama member
-  const recentPosDetails = pos.slice(0, 10).map((t: any) => {
-    const member = members.find((m: any) => m.id === t.member_id);
-    return `${member?.name || 'Unknown'} belanja ${formatRp(Number(t.amount))} di ${t.terminal_name || t.location || '-'} (${new Date(t.created_at).toLocaleDateString('id-ID')})`;
-  });
+            if (!members || members.length === 0) {
+              return { success: false, message: `Member "${memberName}" tidak ditemukan.` };
+            }
 
-  // Visits - unique per day
-  const uniqueVisitsPerDay: Record<string, Set<string>> = {};
-  visits.forEach((v: any) => {
-    const day = new Date(v.visited_at).toLocaleDateString('id-ID');
-    if (!uniqueVisitsPerDay[day]) uniqueVisitsPerDay[day] = new Set();
-    if (v.member_id) uniqueVisitsPerDay[day].add(v.member_id);
-  });
-  const todayVisitors = uniqueVisitsPerDay[now.toLocaleDateString('id-ID')]?.size || 0;
-  const totalUniqueVisitors = new Set(visits.map((v: any) => v.member_id).filter(Boolean)).size;
+            const target = members[0];
+            const newBalance = (target.points_balance || 0) + points;
+            
+            // Insert mutation log
+            await supabaseAdmin.from('point_mutations').insert({
+              member_id: target.id,
+              mutation_type: 'EARN',
+              points: points,
+              description: 'Bonus Poin Manual via AI Copilot'
+            });
 
-  // Visit frequency per member
-  const visitCount: Record<string, number> = {};
-  visits.forEach((v: any) => {
-    if (v.member_id) visitCount[v.member_id] = (visitCount[v.member_id] || 0) + 1;
-  });
-  const topVisitors = Object.entries(visitCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([id, count]) => {
-      const m = members.find((m: any) => m.id === id);
-      return `${m?.name || 'Unknown'}: ${count}x`;
+            const { error } = await supabaseAdmin.from('members')
+              .update({ points_balance: newBalance })
+              .eq('id', target.id);
+
+            if (error) return { success: false, message: `Gagal menambah poin: ${error.message}` };
+            return { success: true, message: `Berhasil menambah ${points} poin ke ${target.name}. Saldo sekarang: ${newBalance}.` };
+          }
+        }),
+        renderChart: tool({
+          description: 'Render sebuah grafik (Bar Chart atau Line Chart) langsung di layar pengguna (Frontend). Jangan panggil tool ini jika Anda belum mengambil datanya terlebih dahulu.',
+          parameters: z.object({
+            type: z.enum(['bar', 'line']).describe('Jenis grafik'),
+            title: z.string().describe('Judul grafik'),
+            data: z.array(z.object({
+              label: z.string().describe('Label pada sumbu X (misal: "Senin", "Januari", "Tiket", "Resto")'),
+              value: z.number().describe('Nilai numerik pada sumbu Y')
+            })).describe('Array data yang akan ditampilkan')
+          }),
+          execute: async (args) => {
+            // Function ini sebenarnya hanya mengembalikan argumennya. 
+            // Frontend Vercel AI SDK (ui/react) akan membaca tool invocation ini dan merender UI khusus (ToolInvocation / UI component).
+            return {
+              success: true,
+              chartData: args
+            };
+          }
+        })
+      },
     });
 
-  // Member list with details
-  const memberList = members.slice(0, 30).map((m: any) => {
-    const vc = visitCount[m.id] || 0;
-    return `${m.name} (${m.status}, ${vc}x kunjungan, ${m.points_balance || 0} poin)`;
-  });
-
-  // Monthly breakdown string
-  const monthlyBreakdown = Object.entries(ticketByMonth)
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .slice(0, 6)
-    .map(([month, d]) => `${month}: ${d.count} transaksi, ${formatRp(d.total)}`);
-
-  const posMonthlyBreakdown = Object.entries(posByMonth)
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .slice(0, 6)
-    .map(([month, d]) => `${month}: ${d.count} transaksi, ${formatRp(d.total)}`);
-
-  return `=== DATA LENGKAP DATABASE AVIARY PARK (Real-time) ===
-
-📊 RINGKASAN MEMBER:
-- Total member terdaftar: ${members.length}
-- Member aktif (lunas): ${activeMembers.length}
-- Member pending pembayaran: ${pendingMembers.length}
-
-💰 PENDAPATAN TIKET:
-- Hari ini: ${todayTicket.length} transaksi, ${formatRp(todayTicket.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0))}
-- Minggu ini: ${weekTicket.length} transaksi, ${formatRp(weekTicket.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0))}
-- Bulan ini: ${monthTicket.length} transaksi, ${formatRp(monthTicket.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0))}
-- TOTAL SEPANJANG MASA: ${paidTransactions.length} transaksi, ${formatRp(totalTicketRevenue)}
-- Rincian per bulan: ${monthlyBreakdown.join(' | ')}
-
-🛒 PENDAPATAN POS (Kasir Resto/Souvenir):
-- Hari ini: ${todayPos.length} transaksi, ${formatRp(todayPos.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0))}
-- Minggu ini: ${weekPos.length} transaksi, ${formatRp(weekPos.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0))}
-- Bulan ini: ${monthPos.length} transaksi, ${formatRp(monthPos.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0))}
-- TOTAL SEPANJANG MASA: ${pos.length} transaksi, ${formatRp(totalPosRevenue)}
-- Rincian per bulan: ${posMonthlyBreakdown.join(' | ')}
-- Per lokasi kasir: ${Object.entries(posByLocation).map(([loc, amt]) => `${loc}: ${formatRp(amt)}`).join(', ')}
-- Per terminal/mesin kasir: ${Object.entries(posByTerminal).map(([t, d]) => `${t}: ${d.count} transaksi, ${formatRp(d.total)}`).join(' | ')}
-- 10 Transaksi POS terakhir (detail): ${recentPosDetails.join(' | ')}
-
-💵 TOTAL PENDAPATAN GABUNGAN: ${formatRp(totalTicketRevenue + totalPosRevenue)}
-
-👥 KUNJUNGAN:
-- Pengunjung hari ini: ${todayVisitors} orang
-- Total pengunjung unik sepanjang masa: ${totalUniqueVisitors} orang
-- Total scan wajah tercatat: ${visits.length}x
-- Top 5 pengunjung tersering: ${topVisitors.join(', ')}
-
-👤 DAFTAR MEMBER (30 pertama):
-${memberList.join('\n')}
-
-🏆 POIN LOYALITAS:
-- Total mutasi poin tercatat: ${points.length}
-- 5 Transaksi tiket terakhir: ${paidTransactions.slice(0, 5).map((t: any) => `${t.buyer_name || '-'} - ${formatRp(Number(t.amount))} (${t.package_name || '-'}, ${new Date(t.created_at).toLocaleDateString('id-ID')})`).join(' | ')}`;
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    const { prompt, context } = await req.json();
-
-    if (!prompt) {
-      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
-    }
-
-    const groqKey = process.env.GROQ_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
-
-    if (!groqKey && !geminiKey) {
-      return NextResponse.json({ 
-        reply: "⚠️ API Key belum diatur. Masukkan `GROQ_API_KEY` ke dalam file `.env.local`.\n\nDapatkan gratis di: https://console.groq.com/keys"
-      });
-    }
-
-    // === QUERY DATABASE LANGSUNG ===
-    const dbData = await fetchAllData();
-    const dataSummary = buildDataSummary(dbData);
-
-    // Cek apakah user minta export CSV
-    const isExportRequest = /csv|excel|unduh|download|export|laporan.*excel|buat.*file/i.test(prompt);
-    let csvAttachment = '';
-
-    if (isExportRequest) {
-      // Generate CSV dari data database
-      const isPos = /pos|kasir|resto|souvenir/i.test(prompt);
-      const isVisit = /kunjungan|visit|pengunjung/i.test(prompt);
-      const isMember = /member|anggota|daftar/i.test(prompt);
-
-      if (isPos) {
-        const headers = ['Tanggal', 'Lokasi', 'Member ID', 'Jumlah'];
-        const rows = dbData.pos.map((t: any) => [
-          new Date(t.created_at).toLocaleDateString('id-ID'),
-          t.location || '-',
-          t.member_id || '-',
-          String(t.amount)
-        ]);
-        csvAttachment = generateCSV(headers, rows);
-      } else if (isVisit) {
-        const headers = ['Tanggal', 'Waktu', 'Member ID', 'Similarity'];
-        const rows = dbData.visits.map((v: any) => [
-          new Date(v.visited_at).toLocaleDateString('id-ID'),
-          new Date(v.visited_at).toLocaleTimeString('id-ID'),
-          v.member_id || '-',
-          String(v.similarity || '-')
-        ]);
-        csvAttachment = generateCSV(headers, rows);
-      } else if (isMember) {
-        const headers = ['Nama', 'Email', 'Phone', 'NIK', 'Status', 'Poin', 'Tanggal Daftar'];
-        const rows = dbData.members.map((m: any) => [
-          m.name || '-',
-          m.email || '-',
-          m.phone || '-',
-          m.nik || '-',
-          m.status || '-',
-          String(m.points_balance || 0),
-          new Date(m.created_at).toLocaleDateString('id-ID')
-        ]);
-        csvAttachment = generateCSV(headers, rows);
-      } else {
-        // Default: transaksi tiket
-        const headers = ['Tanggal', 'Pembeli', 'Paket', 'Jumlah', 'Status', 'Order ID'];
-        const rows = dbData.transactions.map((t: any) => [
-          new Date(t.created_at).toLocaleDateString('id-ID'),
-          t.buyer_name || '-',
-          t.package_name || '-',
-          String(t.amount),
-          t.status || '-',
-          t.merchant_order_id || '-'
-        ]);
-        csvAttachment = generateCSV(headers, rows);
-      }
-    }
-
-    // Susun System Prompt
-    const systemInstruction = `Anda adalah Aviary Assistant, AI Data Analyst khusus Aviary Park Indonesia.
-Anda memiliki AKSES LANGSUNG ke seluruh database. Jawab berdasarkan data berikut:
-
-${dataSummary}
-
-ATURAN:
-- Jawab SINGKAT, PADAT, TO THE POINT. Maksimal 3-4 kalimat.
-- Langsung berikan angka/data tanpa basa-basi.
-- Gunakan bullet point untuk banyak data.
-- JANGAN bilang "sayangnya" atau "maaf" atau "saya tidak punya akses".
-- Jika diminta laporan per bulan, gunakan data "Rincian per bulan" di atas.
-- Jika diminta export/unduh CSV/Excel, jawab singkat bahwa file sedang diunduh.`;
-
-    // === GROQ API ===
-    if (groqKey) {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.5,
-          max_tokens: 500,
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Groq API Error:", errorData);
-        return NextResponse.json({ 
-          reply: `Gagal terhubung ke Groq API.\nDetail: ${errorData.error?.message || JSON.stringify(errorData)}`
-        });
-      }
-
-      const data = await response.json();
-      let replyText = data.choices?.[0]?.message?.content || "Tidak bisa memproses jawaban.";
-
-      return NextResponse.json({ 
-        reply: replyText,
-        ...(csvAttachment ? { csvData: csvAttachment } : {})
-      });
-    }
-
-    // === GEMINI FALLBACK ===
-    if (geminiKey) {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\nPertanyaan: ${prompt}` }] }]
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        return NextResponse.json({ 
-          reply: `Gagal terhubung ke Gemini API.\nDetail: ${errorData.error?.message || JSON.stringify(errorData)}`
-        });
-      }
-
-      const data = await response.json();
-      let replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Tidak bisa memproses jawaban.";
-
-      return NextResponse.json({ 
-        reply: replyText,
-        ...(csvAttachment ? { csvData: csvAttachment } : {})
-      });
-    }
-
-    return NextResponse.json({ reply: "Tidak ada API Key yang tersedia." });
+    return result.toDataStreamResponse();
   } catch (error) {
-    console.error("Copilot API Error:", error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Copilot AI SDK Error:", error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
   }
 }
