@@ -1,20 +1,21 @@
-import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { parseNIK } from '@/lib/nikParser';
+import { createOpenAI } from '@ai-sdk/openai';
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
 
+// Buat instance OpenAI khusus untuk endpoint Groq
 const groq = createOpenAI({
-  baseURL: 'https://api.groq.com/openai/v1',
-  apiKey: process.env.GROQ_API_KEY || '',
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1'
 });
 
 // Helper: Format Rupiah
 function formatRp(n: number) {
-  return 'Rp ' + n.toLocaleString('id-ID');
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
 }
 
 export async function POST(req: Request) {
@@ -28,16 +29,13 @@ export async function POST(req: Request) {
     }
 
     const result = await streamText({
-      model: groq('llama-3.3-70b-versatile'),
+      model: groq('llama-3.1-8b-instant'),
       messages,
-      system: `Anda adalah Aviary Assistant, AI Data Analyst dan Eksekutor khusus Aviary Park Indonesia.
-Anda HANYA boleh menjawab pertanyaan terkait Aviary Park, tiket, pendapatan, pengunjung, dan operasional.
-Anda memiliki akses ke berbagai tools (alat) untuk mengambil data langsung dari database secara real-time, menampilkan grafik, dan bahkan melakukan modifikasi data (approve member, tambah poin, dll).
-
-ATURAN PENTING:
-- Panggil tool/fungsi jika pertanyaan pengguna membutuhkan data yang belum Anda ketahui.
-- Saat menjawab, JANGAN bertele-tele. Jawab dengan format yang rapi dan profesional.
-- Jika pengguna meminta visualisasi data atau grafik tren (contoh: "Tampilkan grafik pendapatan bulan ini"), panggil tool \`renderChart\` untuk menampilkan grafik di antarmuka.
+      system: `Anda adalah Aviary Assistant, AI Data Analyst dan Eksekutor khusus Aviary Park.
+Anda memiliki akses ke berbagai tool. Gunakan tool tersebut JIKA DIBUTUHKAN.
+- Untuk menampilkan grafik pendapatan, panggil getFinancialAnalytics TERLEBIH DAHULU untuk mendapatkan angkanya, lalu panggil renderChart untuk menampilkannya.
+- Jika pengguna meminta mengubah status atau menambah poin, panggil fungsi approvePendingMember atau addMemberPoints secara mandiri.
+- PENTING: Saat memanggil tool/fungsi, JANGAN PERNAH mengarang nama parameter. HANYA gunakan parameter yang didefinisikan dalam skema (contoh: transactionCategory, timeframe, chartType, title, data). JANGAN menambahkan parameter 'tahun', 'bulan', 'kategori' dan semacamnya.
 - Jika data member butuh umur atau daerah asal, sistem telah mengekstraknya menggunakan nikParser dari database, gunakan data tersebut dengan bijak.
 - JANGAN PERNAH menampilkan/memberitahukan NIK lengkap ke pengguna, cukup sebutkan kota/tanggal lahirnya saja.
 - Jadilah asisten yang proaktif. Jika pengguna bertanya tentang penurunan pendapatan, coba sarankan promo atau taktik pemasaran.`,
@@ -45,10 +43,12 @@ ATURAN PENTING:
         getMemberAnalytics: tool({
           description: 'Ambil statistik dan daftar member, termasuk data umur, jenis kelamin, dan kota asal (berdasarkan NIK) serta pengunjung setia.',
           parameters: z.object({
-            limit: z.number().optional().describe('Batas jumlah member yang diambil (default 50)'),
-            status: z.enum(['ACTIVE', 'PENDING_PAYMENT', 'ALL']).optional().describe('Filter berdasarkan status member')
+            limit: z.number().describe('Batas jumlah member (contoh: 50)').optional(),
+            status: z.string().describe('Status member (contoh: "ALL")').optional()
           }),
-          execute: async ({ limit = 50, status = 'ALL' }) => {
+          execute: async (args) => {
+            const limit = args.limit || 50;
+            const status = args.status || 'ALL';
             let query = supabaseAdmin.from('members').select('*');
             if (status !== 'ALL') query = query.eq('status', status);
             
@@ -79,10 +79,13 @@ ATURAN PENTING:
         getFinancialAnalytics: tool({
           description: 'Ambil data laporan keuangan, tren penjualan tiket, dan transaksi kasir (POS). Berguna untuk membuat grafik pendapatan.',
           parameters: z.object({
-            type: z.enum(['TICKET', 'POS', 'ALL']).optional().describe('Jenis transaksi (Tiket masuk atau POS Kasir)'),
-            timeframe: z.enum(['TODAY', 'THIS_MONTH', 'ALL_TIME']).optional().describe('Rentang waktu data')
+            transactionCategory: z.string().describe('Kategori (TICKET/POS/ALL)').optional(),
+            timeframe: z.string().describe('Rentang waktu (TODAY/THIS_MONTH/ALL_TIME)').optional()
           }),
-          execute: async ({ type = 'ALL', timeframe = 'ALL_TIME' }) => {
+          execute: async (args) => {
+            console.log('GROQ ARGS:', args);
+            const transactionCategory = args.transactionCategory || 'ALL';
+            const timeframe = args.timeframe || 'ALL_TIME';
             const now = new Date();
             let startDate = new Date(0); // ALL_TIME
             
@@ -97,7 +100,7 @@ ATURAN PENTING:
             let ticketData = [];
             let posData = [];
 
-            if (type === 'TICKET' || type === 'ALL') {
+            if (transactionCategory === 'TICKET' || transactionCategory === 'ALL') {
               const { data } = await supabaseAdmin.from('transactions')
                 .select('amount, created_at, status')
                 .gte('created_at', startDate.toISOString())
@@ -106,7 +109,7 @@ ATURAN PENTING:
               ticketRevenue = ticketData.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
             }
 
-            if (type === 'POS' || type === 'ALL') {
+            if (transactionCategory === 'POS' || transactionCategory === 'ALL') {
               const { data } = await supabaseAdmin.from('pos_transactions')
                 .select('amount, created_at, location')
                 .gte('created_at', startDate.toISOString());
@@ -127,7 +130,8 @@ ATURAN PENTING:
           parameters: z.object({
             memberName: z.string().describe('Nama member yang akan di-approve')
           }),
-          execute: async ({ memberName }) => {
+          execute: async (args) => {
+            const memberName = args.memberName;
             const { data: members } = await supabaseAdmin.from('members')
               .select('id, name, status')
               .ilike('name', `%${memberName}%`)
@@ -150,10 +154,12 @@ ATURAN PENTING:
         addMemberPoints: tool({
           description: 'Berikan/tambahkan saldo poin loyalitas ke seorang member secara manual. Ini adalah fungsi aksi (WRITE).',
           parameters: z.object({
-            memberName: z.string().describe('Nama member yang akan diberi poin'),
-            points: z.number().describe('Jumlah poin yang akan ditambahkan')
+            memberName: z.string().describe('Nama member'),
+            points: z.number().describe('Jumlah poin')
           }),
-          execute: async ({ memberName, points }) => {
+          execute: async (args) => {
+            const memberName = args.memberName;
+            const points = args.points;
             const { data: members } = await supabaseAdmin.from('members')
               .select('id, name, points_balance')
               .ilike('name', `%${memberName}%`)
@@ -185,12 +191,12 @@ ATURAN PENTING:
         renderChart: tool({
           description: 'Render sebuah grafik (Bar Chart atau Line Chart) langsung di layar pengguna (Frontend). Jangan panggil tool ini jika Anda belum mengambil datanya terlebih dahulu.',
           parameters: z.object({
-            type: z.enum(['bar', 'line', 'pie']).describe('Tipe grafik yang ingin digambar (bar, line, atau pie)'),
+            chartType: z.string().describe('Tipe grafik (bar/line/pie)'),
             title: z.string().describe('Judul grafik'),
             data: z.array(z.object({
-              label: z.string().describe('Label pada sumbu X atau kategori'),
-              value: z.number().describe('Nilai numerik')
-            })).describe('Array data yang akan ditampilkan')
+              label: z.string(),
+              value: z.number()
+            }))
           })
         })
       },

@@ -7,8 +7,7 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('system_users')
-      // Jangan expose password ke frontend
-      .select('id, username, role, created_at')
+      .select('id, username, role, created_at, wahana_id, wahanas(name)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -29,10 +28,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validasi role yang diizinkan
-    const allowedRoles = ['ADMIN', 'GATE', 'CASHIER'];
+    const allowedRoles = ['ADMIN', 'GATE', 'WAHANA', 'CASHIER'];
     if (!allowedRoles.includes(user.role)) {
       return NextResponse.json({ success: false, error: 'Role tidak valid' }, { status: 400 });
     }
+
+    // Role WAHANA disimpan sebagai GATE di level database jika database dibatasi constraint, tapi tetap diarahkan ke /gate-wahana
+    const dbRole = user.role === 'WAHANA' ? 'GATE' : user.role;
 
     // Hash password sebelum disimpan
     const hashedPassword = await bcrypt.hash(user.password, 12);
@@ -40,8 +42,9 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseAdmin.from('system_users').insert([{
       username: user.username,
       password: hashedPassword,
-      role: user.role,
-    }]).select('id, username, role, created_at');
+      role: dbRole,
+      wahana_id: (user.wahana_id && user.wahana_id !== '') ? user.wahana_id : null,
+    }]).select('id, username, role, created_at, wahana_id');
 
     if (error) throw error;
 

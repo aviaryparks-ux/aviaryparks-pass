@@ -93,10 +93,21 @@ export async function POST(request: NextRequest) {
     // Default routing based on role if no specific callbackUrl was provided (or if it's just '/')
     let finalRedirect = targetUrl && targetUrl !== '/' ? targetUrl : null;
     if (!finalRedirect) {
-      if (data.role === 'ADMIN') finalRedirect = '/admin';
-      else if (data.role === 'GATE') finalRedirect = '/gate';
-      else if (data.role === 'CASHIER') finalRedirect = '/pos';
-      else finalRedirect = '/';
+      if (data.role === 'ADMIN') {
+        finalRedirect = '/admin';
+      } else if (data.role === 'GATE') {
+        // Jika ada wahana_id terikat -> Scanner Wahana Lapangan (/gate-wahana)
+        // Jika TIDAK ada wahana_id -> Pintu Gerbang Utama Face Recognition (/gate)
+        if (data.wahana_id) {
+          finalRedirect = '/gate-wahana';
+        } else {
+          finalRedirect = '/gate';
+        }
+      } else if (data.role === 'CASHIER') {
+        finalRedirect = '/pos';
+      } else {
+        finalRedirect = '/';
+      }
     }
 
     // Create the response and set the HTTPOnly cookie
@@ -116,6 +127,20 @@ export async function POST(request: NextRequest) {
       path: '/',
       maxAge: 60 * 60 * 24 // 24 hours
     });
+
+    // Catat log login ke audit_logs
+    try {
+      await supabase.from('audit_logs').insert({
+        actor_id: data.id,
+        actor_name: data.username,
+        action_type: 'LOGIN',
+        entity_type: 'AUTH',
+        entity_id: data.id,
+        details: { role: data.role, redirect: finalRedirect }
+      });
+    } catch (logErr) {
+      console.warn('Failed to insert audit log for login:', logErr);
+    }
 
     return response;
 

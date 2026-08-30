@@ -52,7 +52,7 @@ function SystemLoginForm() {
       localStorage.setItem('system_username', data.username);
       localStorage.setItem('system_role', data.role);
 
-      router.push(data.redirect || '/');
+      window.location.href = data.redirect || callbackUrl || '/gate-wahana';
     } catch (err) {
       console.error(err);
       setError('Terjadi kesalahan sistem.');

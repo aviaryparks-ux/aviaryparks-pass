@@ -84,7 +84,11 @@ export default function AnnualPassTab({
                       </div>
                       <div>
                         <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
-                        <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>{user.nik || '-'}</p>
+                        <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>
+                          {user.nik && user.nik.length === 16 
+                            ? `${user.nik.substring(0, 6)}******${user.nik.substring(12)}` 
+                            : user.nik || '-'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -127,10 +131,10 @@ export default function AnnualPassTab({
                         <li>Syarat & ketentuan dapat berubah sewaktu-waktu.</li>
                       </ul>
                       
-                      {/* Real Barcode API */}
+                      {/* Real Barcode API (Secure: Uses member ID) */}
                       <div style={{ marginTop: 'auto', background: 'white', padding: '1cqi', borderRadius: '1cqi', display: 'flex', justifyContent: 'center' }}>
                         <img 
-                          src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${user.nik || user.id?.substring(0, 8) || '250625-0001'}&scale=2&height=10&includetext`} 
+                          src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${user.id || user.nik || '250625-0001'}&scale=2&height=10&includetext`} 
                           alt="Barcode" 
                           style={{ width: '100%', height: '7cqi', objectFit: 'contain' }}
                         />

@@ -15,7 +15,7 @@ import TransactionsTab from './_components/TransactionsTab';
 import EventsTab from './_components/EventsTab';
 import SchedulesTab from './_components/SchedulesTab';
 import ProfileTab from './_components/ProfileTab';
-import LoyaltyTab from './_components/LoyaltyTab';
+import VoucherWahanaTab from './_components/VoucherWahanaTab';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 
 export default function Dashboard() {
@@ -200,13 +200,13 @@ export default function Dashboard() {
       case 'family':
         return <AnggotaKeluargaTab familyMembers={familyMembers} visits={visits} />;
       case 'transactions':
-        return <TransactionsTab familyMembers={familyMembers} />;
+        return <TransactionsTab familyMembers={familyMembers} user={user} />;
       case 'events':
         return <EventsTab />;
       case 'schedules':
         return <SchedulesTab />;
-      case 'loyalty':
-        return <LoyaltyTab user={user} />;
+      case 'voucher':
+        return <VoucherWahanaTab user={user} />;
       case 'profile':
         return <ProfileTab user={user} />;
       default:
@@ -224,7 +224,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div style={{ position: 'relative', display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', color: '#334155' }}>
+    <div style={{ position: 'relative', display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', color: '#334155', overflowX: 'hidden', width: '100%', maxWidth: '100vw' }}>
       
       {/* Very faint background pattern for premium feel without being busy */}
       <div style={{
@@ -247,7 +247,7 @@ export default function Dashboard() {
       />
 
       {/* MAIN CONTENT */}
-      <main className="dash-main" style={{ position: 'relative', zIndex: 1, flex: 1, padding: '2rem 3rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <main className="dash-main" style={{ position: 'relative', zIndex: 1, flex: 1, padding: '2rem 3rem', display: 'flex', flexDirection: 'column', gap: '2rem', minWidth: 0, width: '100%', overflowX: 'hidden' }}>
         
         {/* HEADER */}
         <header className="mobile-col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>

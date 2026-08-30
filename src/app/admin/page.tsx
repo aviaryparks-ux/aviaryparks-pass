@@ -8,6 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 import FinancialReports from './_components/FinancialReports';
 import AICopilot from './_components/AICopilot';
+import ReportsTab from './_components/ReportsTab';
+import MasterWahanaTab from './_components/MasterWahanaTab';
 
 const PROVINCE_MAP: Record<string, string> = {
   '11': 'Aceh', '12': 'Sumut', '13': 'Sumbar', '14': 'Riau', '15': 'Jambi', '16': 'Sumsel', '17': 'Bengkulu', '18': 'Lampung', '19': 'Babel', '21': 'Kep. Riau',
@@ -48,16 +50,16 @@ const extractDemographics = (nik: string) => {
 };
 
 const getRFMTag = (visitsCount: number, totalSpend: number, lastVisitDate: string | null) => {
-  if (visitsCount === 0) return { label: 'Newbie', color: '#64748b', bg: '#f1f5f9' };
-  if (visitsCount >= 3 || totalSpend >= 500000) return { label: 'VIP Member', color: '#c2410c', bg: '#ffedd5', icon: '👑' };
+  if (visitsCount === 0) return { label: 'Newbie', color: '#475569', bg: '#f1f5f9' };
+  if (visitsCount >= 3 || totalSpend >= 500000) return { label: 'VIP Member', color: '#9a3412', bg: '#ffedd5' };
   
   if (lastVisitDate) {
     const daysSince = Math.floor((new Date().getTime() - new Date(lastVisitDate).getTime()) / (1000 * 3600 * 24));
-    if (daysSince > 90) return { label: 'At Risk', color: '#b91c1c', bg: '#fee2e2', icon: '⚠️' };
+    if (daysSince > 90) return { label: 'At Risk', color: '#991b1b', bg: '#fee2e2' };
   }
   
-  if (visitsCount >= 2) return { label: 'Loyal', color: '#1d4ed8', bg: '#dbeafe', icon: '💙' };
-  return { label: 'Newbie', color: '#64748b', bg: '#f1f5f9', icon: '🌱' };
+  if (visitsCount >= 2) return { label: 'Loyal', color: '#1e40af', bg: '#dbeafe' };
+  return { label: 'Newbie', color: '#475569', bg: '#f1f5f9' };
 };
 
 export default function AdminDashboard() {
@@ -182,12 +184,19 @@ export default function AdminDashboard() {
   
   // Package Management State
   const [packages, setPackages] = useState<any[]>([]);
-  const [newPkg, setNewPkg] = useState({ name: '', min_qty: 1, max_qty: 1, price: '' });
+  const [wahanas, setWahanas] = useState<any[]>([]);
+  const [newPkg, setNewPkg] = useState({ name: '', min_qty: 1, max_qty: 1, price: '', selected_wahanas: [] as {wahana_id: string, quantity: number | string}[] });
+  const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
+
+  // Bundling Wahana State (untuk Top-Up POS)
+  const [bundles, setBundles] = useState<any[]>([]);
+  const [newBundle, setNewBundle] = useState({ name: '', price: '', selected_wahanas: [] as {wahana_id: string, quantity: number | string}[] });
+  const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
 
   // System Users State
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'FINANCIAL' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'TRANSACTIONS' | 'LOYALTY_PROGRAM' | 'LIVE_SCAN' | 'AUDIT_LOGS' | 'ERROR_LOGS' | 'POS_TERMINALS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'FINANCIAL' | 'REPORTS' | 'SYSTEM_USERS' | 'TICKET_PACKAGES' | 'EVENTS' | 'SCHEDULES' | 'MEMBERS_DATABASE' | 'LOYALTY_PROGRAM' | 'AUDIT_LOGS' | 'ERROR_LOGS' | 'MASTER_WAHANA'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   
@@ -196,7 +205,7 @@ export default function AdminDashboard() {
   const [showEventForm, setShowEventForm] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: '', description: '', content: '', event_date: '', image_url: '', status: 'ACTIVE' });
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [newSysUser, setNewSysUser] = useState({ username: '', password: '', role: 'GATE' });
+  const [newSysUser, setNewSysUser] = useState({ username: '', password: '', role: 'GATE', wahana_id: '' });
 
   // Schedules State
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -205,6 +214,7 @@ export default function AdminDashboard() {
   const [posTerminals, setPosTerminals] = useState<any[]>([]);
   const [newTerminalName, setNewTerminalName] = useState('');
   const [newTerminalCategory, setNewTerminalCategory] = useState('RESTO');
+  const [newTerminalWahanaId, setNewTerminalWahanaId] = useState('');
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSchedule, setNewSchedule] = useState({ title: '', description: '', start_time: '', end_time: '', location: '', image_url: '', status: 'ACTIVE' });
   const [scheduleImageFile, setScheduleImageFile] = useState<File | null>(null);
@@ -226,15 +236,28 @@ export default function AdminDashboard() {
 
   const handleAddTerminal = async () => {
     if(!newTerminalName) return;
+    if(newTerminalCategory === 'WAHANA' && !newTerminalWahanaId) {
+      toast.error('Pilih wahana untuk terminal ini terlebih dahulu!');
+      return;
+    }
     try {
       const res = await fetch('/api/pos/terminals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTerminalName, category: newTerminalCategory })
+        body: JSON.stringify({ 
+          name: newTerminalName, 
+          category: newTerminalCategory,
+          wahana_id: newTerminalCategory === 'WAHANA' ? newTerminalWahanaId : null
+        })
       });
-      if(res.ok) {
+      const json = await res.json();
+      if(res.ok && json.success) {
         setNewTerminalName('');
+        setNewTerminalWahanaId('');
         fetchPosTerminals();
+        toast.success('Terminal berhasil ditambahkan!');
+      } else {
+        toast.error(json.error || 'Gagal menambah terminal');
       }
     } catch(e) { console.error(e); }
   };
@@ -413,21 +436,6 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Poll data when on LIVE_SCAN tab
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (activeTab === 'LIVE_SCAN') {
-      interval = setInterval(() => {
-        fetch('/api/admin/visits').then(r => r.json()).then(json => {
-          if (json.success && json.data) {
-            setRawVisits(json.data);
-          }
-        }).catch(console.error);
-      }, 2000);
-    }
-    return () => clearInterval(interval);
-  }, [activeTab]);
-
   useEffect(() => {
     fetchData();
 
@@ -444,10 +452,23 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ticket_packages' }, fetchPackages)
       .subscribe();
 
+    const trxChannel = supabase.channel('public:transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        fetchTransactions();
+        fetchLoyaltyData();
+      })
+      .subscribe();
+
+    const posChannel = supabase.channel('public:pos_transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pos_transactions' }, fetchLoyaltyData)
+      .subscribe();
+
     return () => {
       supabase.removeChannel(membersChannel);
       supabase.removeChannel(visitsChannel);
       supabase.removeChannel(pkgsChannel);
+      supabase.removeChannel(trxChannel);
+      supabase.removeChannel(posChannel);
     };
   }, []);
 
@@ -462,9 +483,7 @@ export default function AdminDashboard() {
       fetchAuditLogs();
     } else if (activeTab === 'ERROR_LOGS') {
       fetchErrorLogs();
-    } else if (activeTab === 'POS_TERMINALS') {
-      fetchPosTerminals();
-    } else if (activeTab === 'TRANSACTIONS' || activeTab === 'FINANCIAL') {
+    } else if (activeTab === 'FINANCIAL') {
       fetchTransactions();
       fetchLoyaltyData();
     } else if (activeTab === 'LOYALTY_PROGRAM' || activeTab === 'MEMBERS_DATABASE') {
@@ -690,13 +709,20 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!newSysUser.username || !newSysUser.password) return;
     
+    // Jika role WAHANA tapi wahana_id kosong, gunakan wahana pertama yang ada
+    let assignedWahanaId = newSysUser.wahana_id;
+    if (newSysUser.role === 'WAHANA' && !assignedWahanaId && wahanas.length > 0) {
+      assignedWahanaId = wahanas[0].id;
+    }
+
     const res = await fetch('/api/admin/system_users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: newSysUser.username,
         password: newSysUser.password,
-        role: newSysUser.role
+        role: newSysUser.role,
+        wahana_id: assignedWahanaId || null
       })
     });
     
@@ -705,7 +731,7 @@ export default function AdminDashboard() {
       toast.error('Gagal: ' + (data.error || 'Terjadi kesalahan'));
       return;
     } else {
-      setNewSysUser({ username: '', password: '', role: 'GATE' });
+      setNewSysUser({ username: '', password: '', role: 'GATE', wahana_id: '' });
       toast.success('User berhasil ditambahkan!');
       fetchSystemUsers();
     }
@@ -721,19 +747,35 @@ export default function AdminDashboard() {
   };
 
   async function fetchPackages() {
-    const res = await fetch('/api/public/packages'); const json = await res.json(); const data = json.data;
-    if (data) setPackages(data);
+    const res = await fetch('/api/public/packages?category=MEMBERSHIP');
+    const json = await res.json();
+    if (json.data) setPackages(json.data);
+  }
+
+  async function fetchBundles() {
+    const res = await fetch('/api/public/packages?category=TOPUP_BUNDLE');
+    const json = await res.json();
+    if (json.data) setBundles(json.data);
   }
 
   async function fetchData() {
     try {
-      const [resM, vRes] = await Promise.all([
+      const [resM, vRes, resW] = await Promise.all([
         fetch('/api/admin/members'),
         fetch('/api/admin/visits'),
-        fetchPackages()
+        fetch('/api/admin/wahanas')
       ]);
+      fetchPackages();
+      fetchBundles();
+      fetchTransactions();
+      fetchLoyaltyData();
       
       const jsonM = await resM.json(); 
+      const jsonW = await resW.json();
+      
+      if (Array.isArray(jsonW)) setWahanas(jsonW);
+      else if (jsonW.data) setWahanas(jsonW.data);
+      
       const membersData = jsonM.data;
       if (membersData) {
         const primaries = membersData.filter((m: any) => m.role === 'PRIMARY');
@@ -767,27 +809,86 @@ export default function AdminDashboard() {
     if (!newPkg.name || !newPkg.price) return;
     
     try {
-      const res = await fetch('/api/admin/packages/create', {
-        method: 'POST',
+      const endpoint = editingPkgId ? '/api/admin/packages/update' : '/api/admin/packages/create';
+      const method = editingPkgId ? 'PUT' : 'POST';
+      
+      const payload: any = {
+        name: newPkg.name,
+        min_qty: newPkg.min_qty,
+        max_qty: newPkg.max_qty,
+        price: newPkg.price,
+        selected_wahanas: newPkg.selected_wahanas
+      };
+      
+      if (editingPkgId) {
+        payload.id = editingPkgId;
+      }
+      
+      payload.category = 'MEMBERSHIP';
+      
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newPkg.name,
-          min_qty: newPkg.min_qty,
-          max_qty: newPkg.max_qty,
-          price: newPkg.price
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       
       if (!res.ok || data.error) {
-        toast.error('Gagal menambah paket: ' + (data.error || 'Unknown error'));
+        toast.error(`Gagal ${editingPkgId ? 'mengedit' : 'menambah'} paket: ` + (data.error || 'Unknown error'));
       } else {
-        setNewPkg({ name: '', min_qty: 1, max_qty: 1, price: '' });
-        toast.success('Paket berhasil ditambahkan!');
+        setNewPkg({ name: '', min_qty: 1, max_qty: 1, price: '', selected_wahanas: [] });
+        setEditingPkgId(null);
+        toast.success(`Paket berhasil ${editingPkgId ? 'diedit' : 'ditambahkan'}!`);
         fetchPackages();
       }
     } catch (err: any) {
       toast.error('Gagal menambah paket: ' + err.message);
+    }
+  };
+
+  const addBundle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBundle.name || !newBundle.price) return;
+    try {
+      const endpoint = editingBundleId ? '/api/admin/packages/update' : '/api/admin/packages/create';
+      const method = editingBundleId ? 'PUT' : 'POST';
+      const payload: any = {
+        name: newBundle.name,
+        min_qty: 1,
+        max_qty: 1,
+        price: newBundle.price,
+        selected_wahanas: newBundle.selected_wahanas,
+        category: 'TOPUP_BUNDLE'
+      };
+      if (editingBundleId) payload.id = editingBundleId;
+      const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        toast.error(`Gagal ${editingBundleId ? 'mengedit' : 'menambah'} paket: ` + (data.error || 'Unknown error'));
+      } else {
+        setNewBundle({ name: '', price: '', selected_wahanas: [] });
+        setEditingBundleId(null);
+        toast.success(`Paket Bundling berhasil ${editingBundleId ? 'diedit' : 'ditambahkan'}!`);
+        fetchBundles();
+      }
+    } catch (err: any) {
+      toast.error('Gagal menyimpan paket: ' + err.message);
+    }
+  };
+
+  const deleteBundle = async (id: string) => {
+    if (!confirm('Hapus paket bundling ini?')) return;
+    try {
+      const res = await fetch(`/api/admin/packages/delete?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        toast.error('Gagal menghapus: ' + (data.error || 'Unknown error'));
+      } else {
+        fetchBundles();
+        toast.success('Paket Bundling dihapus.');
+      }
+    } catch (err: any) {
+      toast.error('Gagal menghapus: ' + err.message);
     }
   };
 
@@ -825,11 +926,21 @@ export default function AdminDashboard() {
   const memberTotals: Record<string, number> = {};
   let totalRevenue = 0;
   
+  // 1. Akumulasi dari transaksi POS Kasir (F&B / Wahana Offline)
   posTransactions.forEach(t => {
     const amount = Number(t.amount) || 0;
     if (!memberTotals[t.member_id]) memberTotals[t.member_id] = 0;
     memberTotals[t.member_id] += amount;
     totalRevenue += amount;
+  });
+
+  // 2. Akumulasi dari transaksi Top-Up Wahana / Bundling Online Duitku yang berhasil
+  transactions.filter(t => (t.status === 'SUCCESS' || t.status === 'PAID') && (t.package_id?.startsWith('WAHANA_TOPUP') || t.package_id?.startsWith('BUNDLE_TOPUP'))).forEach(t => {
+    const amount = Number(t.amount) || 0;
+    if (t.member_id) {
+      if (!memberTotals[t.member_id]) memberTotals[t.member_id] = 0;
+      memberTotals[t.member_id] += amount;
+    }
   });
 
   const uniqueMembersCount = Object.keys(memberTotals).length;
@@ -1120,7 +1231,7 @@ export default function AdminDashboard() {
 
       {/* SIDEBAR */}
       <aside style={{ 
-        position: 'relative', zIndex: 1, width: isSidebarOpen ? '280px' : '0px', overflow: 'hidden',
+        position: 'relative', zIndex: 1, width: isSidebarOpen ? '300px' : '0px', overflow: 'hidden',
         backgroundColor: '#022c22', display: 'flex', flexDirection: 'column',
         boxShadow: '4px 0 24px rgba(0,0,0,0.05)', transition: 'width 0.3s ease'
       }}>
@@ -1131,12 +1242,12 @@ export default function AdminDashboard() {
           opacity: 0.1, pointerEvents: 'none', zIndex: 0
         }}></div>
         
-        <div style={{ position: 'relative', zIndex: 1, width: '280px', padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%', opacity: isSidebarOpen ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+        <div style={{ position: 'relative', zIndex: 1, width: '300px', padding: '1.25rem', display: 'flex', flexDirection: 'column', height: '100%', opacity: isSidebarOpen ? 1 : 0, transition: 'opacity 0.3s ease' }}>
           
           {/* Hanging Logo Tab */}
           <div style={{ 
               position: 'relative', padding: '1rem 2rem 1.5rem 2rem',
-              marginBottom: '2rem', marginTop: '-1.5rem', alignSelf: 'center', 
+              marginBottom: '2rem', marginTop: '-1.25rem', alignSelf: 'center', 
               display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10
           }}>
             <div style={{
@@ -1148,70 +1259,74 @@ export default function AdminDashboard() {
             <img src="/logo.png" alt="Aviary Park Indonesia" style={{ height: '70px', width: 'auto' }} />
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', whiteSpace: 'nowrap' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>LAPORAN & ANALITIK</p>
-            <div onClick={() => setActiveTab('DASHBOARD')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'DASHBOARD' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'DASHBOARD' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'DASHBOARD' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'DASHBOARD' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              Dashboard (Overview)
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, overflowY: 'auto', whiteSpace: 'nowrap' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '0.75rem' }}>LAPORAN & ANALITIK</p>
+            <div onClick={() => setActiveTab('DASHBOARD')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'DASHBOARD' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'DASHBOARD' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'DASHBOARD' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'DASHBOARD' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span>Dashboard</span>
             </div>
-            <div onClick={() => setActiveTab('FINANCIAL')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'FINANCIAL' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'FINANCIAL' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'FINANCIAL' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'FINANCIAL' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              Laporan Keuangan
+            <div onClick={() => setActiveTab('FINANCIAL')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'FINANCIAL' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'FINANCIAL' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'FINANCIAL' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'FINANCIAL' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span>Laporan Keuangan</span>
             </div>
-            <div onClick={() => setActiveTab('TRANSACTIONS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TRANSACTIONS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TRANSACTIONS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TRANSACTIONS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TRANSACTIONS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
-              Transaksi Penjualan
-            </div>
-
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>LOYALITAS & PENGUNJUNG</p>
-            <div onClick={() => setActiveTab('LOYALTY_PROGRAM')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LOYALTY_PROGRAM' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LOYALTY_PROGRAM' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LOYALTY_PROGRAM' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LOYALTY_PROGRAM' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              Loyalty & Rewards
-            </div>
-            <div onClick={() => setActiveTab('MEMBERS_DATABASE')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'MEMBERS_DATABASE' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'MEMBERS_DATABASE' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'MEMBERS_DATABASE' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'MEMBERS_DATABASE' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              Database Member
-            </div>
-            <div onClick={() => setActiveTab('LIVE_SCAN')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'LIVE_SCAN' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'LIVE_SCAN' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'LIVE_SCAN' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'LIVE_SCAN' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              Live Scan & Log Masuk
+            <div onClick={() => setActiveTab('REPORTS')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'REPORTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'REPORTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'REPORTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'REPORTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              <span>Laporan Anti-Fraud</span>
             </div>
 
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>OPERASIONAL HARIAN</p>
-            <div onClick={() => setActiveTab('AUDIT_LOGS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'AUDIT_LOGS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'AUDIT_LOGS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'AUDIT_LOGS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'AUDIT_LOGS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              Log Aktivitas
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '0.75rem' }}>OPERASIONAL HARIAN</p>
+            <div onClick={() => setActiveTab('SCHEDULES')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'SCHEDULES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SCHEDULES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SCHEDULES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SCHEDULES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Jadwal Aktivitas</span>
             </div>
-            <div onClick={() => setActiveTab('ERROR_LOGS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'ERROR_LOGS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'ERROR_LOGS' ? '#ffffff' : '#ef4444', borderRadius: '0.5rem', fontWeight: activeTab === 'ERROR_LOGS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'ERROR_LOGS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Log Error System
-            </div>
-            <div onClick={() => setActiveTab('SCHEDULES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SCHEDULES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SCHEDULES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SCHEDULES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SCHEDULES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              Jadwal Aktivitas
-            </div>
-            <div onClick={() => setActiveTab('EVENTS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'EVENTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'EVENTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'EVENTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'EVENTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-              Event & Pengumuman
+            <div onClick={() => setActiveTab('EVENTS')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'EVENTS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'EVENTS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'EVENTS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'EVENTS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>Event & Pengumuman</span>
             </div>
 
-            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '1rem' }}>PENGATURAN SISTEM</p>
-            <div onClick={() => setActiveTab('TICKET_PACKAGES')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'TICKET_PACKAGES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TICKET_PACKAGES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TICKET_PACKAGES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TICKET_PACKAGES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-              Paket Tiket
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '0.75rem' }}>MANAJEMEN PENGUNJUNG</p>
+            <div onClick={() => setActiveTab('MEMBERS_DATABASE')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'MEMBERS_DATABASE' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'MEMBERS_DATABASE' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'MEMBERS_DATABASE' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'MEMBERS_DATABASE' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Database Member</span>
             </div>
-            <div onClick={() => setActiveTab('SYSTEM_USERS')} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', backgroundColor: activeTab === 'SYSTEM_USERS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SYSTEM_USERS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SYSTEM_USERS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SYSTEM_USERS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
-              User Admin
+
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '0.75rem' }}>PENGATURAN SISTEM</p>
+            <div onClick={() => setActiveTab('TICKET_PACKAGES')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'TICKET_PACKAGES' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'TICKET_PACKAGES' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'TICKET_PACKAGES' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'TICKET_PACKAGES' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+              <span>Paket Tiket</span>
             </div>
-            <button
-            onClick={() => setActiveTab('POS_TERMINALS')}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: 'none', background: activeTab === 'POS_TERMINALS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'POS_TERMINALS' ? 'white' : '#94a3b8', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'POS_TERMINALS' ? '600' : '500', transition: 'all 0.2s' }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
-            Terminal POS
-          </button>
-            </nav>
+            <div onClick={() => setActiveTab('SYSTEM_USERS')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'SYSTEM_USERS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'SYSTEM_USERS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'SYSTEM_USERS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'SYSTEM_USERS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+              <span>User Admin</span>
+            </div>
+            <div onClick={() => setActiveTab('MASTER_WAHANA')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'MASTER_WAHANA' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'MASTER_WAHANA' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'MASTER_WAHANA' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'MASTER_WAHANA' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                <path d="M2 12h20" />
+              </svg>
+              <span>Master Wahana</span>
+            </div>
+            <Link href="/gate-wahana" target="_blank" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', color: '#34d399', textDecoration: 'none', borderRadius: '0.5rem', fontWeight: '600', fontSize: '0.9rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', marginTop: '0.5rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M4 7V4h16v3M4 17v3h16v-3M9 12h6"/></svg>
+              <span>Buka Scanner Wahana ↗</span>
+            </Link>
+
+            <p style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.2rem', paddingLeft: '0.5rem', marginTop: '0.75rem' }}>LOG & MONITORING</p>
+            <div onClick={() => setActiveTab('AUDIT_LOGS')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'AUDIT_LOGS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'AUDIT_LOGS' ? '#ffffff' : '#94a3b8', borderRadius: '0.5rem', fontWeight: activeTab === 'AUDIT_LOGS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'AUDIT_LOGS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              <span>Log Aktivitas</span>
+            </div>
+            <div onClick={() => setActiveTab('ERROR_LOGS')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: activeTab === 'ERROR_LOGS' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'ERROR_LOGS' ? '#ffffff' : '#ef4444', borderRadius: '0.5rem', fontWeight: activeTab === 'ERROR_LOGS' ? '600' : '400', cursor: 'pointer', borderLeft: activeTab === 'ERROR_LOGS' ? '3px solid #f59e0b' : '3px solid transparent', transition: 'all 0.2s', fontSize: '0.9rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>Log Error System</span>
+            </div>
+          </nav>
 
           <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
             <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>
@@ -1604,8 +1719,6 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-
-          {/* Detailed Lists have been moved to Business Leads & Member Database */}
         </div>
 
       </div>
@@ -1648,7 +1761,7 @@ export default function AdminDashboard() {
                     <th style={{ padding: '1rem' }}>Segmen CRM & Demografi</th>
                     <th style={{ padding: '1rem' }}>Visits</th>
                     <th style={{ padding: '1rem' }}>F&B / Wahana</th>
-                    <th style={{ padding: '1rem' }}>Poin Member</th>
+                    <th style={{ padding: '1rem' }}>Voucher Aktif</th>
                     <th style={{ padding: '1rem' }}>Email / WA</th>
                     <th style={{ padding: '1rem' }}>Status</th>
                     <th style={{ padding: '1rem' }}>Biometrik</th>
@@ -1675,26 +1788,35 @@ export default function AdminDashboard() {
                       const dependentsCount = filteredUsers.filter(dep => dep.role !== 'PRIMARY' && dep.group_id === u.group_id).length;
                       
                       return (
-                        <tr key={u.id || i} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: u.role === 'PRIMARY' ? 'white' : '#f8fafc' }}>
-                          <td style={{ padding: '1rem', fontWeight: u.role === 'PRIMARY' ? 'bold' : 'normal', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            {u.role === 'PRIMARY' ? '👑 ' : <span style={{ color: '#cbd5e1', paddingLeft: '1.5rem' }}>↳ </span>}
-                            {u.name}
-                            
-                            {u.role === 'PRIMARY' && dependentsCount > 0 && (
-                              <button 
-                                onClick={() => toggleGroup(u.group_id)}
-                                style={{ 
-                                  marginLeft: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.7rem', 
-                                  backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '1rem', 
-                                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem',
-                                  color: '#64748b', fontWeight: 'bold'
-                                }}
-                              >
-                                {expandedGroups[u.group_id] ? '▲ Tutup' : `▼ Lihat ${dependentsCount} Keluarga`}
-                              </button>
-                            )}
+                        <tr key={u.id || i} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: u.role === 'PRIMARY' ? 'white' : '#f8fafc', transition: 'background-color 0.2s' }}>
+                          <td style={{ padding: '1rem', fontWeight: u.role === 'PRIMARY' ? '600' : 'normal', color: '#0f172a' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: u.role === 'PRIMARY' ? '0' : '1.25rem' }}>
+                              <span>{u.name}</span>
+                              {u.role === 'PRIMARY' && (
+                                <span style={{ fontSize: '0.65rem', fontWeight: '700', padding: '0.15rem 0.4rem', backgroundColor: '#e0e7ff', color: '#3730a3', borderRadius: '0.25rem', textTransform: 'uppercase' }}>
+                                  Utama
+                                </span>
+                              )}
+                              
+                              {u.role === 'PRIMARY' && dependentsCount > 0 && (
+                                <button 
+                                  onClick={() => toggleGroup(u.group_id)}
+                                  style={{ 
+                                    marginLeft: '0.25rem', padding: '0.2rem 0.5rem', fontSize: '0.7rem', 
+                                    backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '0.25rem', 
+                                    cursor: 'pointer', color: '#475569', fontWeight: '600'
+                                  }}
+                                >
+                                  {expandedGroups[u.group_id] ? 'Tutup' : `+${dependentsCount} Keluarga`}
+                                </button>
+                              )}
+                            </div>
                           </td>
-                          <td style={{ padding: '1rem' }}>{u.nik}</td>
+                          <td style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>
+                            {u.nik && u.nik.length === 16 
+                              ? `${u.nik.substring(0, 6)}******${u.nik.substring(12)}` 
+                              : u.nik || '-'}
+                          </td>
                           <td style={{ padding: '1rem' }}>
                             {(() => {
                               const vCount = rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).length;
@@ -1704,44 +1826,47 @@ export default function AdminDashboard() {
                               const rfm = getRFMTag(vCount, tSpend, lVisit);
                               const demo = extractDemographics(u.nik);
                               return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                  <span style={{ backgroundColor: rfm.bg, color: rfm.color, padding: '0.2rem 0.5rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content' }}>
-                                    {rfm.icon} {rfm.label}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                  <span style={{ backgroundColor: rfm.bg, color: rfm.color, padding: '0.15rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '600', width: 'fit-content' }}>
+                                    {rfm.label}
                                   </span>
                                   <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{demo.gender}, {demo.age} thn, {demo.province}</span>
-                                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{u.role}</span>
                                 </div>
                               );
                             })()}
                           </td>
-                          <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0f172a' }}>
+                          <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.85rem' }}>
                             {new Set(rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).map(v => new Date(v.visited_at).toLocaleDateString('id-ID'))).size}x
                           </td>
                           <td style={{ padding: '1rem', color: '#059669', fontWeight: '600', fontSize: '0.85rem' }}>
                             Rp {(memberTotals[u.id] || 0).toLocaleString('id-ID')}
                           </td>
-                          <td style={{ padding: '1rem', fontWeight: 'bold', color: '#f59e0b', fontSize: '0.85rem' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                              {u.points_balance || 0}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            <div>{u.email}</div>
-                            <a href={`https://wa.me/${u.phone?.replace(/\D/g, '') || ''}`} target="_blank" rel="noopener noreferrer" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none', fontSize: '0.85rem', marginTop: '0.25rem', fontWeight: '500' }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-                              {u.phone}
-                            </a>
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            <span style={{ backgroundColor: u.status === 'ACTIVE' ? '#10b981' : '#f59e0b', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>
-                              {u.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem', color: u.face_descriptor ? '#10b981' : '#ef4444', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                            {u.face_descriptor ? '✓ Ada' : '✗ Kosong'}
+                          <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
+                            <div style={{ fontWeight: '600', color: '#b45309' }}>
+                              {u.member_wahana_vouchers?.reduce((sum: number, v: any) => sum + (v.quota || 0), 0) || 0} Tiket
+                            </div>
+                            {u.member_wahana_vouchers && u.member_wahana_vouchers.filter((v: any) => v.quota > 0).length > 0 && (
+                              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                {u.member_wahana_vouchers.filter((v: any) => v.quota > 0).map((v: any) => {
+                                  const wName = wahanas.find(w => w.id === v.wahana_id)?.name || 'Wahana';
+                                  return <div key={v.wahana_id}>{wName}: <strong style={{color:'#d97706'}}>{v.quota}x</strong></div>;
+                                })}
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
+                            <div style={{ color: '#334155' }}>{u.email}</div>
+                            <div style={{ color: '#059669', fontSize: '0.8rem', marginTop: '0.15rem' }}>{u.phone}</div>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <span style={{ backgroundColor: u.status === 'ACTIVE' ? '#dcfce7' : '#fef3c7', color: u.status === 'ACTIVE' ? '#166534' : '#92400e', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '600' }}>
+                              {u.status === 'ACTIVE' ? 'Aktif' : 'Menunggu Bayar'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem', color: u.face_descriptor ? '#166534' : '#991b1b', fontWeight: '600', fontSize: '0.8rem' }}>
+                            {u.face_descriptor ? 'Terdaftar' : 'Belum Ada'}
+                          </td>
+                          <td style={{ padding: '1rem', fontSize: '0.85rem', color: '#475569' }}>
                             {u.activation_date ? (() => {
                               const date = new Date(u.activation_date);
                               date.setFullYear(date.getFullYear() + 1);
@@ -1749,9 +1874,9 @@ export default function AdminDashboard() {
                             })() : '-'}
                           </td>
                           <td style={{ padding: '1rem' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button onClick={() => setSelectedMemberDetail(u)} style={{ padding: '0.4rem 0.6rem', backgroundColor: '#e0f2fe', color: '#0284c7', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Detail</button>
-                              <button onClick={() => deleteUser(u.id)} style={{ padding: '0.4rem 0.6rem', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Hapus</button>
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                              <button onClick={() => setSelectedMemberDetail(u)} style={{ padding: '0.35rem 0.65rem', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>Detail</button>
+                              <button onClick={() => deleteUser(u.id)} style={{ padding: '0.35rem 0.65rem', backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>Hapus</button>
                             </div>
                           </td>
                         </tr>
@@ -1798,67 +1923,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'TICKET_PACKAGES' && (
-        <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Pengaturan Harga Paket Tiket</h3>
-          
-          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 300px' }}>
-              <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tambah Paket Baru</h4>
-              <form onSubmit={addPackage} style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Nama Paket</label>
-                  <input type="text" required value={newPkg.name} onChange={(e) => setNewPkg({...newPkg, name: e.target.value})} placeholder="Cth: Paket Couple" style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Min. Orang</label>
-                    <input type="number" required min="1" value={newPkg.min_qty} onChange={(e) => setNewPkg({...newPkg, min_qty: Number(e.target.value)})} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Max. Orang</label>
-                    <input type="number" required min="1" value={newPkg.max_qty} onChange={(e) => setNewPkg({...newPkg, max_qty: Number(e.target.value)})} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Harga Total (Rp)</label>
-                  <input type="number" required value={newPkg.price} onChange={(e) => setNewPkg({...newPkg, price: e.target.value})} placeholder="Cth: 200000" style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
-                </div>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem' }}>+ Tambah Paket</button>
-              </form>
-            </div>
-
-            <div style={{ flex: '2 1 500px', overflowX: 'auto' }}>
-              <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Daftar Paket Aktif</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                    <th style={{ padding: '0.5rem' }}>Nama Paket</th>
-                    <th style={{ padding: '0.5rem' }}>Kapasitas</th>
-                    <th style={{ padding: '0.5rem' }}>Harga</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'right' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {packages.length === 0 ? (
-                    <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada paket. Silakan buat di sebelah kiri.</td></tr>
-                  ) : packages.map(pkg => (
-                    <tr key={pkg.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '0.5rem', fontWeight: 'bold' }}>{pkg.name}</td>
-                      <td style={{ padding: '0.5rem' }}>{pkg.min_qty === pkg.max_qty ? `${pkg.min_qty} Orang` : `${pkg.min_qty} - ${pkg.max_qty} Orang`}</td>
-                      <td style={{ padding: '0.5rem' }}>Rp {pkg.price.toLocaleString('id-ID')}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'right' }}>
-                        <button onClick={() => deletePackage(pkg.id)} style={{ padding: '0.2rem 0.5rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem' }}>Hapus</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
       {activeTab === 'EVENTS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1886,10 +1950,16 @@ export default function AdminDashboard() {
                     <input type="datetime-local" required value={newEvent.event_date} onChange={e => setNewEvent({...newEvent, event_date: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Upload Gambar (Poster)</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Upload Gambar (Poster, Maks. 3MB)</label>
                     <input type="file" accept="image/*" onChange={e => {
                       if (e.target.files && e.target.files[0]) {
-                        setImageFile(e.target.files[0]);
+                        const file = e.target.files[0];
+                        if (file.size > 3 * 1024 * 1024) {
+                          toast.error('Ukuran poster maksimal 3MB!');
+                          e.target.value = '';
+                          return;
+                        }
+                        setImageFile(file);
                       }
                     }} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
                   </div>
@@ -1943,84 +2013,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'SYSTEM_USERS' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          {/* Add System User Form */}
-          <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Tambah Pengguna Sistem Baru</h3>
-            <form onSubmit={addSystemUser} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>Username</label>
-                <input type="text" value={newSysUser.username} onChange={e => setNewSysUser({...newSysUser, username: e.target.value})} placeholder="Username unik..." style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} required />
-              </div>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>
-                  {newSysUser.role === 'CASHIER' ? 'PIN POS (Angka)' : 'Kata Sandi (Password)'}
-                </label>
-                <input 
-                  type={newSysUser.role === 'CASHIER' ? 'text' : 'password'} 
-                  value={newSysUser.password} 
-                  onChange={e => {
-                    const val = e.target.value;
-                    if (newSysUser.role === 'CASHIER' && val && !/^\d+$/.test(val)) return;
-                    setNewSysUser({...newSysUser, password: val});
-                  }} 
-                  placeholder={newSysUser.role === 'CASHIER' ? '6 Digit PIN (Misal: 123123)' : 'Katasandi rahasia...'} 
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} 
-                  required 
-                  maxLength={newSysUser.role === 'CASHIER' ? 6 : undefined}
-                />
-              </div>
-              <div style={{ flex: '1 1 150px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>Role (Akses)</label>
-                <select value={newSysUser.role} onChange={e => setNewSysUser({...newSysUser, role: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
-                  <option value="GATE">GATE (Tiketing)</option>
-                  <option value="ADMIN">ADMIN (Super Admin)</option>
-                  <option value="CASHIER">CASHIER (Kasir POS)</option>
-                </select>
-              </div>
-              <button type="submit" style={{ padding: '0.75rem 1.5rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer' }}>+ Tambah User</button>
-            </form>
-          </div>
 
-          {/* System Users List */}
-          <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '1rem' }}>Username</th>
-                  <th style={{ padding: '1rem' }}>Role Akses</th>
-                  <th style={{ padding: '1rem' }}>Dibuat Pada</th>
-                  <th style={{ padding: '1rem', width: '100px' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {systemUsers.map((u, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', fontWeight: 'bold' }}>{u.username}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ backgroundColor: u.role === 'ADMIN' ? '#1d4ed8' : '#10b981', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
-                      {new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <button onClick={() => deleteSystemUser(u.id)} style={{ padding: '0.4rem 0.6rem', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Hapus</button>
-                    </td>
-                  </tr>
-                ))}
-                {systemUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada data user. Pastikan Anda sudah menjalankan SQL script untuk membuat tabel.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {activeTab === 'SCHEDULES' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -2062,10 +2055,16 @@ export default function AdminDashboard() {
                     <input type="time" required value={newSchedule.end_time} onChange={e => setNewSchedule({...newSchedule, end_time: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Upload Foto</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Upload Foto (Maks. 3MB)</label>
                     <input type="file" accept="image/*" onChange={e => {
                       if (e.target.files && e.target.files[0]) {
-                        setScheduleImageFile(e.target.files[0]);
+                        const file = e.target.files[0];
+                        if (file.size > 3 * 1024 * 1024) {
+                          toast.error('Ukuran gambar maksimal 3MB!');
+                          e.target.value = '';
+                          return;
+                        }
+                        setScheduleImageFile(file);
                       }
                     }} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
                   </div>
@@ -2166,96 +2165,6 @@ export default function AdminDashboard() {
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'TRANSACTIONS' && (
-        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-            <select 
-              value={trxFilter} 
-              onChange={e => setTrxFilter(e.target.value as any)}
-              style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', cursor: 'pointer', backgroundColor: 'white', fontWeight: '500', color: '#334155', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
-            >
-              <option value="ALL">Semua Waktu</option>
-              <option value="TODAY">Hari Ini</option>
-              <option value="WEEK">7 Hari Terakhir</option>
-              <option value="MONTH">Bulan Ini</option>
-              <option value="YEAR">Tahun Ini</option>
-            </select>
-          </div>
-          {/* Summary Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Total Pendapatan</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                Rp {transactions.filter(t => t.status === 'SUCCESS').reduce((sum, t) => sum + Number(t.amount || 0), 0).toLocaleString('id-ID')}
-              </h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #3b82f6' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Total Transaksi (Sukses)</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                {transactions.filter(t => t.status === 'SUCCESS').length}
-              </h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #f59e0b' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Tertunda</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                {transactions.filter(t => t.status === 'PENDING').length}
-              </h3>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderLeft: '4px solid #ef4444' }}>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>Gagal</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                {transactions.filter(t => t.status === 'FAILED').length}
-              </h3>
-            </div>
-          </div>
-
-          <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', overflow: 'hidden' }}>
-            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a' }}>Daftar Transaksi</h3>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', fontSize: '0.875rem' }}>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Order ID</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Nama Pembeli</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Tanggal</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Paket</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Total (Rp)</th>
-                  <th style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Belum ada data transaksi</td>
-                  </tr>
-                ) : transactions.map((trx, idx) => (
-                  <tr key={trx.id} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: '500', color: '#0f172a' }}>{trx.merchant_order_id}</td>
-                    <td style={{ padding: '1rem 1.5rem', color: '#334155' }}>{trx.buyer_name || '-'}</td>
-                    <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontSize: '0.875rem' }}>{new Date(trx.created_at).toLocaleString('id-ID')}</td>
-                    <td style={{ padding: '1rem 1.5rem', color: '#334155' }}>{trx.package_name || '-'}</td>
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: '500', color: '#059669' }}>Rp {Number(trx.amount).toLocaleString('id-ID')}</td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
-                      <span style={{ 
-                        padding: '0.25rem 0.75rem', 
-                        borderRadius: '9999px', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 'bold', 
-                        backgroundColor: trx.status === 'SUCCESS' ? '#dcfce7' : trx.status === 'PENDING' ? '#fef3c7' : '#fee2e2', 
-                        color: trx.status === 'SUCCESS' ? '#166534' : trx.status === 'PENDING' ? '#92400e' : '#991b1b' 
-                      }}>
-                        {trx.status}
-                      </span>
                     </td>
                   </tr>
                 ))}
@@ -2401,178 +2310,11 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'LIVE_SCAN' && (() => {
-        // Filter and sort visits
-        const filteredVisits = rawVisits.filter(v => {
-          if (!liveScanDateFilter) return true;
-          return v.visited_at.startsWith(liveScanDateFilter);
-        });
-        const sortedVisits = [...filteredVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
-        
-        // Latest global visit for spotlight (ignores date filter to always show latest action if needed, or respects it. We'll respect the global rawVisits for spotlight to maintain real-time feel)
-        const globalSortedVisits = [...rawVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
-        const latestVisit = globalSortedVisits.length > 0 ? globalSortedVisits[0] : null;
-        
-        let latestUser: any = null;
-        if (latestVisit) {
-          latestUser = users.find(u => u.id === latestVisit.member_id);
-        }
 
-        // Pagination
-        const itemsPerPage = 15;
-        const totalPages = Math.ceil(sortedVisits.length / itemsPerPage);
-        const startIndex = (liveScanCurrentPage - 1) * itemsPerPage;
-        const currentVisits = sortedVisits.slice(startIndex, startIndex + itemsPerPage);
 
-        return (
-          <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Live Scan Monitor</h2>
-                <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Pantau pergerakan pengunjung di pintu gerbang secara real-time</p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="live-indicator" style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-                <span style={{ fontSize: '0.9rem', color: '#10b981', fontWeight: 'bold' }}>SYSTEM ACTIVE</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
-              {/* Left Side: Spotlight */}
-              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '1rem', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center' }}>
-                <h3 style={{ fontSize: '1rem', color: '#64748b', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Kunjungan Terakhir</h3>
-                
-                {latestVisit ? (
-                  <div key={latestVisit.visited_at} style={{ animation: 'pulse 0.5s ease-out' }}>
-                    <div style={{ width: '120px', height: '120px', backgroundColor: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', fontWeight: 'bold', margin: '0 auto 1.5rem auto' }}>
-                      {latestUser && latestUser.name ? latestUser.name.charAt(0).toUpperCase() : '?'}
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
-                      {latestUser ? latestUser.name : 'Unknown User'}
-                    </h2>
-                    <p style={{ color: '#4f46e5', fontWeight: '600', margin: '0 0 1rem 0' }}>{latestUser ? latestUser.role : '-'}</p>
-                    
-                    <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '0.5rem 1rem', borderRadius: '2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      Akses Diberikan
-                    </div>
-                    <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '1.5rem' }}>
-                      {new Date(latestVisit.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' })} WIB
-                    </p>
-                  </div>
-                ) : (
-                  <p style={{ color: '#94a3b8' }}>Belum ada data kunjungan hari ini.</p>
-                )}
-              </div>
-
-              {/* Right Side: Log Table */}
-              <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a' }}>Log Aktivitas Gerbang</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Filter Tanggal:</label>
-                    <input 
-                      type="date" 
-                      value={liveScanDateFilter}
-                      onChange={(e) => {
-                        setLiveScanDateFilter(e.target.value);
-                        setLiveScanCurrentPage(1);
-                      }}
-                      style={{ padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-                    />
-                    {liveScanDateFilter && (
-                      <button onClick={() => { setLiveScanDateFilter(''); setLiveScanCurrentPage(1); }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}>Tampilkan Semua</button>
-                    )}
-                  </div>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                      <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
-                        <th style={{ padding: '1rem' }}>Waktu & Tanggal</th>
-                        <th style={{ padding: '1rem' }}>Pengunjung</th>
-                        <th style={{ padding: '1rem' }}>Tipe</th>
-                        <th style={{ padding: '1rem' }}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentVisits.map((visit, idx) => {
-                        const user = users.find(u => u.id === visit.member_id);
-                        return (
-                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx === 0 && liveScanCurrentPage === 1 && !liveScanDateFilter ? '#f0fdf4' : 'white', transition: 'background-color 1s' }}>
-                            <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#475569' }}>
-                              <div style={{ fontWeight: '600', color: '#0f172a' }}>{new Date(visit.visited_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' })}</div>
-                              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.1rem' }}>{new Date(visit.visited_at).toLocaleDateString('id-ID')}</div>
-                            </td>
-                            <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>
-                              {user ? user.name : 'Unknown User'}
-                            </td>
-                            <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
-                              <span style={{ backgroundColor: user?.role === 'PRIMARY' ? '#eff6ff' : '#f8fafc', color: user?.role === 'PRIMARY' ? '#2563eb' : '#64748b', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontWeight: '600' }}>
-                                {user ? user.role : '-'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '1rem' }}>
-                              <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                Success
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {currentVisits.length === 0 && (
-                        <tr>
-                          <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Tidak ada log kunjungan pada tanggal ini.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Halaman {liveScanCurrentPage} dari {totalPages} (Total {sortedVisits.length} data)</span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button 
-                        onClick={() => setLiveScanCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={liveScanCurrentPage === 1}
-                        style={{ padding: '0.4rem 0.75rem', border: '1px solid #cbd5e1', backgroundColor: liveScanCurrentPage === 1 ? '#f1f5f9' : 'white', color: liveScanCurrentPage === 1 ? '#94a3b8' : '#334155', borderRadius: '0.25rem', cursor: liveScanCurrentPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}
-                      >
-                        Sebelumnya
-                      </button>
-                      <button 
-                        onClick={() => setLiveScanCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={liveScanCurrentPage === totalPages}
-                        style={{ padding: '0.4rem 0.75rem', border: '1px solid #cbd5e1', backgroundColor: liveScanCurrentPage === totalPages ? '#f1f5f9' : 'white', color: liveScanCurrentPage === totalPages ? '#94a3b8' : '#334155', borderRadius: '0.25rem', cursor: liveScanCurrentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}
-                      >
-                        Selanjutnya
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <style dangerouslySetInnerHTML={{__html: `
-              @keyframes pulse {
-                0% { transform: scale(0.95); opacity: 0.5; }
-                50% { transform: scale(1.05); opacity: 1; }
-                100% { transform: scale(1); opacity: 1; }
-              }
-              .live-indicator {
-                animation: blink 1.5s infinite;
-              }
-              @keyframes blink {
-                0% { opacity: 1; }
-                50% { opacity: 0.3; }
-                100% { opacity: 1; }
-              }
-            `}} />
-          </div>
-        );
-      })()}
+      {activeTab === 'REPORTS' && (
+        <ReportsTab />
+      )}
 
       {activeTab === 'FINANCIAL' && (
       <FinancialReports
@@ -2648,57 +2390,392 @@ export default function AdminDashboard() {
         </div>
       )}
 
-        {activeTab === 'POS_TERMINALS' && (
-          <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Manajemen Terminal Kasir (POS)</h2>
-            </div>
+        {activeTab === 'MASTER_WAHANA' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <MasterWahanaTab />
             
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem' }}>Nama Mesin/Titik Lokasi</label>
-                <input type="text" value={newTerminalName} onChange={e => setNewTerminalName(e.target.value)} placeholder="Contoh: Wahana Kereta Mini" style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+            <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+              <h3 style={{ marginBottom: '0.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>🎟️ Paket Bundling Top-Up Wahana</h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>Paket ini dijual di POS Kasir saat pengunjung ingin top-up tiket. 1 pembelian = dapat voucher beberapa wahana sekaligus dengan harga lebih hemat.</p>
+              
+              <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 300px' }}>
+                  <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    {editingBundleId ? 'Edit Paket Bundling' : 'Tambah Paket Bundling'}
+                  </h4>
+                  <form onSubmit={addBundle} style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Nama Paket</label>
+                      <input type="text" required value={newBundle.name} onChange={(e) => setNewBundle({...newBundle, name: e.target.value})} placeholder="Cth: Paket Seru Duo" style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Harga Paket (Rp)</label>
+                      <input type="number" required value={newBundle.price} onChange={(e) => setNewBundle({...newBundle, price: e.target.value})} placeholder="Cth: 60000" style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                    </div>
+                    
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>Isi Paket (Wahana + Jumlah Tiket):</label>
+                      {wahanas.map(w => {
+                        const selected = newBundle.selected_wahanas.find(sw => sw.wahana_id === w.id);
+                        const isChecked = !!selected;
+                        return (
+                          <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.25rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNewBundle({...newBundle, selected_wahanas: [...newBundle.selected_wahanas, { wahana_id: w.id, quantity: 1 }]});
+                                  } else {
+                                    setNewBundle({...newBundle, selected_wahanas: newBundle.selected_wahanas.filter(sw => sw.wahana_id !== w.id)});
+                                  }
+                                }}
+                              />
+                              {w.name}
+                            </label>
+                            {isChecked && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Jumlah:</span>
+                                <input 
+                                  type="number" 
+                                  min="1" 
+                                  required
+                                  value={selected!.quantity} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const newQty = val === '' ? '' : parseInt(val);
+                                    setNewBundle({
+                                      ...newBundle, 
+                                      selected_wahanas: newBundle.selected_wahanas.map(sw => 
+                                        sw.wahana_id === w.id ? { ...sw, quantity: newQty } : sw
+                                      )
+                                    });
+                                  }}
+                                  style={{ width: '60px', padding: '0.25rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem', flex: 1 }}>
+                        {editingBundleId ? 'Simpan Perubahan' : '+ Tambah Paket Bundling'}
+                      </button>
+                      {editingBundleId && (
+                        <button type="button" onClick={() => { setEditingBundleId(null); setNewBundle({ name: '', price: '', selected_wahanas: [] }); }} style={{ padding: '0.5rem', backgroundColor: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}>
+                          Batal
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+
+                <div style={{ flex: '2 1 500px', overflowX: 'auto' }}>
+                  <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Daftar Paket Bundling Aktif</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                        <th style={{ padding: '0.5rem' }}>Nama Paket</th>
+                        <th style={{ padding: '0.5rem' }}>Isi Wahana</th>
+                        <th style={{ padding: '0.5rem' }}>Harga</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bundles.length === 0 ? (
+                        <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada paket bundling. Buat di sebelah kiri.</td></tr>
+                      ) : bundles.map(pkg => (
+                        <tr key={pkg.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.5rem', fontWeight: 'bold' }}>{pkg.name}</td>
+                          <td style={{ padding: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+                            {pkg.package_wahanas?.map((pw: any) => `${pw.wahanas?.name || 'Wahana'} (${pw.quantity}x)`).join(', ') || '-'}
+                          </td>
+                          <td style={{ padding: '0.5rem', fontWeight: '600', color: '#059669' }}>Rp {pkg.price.toLocaleString('id-ID')}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                            <button onClick={() => {
+                              setEditingBundleId(pkg.id);
+                              setNewBundle({
+                                name: pkg.name,
+                                price: pkg.price.toString(),
+                                selected_wahanas: pkg.package_wahanas ? pkg.package_wahanas.map((pw: any) => ({ wahana_id: pw.wahana_id, quantity: pw.quantity })) : []
+                              });
+                            }} style={{ padding: '0.2rem 0.5rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+                            <button onClick={() => deleteBundle(pkg.id)} style={{ padding: '0.2rem 0.5rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem' }}>Hapus</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem' }}>Kategori Omset Keuangan</label>
-                <select value={newTerminalCategory} onChange={e => setNewTerminalCategory(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}>
-                  <option value="RESTO">Restoran / Cafe (F&B)</option>
-                  <option value="SOUVENIR">Toko Merchandise (Souvenir)</option>
-                  <option value="WAHANA">Wahana Bermain (Wahana)</option>
-                </select>
+            </div>
+          </div>
+        )}
+        {activeTab === 'TICKET_PACKAGES' && (
+          <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ marginBottom: '0.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>📦 Paket Tiket Annual Pass</h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>Paket ini digunakan saat pendaftaran Member Annual Pass baru. Tentukan nama, kapasitas, harga, dan wahana yang termasuk di dalam paket.</p>
+            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                  {editingPkgId ? 'Edit Paket Tiket' : 'Tambah Paket Baru'}
+                </h4>
+                <form onSubmit={addPackage} style={{ display: 'grid', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Nama Paket</label>
+                    <input type="text" required value={newPkg.name} onChange={(e) => setNewPkg({...newPkg, name: e.target.value})} placeholder="Cth: Paket Couple" style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Min. Orang</label>
+                      <input type="number" required min="1" value={newPkg.min_qty} onChange={(e) => setNewPkg({...newPkg, min_qty: Number(e.target.value)})} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Max. Orang</label>
+                      <input type="number" required min="1" value={newPkg.max_qty} onChange={(e) => setNewPkg({...newPkg, max_qty: Number(e.target.value)})} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.2rem' }}>Harga Total (Rp)</label>
+                    <input type="number" required value={newPkg.price} onChange={(e) => setNewPkg({...newPkg, price: e.target.value})} placeholder="Cth: 200000" style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                  </div>
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>Termasuk Wahana Gratis:</label>
+                    {wahanas.map(w => {
+                      const selected = newPkg.selected_wahanas.find(sw => sw.wahana_id === w.id);
+                      const isChecked = !!selected;
+                      return (
+                        <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.25rem' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            <input type="checkbox" checked={isChecked} onChange={(e) => { if (e.target.checked) { setNewPkg({...newPkg, selected_wahanas: [...newPkg.selected_wahanas, { wahana_id: w.id, quantity: 1 }]}); } else { setNewPkg({...newPkg, selected_wahanas: newPkg.selected_wahanas.filter(sw => sw.wahana_id !== w.id)}); } }} />
+                            {w.name}
+                          </label>
+                          {isChecked && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Jumlah:</span>
+                              <input type="number" min="1" required value={selected!.quantity} onChange={(e) => { const val = e.target.value; const newQty = val === '' ? '' : parseInt(val); setNewPkg({ ...newPkg, selected_wahanas: newPkg.selected_wahanas.map(sw => sw.wahana_id === w.id ? { ...sw, quantity: newQty } : sw) }); }} style={{ width: '60px', padding: '0.25rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem', flex: 1 }}>{editingPkgId ? 'Simpan Perubahan' : '+ Tambah Paket'}</button>
+                    {editingPkgId && (<button type="button" onClick={() => { setEditingPkgId(null); setNewPkg({ name: '', min_qty: 1, max_qty: 1, price: '', selected_wahanas: [] }); }} style={{ padding: '0.5rem', backgroundColor: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}>Batal</button>)}
+                  </div>
+                </form>
               </div>
-              <button onClick={handleAddTerminal} style={{ padding: '0.75rem 1.5rem', background: '#0f172a', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer' }}>+ Tambah Lokasi</button>
+              <div style={{ flex: '2 1 500px', overflowX: 'auto' }}>
+                <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Daftar Paket Aktif</h4>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem' }}>Nama Paket</th>
+                      <th style={{ padding: '0.5rem' }}>Kapasitas</th>
+                      <th style={{ padding: '0.5rem' }}>Harga</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'right' }}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {packages.length === 0 ? (
+                      <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada paket. Silakan buat di sebelah kiri.</td></tr>
+                    ) : packages.map(pkg => (
+                      <tr key={pkg.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '0.5rem', fontWeight: 'bold' }}>{pkg.name}</td>
+                        <td style={{ padding: '0.5rem' }}>{pkg.min_qty === pkg.max_qty ? `${pkg.min_qty} Orang` : `${pkg.min_qty} - ${pkg.max_qty} Orang`}</td>
+                        <td style={{ padding: '0.5rem' }}>Rp {pkg.price.toLocaleString('id-ID')}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                          <button onClick={() => { setEditingPkgId(pkg.id); setNewPkg({ name: pkg.name, min_qty: pkg.min_qty, max_qty: pkg.max_qty, price: pkg.price.toString(), selected_wahanas: pkg.package_wahanas ? pkg.package_wahanas.map((pw: any) => ({ wahana_id: pw.wahana_id, quantity: pw.quantity })) : [] }); }} style={{ padding: '0.2rem 0.5rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+                          <button onClick={() => deletePackage(pkg.id)} style={{ padding: '0.2rem 0.5rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem' }}>Hapus</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'SYSTEM_USERS' && (
+          <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Manajemen User & Hak Akses Pegawai</h2>
+                <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Atur akun login khusus Kasir POS, Petugas Scanner Wahana, dan Administrator</p>
+              </div>
             </div>
 
-            <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.875rem' }}>
-                    <th style={{ padding: '1rem' }}>Nama Lokasi (Terminal)</th>
-                    <th style={{ padding: '1rem' }}>Kategori Omset</th>
-                    <th style={{ padding: '1rem' }}>ID Mesin (UUID)</th>
-                    <th style={{ padding: '1rem', textAlign: 'right' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {posTerminals.length > 0 ? posTerminals.map(term => (
-                    <tr key={term.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '1rem', fontWeight: '500', color: '#0f172a' }}>{term.name}</td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ padding: '0.25rem 0.75rem', background: term.category === 'RESTO' ? '#fef3c7' : (term.category === 'SOUVENIR' ? '#e0e7ff' : '#dcfce3'), color: term.category === 'RESTO' ? '#d97706' : (term.category === 'SOUVENIR' ? '#4f46e5' : '#16a34a'), borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                          {term.category}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.875rem' }}>{term.id}</td>
-                      <td style={{ padding: '1rem', textAlign: 'right' }}>
-                        <button onClick={() => handleDeleteTerminal(term.id)} style={{ color: '#ef4444', background: 'none', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Hapus</button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr><td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Belum ada data Terminal. (Harap jalankan SQL Schema di Supabase)</td></tr>
+            {/* Panduan Role Banner */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac', padding: '1rem', borderRadius: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <span style={{ backgroundColor: '#15803d', color: '#fff', fontSize: '0.75rem', fontWeight: '800', padding: '0.2rem 0.5rem', borderRadius: '0.25rem' }}>ROLE: GATE</span>
+                  <span style={{ fontWeight: '700', color: '#166534', fontSize: '0.85rem' }}>Pintu Gerbang Utama</span>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#14532d', margin: 0 }}>
+                  👉 Khusus Komputer/Tablet <strong>AI Face Recognition Gate Masuk (/gate)</strong> untuk validasi Annual Pass rombongan.
+                </p>
+              </div>
+
+              <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', padding: '1rem', borderRadius: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <span style={{ backgroundColor: '#059669', color: '#fff', fontSize: '0.75rem', fontWeight: '800', padding: '0.2rem 0.5rem', borderRadius: '0.25rem' }}>ROLE: WAHANA</span>
+                  <span style={{ fontWeight: '700', color: '#065f46', fontSize: '0.85rem' }}>Petugas Wahana (HP)</span>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#047857', margin: 0 }}>
+                  👉 Khusus Smartphone <strong>Scanner Tiket Wahana (/gate-wahana)</strong> untuk scan voucher & potong kuota di pos wahana.
+                </p>
+              </div>
+
+              <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '1rem', borderRadius: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <span style={{ backgroundColor: '#2563eb', color: '#fff', fontSize: '0.75rem', fontWeight: '800', padding: '0.2rem 0.5rem', borderRadius: '0.25rem' }}>ROLE: CASHIER</span>
+                  <span style={{ fontWeight: '700', color: '#1e40af', fontSize: '0.85rem' }}>Kasir Loket POS</span>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#1d4ed8', margin: 0 }}>
+                  👉 Khusus Komputer <strong>Kasir Loket (/pos)</strong> untuk transaksi penjualan tiket, top-up, & QRIS.
+                </p>
+              </div>
+
+              <div style={{ backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '1rem', borderRadius: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <span style={{ backgroundColor: '#d97706', color: '#fff', fontSize: '0.75rem', fontWeight: '800', padding: '0.2rem 0.5rem', borderRadius: '0.25rem' }}>ROLE: ADMIN</span>
+                  <span style={{ fontWeight: '700', color: '#92400e', fontSize: '0.85rem' }}>Manager & Backoffice</span>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#b45309', margin: 0 }}>
+                  👉 Akses penuh ke <strong>Dashboard Keuangan, CRM, & Laporan (/admin)</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+              {/* Form Tambah User */}
+              <div style={{ flex: '1 1 320px', backgroundColor: 'white', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem', color: '#0f172a' }}>+ Tambah Akun Pegawai</h3>
+                <form onSubmit={addSystemUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.35rem' }}>Username Pegawai</label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="Cth: gate_utama / kasir1 / penjaga_offroad"
+                      value={newSysUser.username} 
+                      onChange={e => setNewSysUser({...newSysUser, username: e.target.value})} 
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.35rem' }}>Password Akun</label>
+                    <input 
+                      type="password" 
+                      required 
+                      placeholder="Minimal 6 karakter"
+                      value={newSysUser.password} 
+                      onChange={e => setNewSysUser({...newSysUser, password: e.target.value})} 
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.35rem' }}>Peruntukan Akun (Role)</label>
+                    <select 
+                      value={newSysUser.role} 
+                      onChange={e => setNewSysUser({...newSysUser, role: e.target.value})}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '0.5rem', border: '1px solid #059669', fontSize: '0.9rem', fontWeight: '700', backgroundColor: '#f0fdf4' }}
+                    >
+                      <option value="GATE">🚪 GATE (Pintu Masuk Utama - Face Recognition AI)</option>
+                      <option value="WAHANA">🎡 WAHANA (Petugas Scanner Tiket Wahana Lapangan)</option>
+                      <option value="CASHIER">💳 CASHIER (Kasir Loket POS Tiket)</option>
+                      <option value="ADMIN">👑 ADMIN (Full Akses Backoffice & Keuangan)</option>
+                    </select>
+                  </div>
+
+                  {(newSysUser.role === 'WAHANA' || newSysUser.role === 'CASHIER') && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.35rem' }}>Penugasan Pos Wahana (Opsional)</label>
+                      <select 
+                        value={newSysUser.wahana_id} 
+                        onChange={e => setNewSysUser({...newSysUser, wahana_id: e.target.value})}
+                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#fff' }}
+                      >
+                        <option value="">-- Semua Wahana (Fleksibel) --</option>
+                        {wahanas.map(w => (
+                          <option key={w.id} value={w.id}>🎡 {w.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   )}
-                </tbody>
-              </table>
+
+                  <button 
+                    type="submit" 
+                    style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#059669', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem' }}
+                  >
+                    Simpan Akun Pegawai
+                  </button>
+                </form>
+              </div>
+
+              {/* Tabel Daftar User */}
+              <div style={{ flex: '2 1 500px', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0, color: '#0f172a' }}>Daftar Akun Pegawai Aktif ({systemUsers.length})</h3>
+                </div>
+                
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.8rem', backgroundColor: '#f8fafc' }}>
+                        <th style={{ padding: '0.85rem 1.25rem' }}>Username</th>
+                        <th style={{ padding: '0.85rem 1.25rem' }}>Role / Peruntukan</th>
+                        <th style={{ padding: '0.85rem 1.25rem' }}>Tujuan Auto-Redirect</th>
+                        <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {systemUsers.map(user => {
+                        const isMainGate = user.role === 'GATE' && !user.wahana_id;
+                        const isWahana = user.role === 'WAHANA' || (user.role === 'GATE' && user.wahana_id);
+                        
+                        return (
+                          <tr key={user.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '1rem 1.25rem', fontWeight: '700', color: '#0f172a' }}>
+                              {user.username}
+                            </td>
+                            <td style={{ padding: '1rem 1.25rem' }}>
+                              <span style={{ 
+                                padding: '0.25rem 0.6rem', borderRadius: '0.35rem', fontSize: '0.75rem', fontWeight: '800',
+                                backgroundColor: isMainGate ? '#dcfce7' : (isWahana ? '#ecfdf5' : (user.role === 'CASHIER' ? '#eff6ff' : '#fef3c7')),
+                                color: isMainGate ? '#15803d' : (isWahana ? '#059669' : (user.role === 'CASHIER' ? '#2563eb' : '#d97706'))
+                              }}>
+                                {isMainGate ? '🚪 PINTU MASUK (FACE AI)' : (isWahana ? '🎡 PETUGAS WAHANA' : (user.role === 'CASHIER' ? '💳 KASIR POS' : '👑 ADMIN'))}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem 1.25rem', fontFamily: 'monospace', fontSize: '0.85rem', color: '#475569' }}>
+                              {isMainGate ? '/gate (Turnstile Face AI)' : (isWahana ? '/gate-wahana (Scanner HP)' : (user.role === 'CASHIER' ? '/pos (Kasir)' : '/admin (Backoffice)'))}
+                            </td>
+                            <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
+                              {user.username !== 'admin' && (
+                                <button 
+                                  onClick={() => deleteSystemUser(user.id)} 
+                                  style={{ padding: '0.35rem 0.75rem', backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '0.35rem', fontWeight: '700', cursor: 'pointer', fontSize: '0.8rem' }}
+                                >
+                                  Hapus
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2791,6 +2868,13 @@ export default function AdminDashboard() {
                   <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Audit Logs</h2>
                   <p style={{ color: '#64748b', margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Rekam jejak aktivitas pegawai dan administrator sistem</p>
                 </div>
+                <button 
+                  onClick={fetchAuditLogs} 
+                  style={{ padding: '0.5rem 1rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  Refresh Logs
+                </button>
               </div>
 
               <div style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -2828,7 +2912,7 @@ export default function AdminDashboard() {
                             <div style={{ fontSize: '0.75rem' }}>{new Date(log.created_at).toLocaleTimeString('id-ID')} WIB</div>
                           </td>
                           <td style={{ padding: '1rem 1.5rem', fontWeight: '600', color: '#0f172a' }}>
-                            {log.actor_name}
+                            {log.actor_name || 'ADMIN'}
                           </td>
                           <td style={{ padding: '1rem 1.5rem' }}>
                             <span style={{ 
@@ -2839,12 +2923,16 @@ export default function AdminDashboard() {
                               {log.action_type}
                             </span>
                           </td>
-                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', color: '#334155', fontWeight: '500' }}>
+                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', color: '#334155', fontWeight: '600' }}>
                             {log.entity_type}
-                            {log.entity_id && <span style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block' }}>ID: {log.entity_id.substring(0,8)}...</span>}
+                            {log.entity_id && <span style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', fontWeight: 'normal' }}>ID: {log.entity_id.substring(0,8)}...</span>}
                           </td>
-                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: '#475569', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {log.details ? JSON.stringify(log.details) : '-'}
+                          <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: '#475569', maxWidth: '350px' }}>
+                            {log.details ? (
+                              <pre style={{ margin: 0, padding: '0.4rem', backgroundColor: '#f1f5f9', borderRadius: '0.4rem', fontSize: '0.75rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace' }}>
+                                {typeof log.details === 'object' ? JSON.stringify(log.details, null, 2) : log.details}
+                              </pre>
+                            ) : '-'}
                           </td>
                         </tr>
                       ))}

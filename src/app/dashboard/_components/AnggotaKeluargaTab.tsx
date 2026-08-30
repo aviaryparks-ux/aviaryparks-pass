@@ -166,7 +166,9 @@ function MemberCard({ member, visits }: { member: any; visits: any[] }) {
       <h3 className="notranslate" translate="no" style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '0.25rem', textAlign: 'center' }}>
         {member.name}
       </h3>
-      <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.25rem' }}>NIK: {member.nik || '-'}</p>
+      <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+        NIK: {member.nik && member.nik.length === 16 ? `${member.nik.substring(0, 6)}******${member.nik.substring(12)}` : member.nik || '-'}
+      </p>
       <p style={{ color: '#16a34a', fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '1rem' }}>
         Total Kunjungan: {visits.filter(v => v.member_id === member.id).length} Kali
       </p>

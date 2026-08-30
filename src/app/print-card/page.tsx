@@ -86,7 +86,11 @@ export default function PrintCard() {
             </div>
             <div>
               <p style={{ margin: 0, fontSize: '2mm', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
-              <p style={{ margin: 0, fontSize: '2.8mm', fontWeight: 'bold' }}>{user.nik || '-'}</p>
+              <p style={{ margin: 0, fontSize: '2.8mm', fontWeight: 'bold' }}>
+                {user.nik && user.nik.length === 16
+                  ? `${user.nik.substring(0, 6)}******${user.nik.substring(12)}`
+                  : user.nik || '-'}
+              </p>
             </div>
           </div>
         </div>
@@ -131,11 +135,11 @@ export default function PrintCard() {
               <li>Syarat & ketentuan dapat berubah sewaktu-waktu.</li>
             </ul>
             
-            {/* Real QR Code API */}
+            {/* Real QR Code API (Secure: Uses member ID) */}
             <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '2mm', background: 'rgba(255,255,255,0.1)', padding: '1mm', borderRadius: '1.5mm' }}>
               <div style={{ background: 'white', padding: '0.5mm', borderRadius: '1mm', display: 'flex' }}>
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${user.nik || user.id}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${user.id || user.nik}`} 
                   alt="QR Code" 
                   style={{ width: '18mm', height: '18mm', objectFit: 'contain' }}
                 />

@@ -18,7 +18,7 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('pos_terminals')
-      .select('*')
+      .select('*, wahanas(id, name)')
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -47,17 +47,22 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { name, category } = await request.json();
+    const { name, category, wahana_id } = await request.json();
 
     // ── SECURITY: Validate input ──
     if (!isValidTerminalInput(name, category)) {
       return NextResponse.json({ success: false, error: 'Invalid terminal name or category' }, { status: 400 });
     }
 
+    // Validasi: WAHANA terminal harus ada wahana_id
+    if (category === 'WAHANA' && !wahana_id) {
+      return NextResponse.json({ success: false, error: 'Terminal kategori WAHANA wajib memilih wahana' }, { status: 400 });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('pos_terminals')
-      .insert({ name, category })
-      .select()
+      .insert({ name, category, wahana_id: category === 'WAHANA' ? (wahana_id || null) : null })
+      .select('*, wahanas(id, name)')
       .single();
 
     if (error) {

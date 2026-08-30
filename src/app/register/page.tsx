@@ -38,7 +38,7 @@ export default function Register() {
 
   useEffect(() => {
     const fetchPackages = async () => {
-      const res = await fetch('/api/public/packages');
+      const res = await fetch('/api/public/packages?category=MEMBERSHIP');
       const json = await res.json();
       const data = json.data;
       if (data) setPackages(data);
@@ -446,11 +446,31 @@ export default function Register() {
                     >
                       <div>
                         <h4 style={{ fontWeight: '700', color: isSelected ? '#065f46' : '#0f172a' }}>{pkg.name}</h4>
-                        <p style={{ fontSize: '0.85rem', color: isSelected ? '#047857' : '#64748b', marginTop: '0.2rem' }}>
+                        <p style={{ fontSize: '0.85rem', color: isSelected ? '#047857' : '#64748b', marginTop: '0.2rem', marginBottom: '0.4rem' }}>
                           {pkg.min_qty === pkg.max_qty ? `Kapasitas: ${pkg.max_qty} Orang` : `Kapasitas: ${pkg.min_qty} - ${pkg.max_qty} Orang`}
                         </p>
+                        {pkg.package_wahanas && pkg.package_wahanas.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.25rem' }}>
+                            {pkg.package_wahanas.map((pw: any, pidx: number) => (
+                              <span 
+                                key={pidx} 
+                                style={{ 
+                                  fontSize: '0.75rem', 
+                                  fontWeight: '600', 
+                                  backgroundColor: isSelected ? '#bbf7d0' : '#f1f5f9', 
+                                  color: isSelected ? '#166534' : '#475569', 
+                                  padding: '0.15rem 0.5rem', 
+                                  borderRadius: '0.375rem',
+                                  border: isSelected ? '1px solid #86efac' : '1px solid #e2e8f0'
+                                }}
+                              >
+                                🎟️ {pw.wahanas?.name || 'Wahana'} x{pw.quantity}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontWeight: '800', color: '#059669', fontSize: '1.1rem' }}>
+                      <div style={{ fontWeight: '800', color: '#059669', fontSize: '1.1rem', whiteSpace: 'nowrap', marginLeft: '1rem' }}>
                         Rp {Number(pkg.price).toLocaleString('id-ID')}
                       </div>
                     </div>
@@ -459,31 +479,6 @@ export default function Register() {
               </div>
             </div>
           )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingRight: '1rem' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#064e3b', marginBottom: '0.5rem' }}>Benefit Annual Pass</h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-              {[
-                { icon: <Infinity size={20} />, title: 'Unlimited Entry', desc: 'Tiket Premium Akses Penuh' },
-                { icon: <ScanFace size={20} />, title: 'Face Scan Entry', desc: 'Masuk tanpa tiket fisik' },
-                { icon: <Tag size={20} />, title: 'Diskon 20%', desc: 'Tiket Tambahan (Add On), All Rides, All Resto, Animal Encounter, Starling & Rooftop Hotel' },
-                { icon: <Tag size={20} />, title: 'Diskon 10%', desc: 'Belanja di Souvenir Shop' },
-                { icon: <Gift size={20} />, title: 'Spesial Hotel Rate', desc: 'Deluxe Room 700rb nett (inc. Bfast 2 pax), Starling Buffet 175rb nett' },
-                { icon: <User size={20} />, title: 'Aviary Member', desc: 'Lounge @ Aviary Park Resto, Points for Rewards & Referral' },
-              ].map((f, i) => (
-                <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: '#f8fafc', padding: '1rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
-                  <div style={{ padding: '0.75rem', backgroundColor: '#d1fae5', borderRadius: '50%', color: '#059669', flexShrink: 0 }}>
-                    {f.icon}
-                  </div>
-                  <div>
-                    <h4 style={{ fontWeight: '700', fontSize: '0.95rem', color: '#0f172a', marginBottom: '0.2rem' }}>{f.title}</h4>
-                    <p style={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.4 }}>{f.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Right Column (Form) */}
@@ -649,6 +644,58 @@ export default function Register() {
           </div>
 
         </div>
+
+        {/* Bottom Full-Width Section: Benefit Strip (Horizontal Inline) */}
+        <div style={{ width: '100%', marginTop: '1.5rem' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+            gap: '1rem',
+            width: '100%'
+          }}>
+            {[
+              { icon: <Infinity size={18} />, title: 'Bebas Berkunjung', desc: 'Akses tak terbatas setahun' },
+              { icon: <ScanFace size={18} />, title: 'Face Recognition', desc: 'Masuk praktis dengan wajah' },
+              { icon: <Tag size={18} />, title: 'Hemat 40%', desc: 'Bandingkan tiket reguler' },
+              { icon: <Users size={18} />, title: 'Untuk Keluarga', desc: 'Nikmati kebersamaan bersama' },
+            ].map((f, i) => (
+              <div 
+                key={i} 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.875rem', 
+                  background: 'rgba(255, 255, 255, 0.95)', 
+                  backdropFilter: 'blur(10px)',
+                  padding: '0.75rem 1rem', 
+                  borderRadius: '0.875rem', 
+                  border: '1px solid rgba(255, 255, 255, 0.9)',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ 
+                  width: '34px', 
+                  height: '34px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  backgroundColor: '#ecfdf5', 
+                  borderRadius: '0.5rem', 
+                  color: '#059669',
+                  flexShrink: 0
+                }}>
+                  {f.icon}
+                </div>
+                <div style={{ overflow: 'hidden' }}>
+                  <h4 style={{ fontWeight: '700', fontSize: '0.85rem', color: '#059669', margin: 0, whiteSpace: 'nowrap' }}>{f.title}</h4>
+                  <p style={{ fontSize: '0.725rem', color: '#64748b', margin: '0.1rem 0 0 0', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </main>
     </div>
   );

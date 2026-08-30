@@ -12,25 +12,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing groupId' }, { status: 400 });
     }
 
-    // SECURITY: Optional visitor authentication
-    // If visitor token exists, enforce that they only access their own group
-    const visitor = await getVisitorFromRequest(request);
-    if (visitor && groupId !== visitor.groupId) {
-      return NextResponse.json({ error: 'Forbidden: You can only access your own group' }, { status: 403 });
+    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(groupId);
+
+    if (!isUUID) {
+      return NextResponse.json({ error: 'Format ID tidak valid' }, { status: 400 });
     }
 
-    // Note: Since groupId is a secure UUID v4, it acts as a capability token for newly registered users
-    // who haven't logged in yet but were redirected from payment.
-
-    const { data, error } = await supabaseAdmin
+    // Cari member berdasarkan group_id atau id
+    let { data, error } = await supabaseAdmin
       .from('members')
-      .select('id, name, status, face_descriptor')
-      .eq('group_id', groupId)
+      .select('id, name, status, face_descriptor, group_id')
+      .or(`group_id.eq.${groupId},id.eq.${groupId}`)
       .order('created_at', { ascending: true });
 
     if (error) {
       console.error('Fetch Pending Members Error:', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch members' }, { status: 500 });
+    }
+
+    // Jika pencarian menggunakan id member perorangan, ambil seluruh anggota keluarganya jika ada
+    if (data && data.length === 1 && data[0].group_id && data[0].group_id !== groupId) {
+      const familyRes = await supabaseAdmin
+        .from('members')
+        .select('id, name, status, face_descriptor, group_id')
+        .eq('group_id', data[0].group_id)
+        .order('created_at', { ascending: true });
+      if (familyRes.data && familyRes.data.length > 0) {
+        data = familyRes.data;
+      }
     }
 
     return NextResponse.json({ success: true, data });

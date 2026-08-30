@@ -138,7 +138,7 @@ export default function AICopilot({ dashboardContext, onExportCsvRequest }: { da
                       return (
                         <div key={toolInvocation.toolCallId} style={{ alignSelf: 'center', width: '100%', padding: '0.5rem' }}>
                           <AIChart 
-                            type={chartData.type || 'bar'} 
+                            type={chartData.chartType || 'bar'} 
                             data={chartData.data} 
                             title={chartData.title || ''} 
                             color="#059669" 

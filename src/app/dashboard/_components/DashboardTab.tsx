@@ -71,8 +71,19 @@ export default function DashboardTab({
           70% { box-shadow: 0 0 0 10px rgba(5, 150, 105, 0); border-color: #e2e8f0; }
           100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); border-color: #e2e8f0; }
         }
+        .dash-grid-layout {
+          display: grid;
+          grid-template-columns: 1.2fr 2fr;
+          gap: 1.5rem;
+        }
+        @media (max-width: 1024px) {
+          .dash-grid-layout {
+            grid-template-columns: 1fr !important;
+            gap: 1.25rem !important;
+          }
+        }
       `}</style>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '1.5rem' }}>
+      <div className="dash-grid-layout">
         
         {/* LEFT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -165,7 +176,11 @@ export default function DashboardTab({
                     </div>
                     <div>
                       <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>NIK / ID</p>
-                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>{activeUser.nik || activeUser.id.substring(0,8).toUpperCase()}</p>
+                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>
+                        {activeUser.nik && activeUser.nik.length === 16
+                          ? `${activeUser.nik.substring(0, 6)}******${activeUser.nik.substring(12)}`
+                          : activeUser.nik || activeUser.id.substring(0,8).toUpperCase()}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -208,18 +223,18 @@ export default function DashboardTab({
                       <li>Syarat & ketentuan dapat berubah sewaktu-waktu.</li>
                     </ul>
                     
-                    {/* Real QR Code API */}
+                    {/* Real QR Code API (Secure: Uses member ID) */}
                     <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '2cqi', background: 'rgba(255,255,255,0.1)', padding: '1cqi', borderRadius: '1.5cqi' }}>
                       <div style={{ background: 'white', padding: '0.5cqi', borderRadius: '1cqi', display: 'flex' }}>
                         <img 
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${activeUser.nik || activeUser.id}`} 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${activeUser.id || activeUser.nik}`} 
                           alt="QR Code" 
                           style={{ width: '20cqi', height: '20cqi', objectFit: 'contain' }}
                         />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '2cqi', fontWeight: 'bold', color: '#facc15' }}>SCAN HERE</span>
-                        <span style={{ fontSize: '1.2cqi', opacity: 0.9 }}>For Discounts & Rewards</span>
+                        <span style={{ fontSize: '1.2cqi', opacity: 0.9 }}>Untuk Masuk & Wahana</span>
                       </div>
                     </div>
                   </div>
@@ -290,14 +305,14 @@ export default function DashboardTab({
         {/* RIGHT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
-          {/* Card: Loyalty Points Balance */}
-          <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderRadius: '1rem', padding: '1.5rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)' }}>
+          {/* Card: Voucher Wahana CTA */}
+          <div onClick={() => setCurrentTab && setCurrentTab('voucher')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', borderRadius: '1rem', boxShadow: '0 10px 15px -3px rgba(59, 130, 246, 0.3)', transition: 'transform 0.2s' }} onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}>
             <div>
-              <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.9, fontWeight: '500', marginBottom: '0.25rem' }}>Total Aviary Points</p>
-              <h3 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{user?.points_balance || 0} <span style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.8 }}>Poin</span></h3>
+              <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.9, fontWeight: '500', marginBottom: '0.25rem' }}>Tiket Wahana</p>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>Cek Sisa Kuota Anda &rarr;</h3>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.75rem', borderRadius: '50%', backdropFilter: 'blur(4px)' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.75rem', borderRadius: '50%' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
             </div>
           </div>
           
@@ -371,15 +386,21 @@ export default function DashboardTab({
                   <p style={{ fontSize: '0.75rem', fontWeight: '600' }}>{t('invite_family') || 'Undang Keluarga'}</p>
                 </div>
                 <div 
-                  onClick={() => window.location.href = '?tab=loyalty'}
+                  onClick={() => {
+                    if (setCurrentTab) {
+                      setCurrentTab('voucher');
+                    } else {
+                      window.location.href = '?tab=voucher';
+                    }
+                  }}
                   style={{ textAlign: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}
                   onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 >
                   <div style={{ width: '48px', height: '48px', background: '#f8fafc', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem', color: '#059669' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
                   </div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: '600' }}>Tukar Kupon/Reward</p>
+                  <p style={{ fontSize: '0.75rem', fontWeight: '600' }}>Voucher Wahana</p>
                 </div>
                 <div 
                   onClick={() => window.location.href = '?tab=events'}

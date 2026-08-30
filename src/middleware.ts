@@ -22,10 +22,11 @@ const getAllowedOrigins = (): string[] => {
     allowed.push('https://aviaryparks-pass.vercel.app');
   }
 
-  // Allow localhost variations in development
+  // Allow localhost variations & LAN IP addresses in development
   if (baseUrl.includes('localhost') || process.env.NODE_ENV !== 'production') {
     allowed.push('http://localhost:3000');
     allowed.push('http://127.0.0.1:3000');
+    allowed.push('http://192.168.1.69:3000');
   }
 
   return allowed;
@@ -49,16 +50,18 @@ const validateOrigin = (request: NextRequest): boolean => {
     return true;
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+  // In development, allow localhost & all private LAN origins (192.168.x.x, 10.x.x.x, etc.)
+  if (process.env.NODE_ENV !== 'production' || baseUrl.includes('localhost')) {
+    return true;
+  }
+
   const allowedOrigins = getAllowedOrigins();
 
   // Check if origin is in allowed list
   if (allowedOrigins.includes(origin)) {
     return true;
-  }
-
-  // For production, log suspicious requests
-  if (process.env.NODE_ENV === 'production') {
-    console.warn(`[SECURITY] Blocked request with unauthorized origin: ${origin} from host: ${host}`);
   }
 
   return false;
@@ -77,7 +80,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
+  const isAdminRoute = (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) && !pathname.includes('/copilot');
   const isGateRoute = pathname.startsWith('/gate') || pathname.startsWith('/api/gate');
   const isPosRoute = pathname.startsWith('/pos') || pathname.startsWith('/api/pos');
   const isVisitorApiRoute = pathname.startsWith('/api/visitor');
@@ -98,14 +101,16 @@ export async function middleware(request: NextRequest) {
     try {
       const { payload } = await jwtVerify(token, getJwtSecretKey());
 
-      if (isAdminRoute && payload.role !== 'ADMIN') {
+      const userRole = (payload.role as string)?.toUpperCase() || '';
+
+      if (isAdminRoute && userRole !== 'ADMIN') {
         throw new Error('Not Admin');
       }
-      if (isGateRoute && payload.role !== 'GATE' && payload.role !== 'ADMIN' && payload.role !== 'CASHIER') {
+      if (isGateRoute && userRole !== 'GATE' && userRole !== 'GATE_MAIN' && userRole !== 'ADMIN' && userRole !== 'CASHIER') {
         throw new Error('Not Gate/Cashier');
       }
-      if (isPosRoute && payload.role !== 'CASHIER' && payload.role !== 'ADMIN') {
-        throw new Error('Not Cashier');
+      if (isPosRoute && userRole !== 'CASHIER' && userRole !== 'ADMIN' && userRole !== 'GATE') {
+        throw new Error('Not Cashier/Gate');
       }
 
       return NextResponse.next();
@@ -149,6 +154,8 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/gate/:path*',
+    '/gate-wahana',
+    '/gate-wahana/:path*',
     '/pos/:path*',
     '/api/admin/:path*',
     '/api/gate/:path*',

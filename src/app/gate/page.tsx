@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function GateScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -22,6 +23,12 @@ export default function GateScanner() {
   const [cooldown, setCooldown] = useState(0);
   const [isCooldownPaused, setIsCooldownPaused] = useState(false);
   
+  // State untuk scan gelang Calisto instan
+  const [wristbandCode, setWristbandCode] = useState('');
+  const [isLinkingWristband, setIsLinkingWristband] = useState(false);
+  const [wristbandLinkedSuccess, setWristbandLinkedSuccess] = useState(false);
+  const wristbandInputRef = useRef<HTMLInputElement | null>(null);
+
   const [packages, setPackages] = useState<any[]>([]);
   const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -36,23 +43,71 @@ export default function GateScanner() {
     setGateStatus('idle');
     setIdentifiedUser(null);
     setIdentifiedFamily([]);
+    setWristbandCode('');
+    setWristbandLinkedSuccess(false);
     setStatusMsg('Sistem siap. Menunggu pengunjung...');
+  };
+
+  const handleLinkWristband = async (codeToLink: string) => {
+    if (!identifiedUser?.id || !codeToLink.trim() || isLinkingWristband) return;
+    setIsLinkingWristband(true);
+    try {
+      const res = await fetch('/api/gate/visits', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          member_id: identifiedUser.id,
+          card_uid: codeToLink.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWristbandLinkedSuccess(true);
+        setCooldown(2);
+        setIdentifiedUser({ ...identifiedUser, card_uid: codeToLink.trim() });
+        toast.success('Gelang Calisto Berhasil Dikaitkan!', { icon: '🎟️', duration: 2500 });
+        
+        // Play success audio
+        if ('speechSynthesis' in window) {
+          const speakMsg = new SpeechSynthesisUtterance('Gelang berhasil dikaitkan.');
+          speakMsg.lang = 'id-ID';
+          window.speechSynthesis.speak(speakMsg);
+        }
+      } else {
+        toast.error(data?.error || 'Gagal mengaitkan gelang');
+      }
+    } catch (e) {
+      console.warn('Failed to link wristband', e);
+      toast.error('Gagal menghubungkan ke server');
+    } finally {
+      setIsLinkingWristband(false);
+    }
   };
 
   useEffect(() => {
     if (viewModeState === 'DETAIL') {
-      if (!isCooldownPaused && cooldown > 0) {
-        cooldownTimerRef.current = setTimeout(() => {
-          setCooldown(prev => prev - 1);
-        }, 1000);
-      } else if (cooldown === 0 && !isCooldownPaused) {
-        returnToGate();
+      // Fokuskan input scanner gelang Calisto secara otomatis saat popup muncul
+      setTimeout(() => {
+        if (wristbandInputRef.current) {
+          wristbandInputRef.current.focus();
+        }
+      }, 300);
+
+      // Jika gelang SUDAH berhasil dikaitkan, jalankan hitung mundur 3 detik untuk kembali ke scanner
+      if (wristbandLinkedSuccess) {
+        if (cooldown > 0 && !isCooldownPaused) {
+          cooldownTimerRef.current = setTimeout(() => {
+            setCooldown(prev => prev - 1);
+          }, 1000);
+        } else if (cooldown === 0 && !isCooldownPaused) {
+          returnToGate();
+        }
       }
     }
     return () => {
       if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
     };
-  }, [viewModeState, cooldown, isCooldownPaused]);
+  }, [viewModeState, cooldown, isCooldownPaused, wristbandLinkedSuccess]);
 
   useEffect(() => {
     const initScanner = async () => {
@@ -120,28 +175,56 @@ export default function GateScanner() {
   const handleVideoPlay = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    // Scan setiap 500ms agar performa komputer tidak berat
+    // Scan cepat setiap 200ms (5 FPS) agar gate responsif instan tanpa delay
     intervalRef.current = setInterval(async () => {
       if (viewModeRef.current === 'DETAIL') return; // Pause scanning if in detail mode
       if (!videoRef.current) return;
       if (videoRef.current.paused || videoRef.current.ended) return;
       
-      // Mencegah penumpukan scan jika scan sebelumnya belum selesai (Pencegah Lag/Crash)
+      // Mencegah penumpukan scan jika request sebelumnya masih berjalan
       if (isScanningRef.current) return;
       
       isScanningRef.current = true;
 
       try {
-        // Gunakan minConfidence 0.8 agar wajah yang tertutup tangan/tidak jelas diabaikan
+        // minConfidence 0.85 (High Precision) agar wajah yang terhalang tangan / tidak jelas tidak terdeteksi
         const detection = await faceapi.detectSingleFace(
           videoRef.current,
-          new faceapi.SsdMobilenetv1Options({ minConfidence: 0.8 })
+          new faceapi.SsdMobilenetv1Options({ minConfidence: 0.85 })
         )
           .withFaceLandmarks()
           .withFaceDescriptor();
 
-        if (detection) {
-          // Draw Face Landmarks overlay to make it look like a high-tech scanner
+        if (detection && detection.detection.score >= 0.85) {
+          // Validasi Biometrik Ketat: Pastikan Mata Terbuka & Tidak Tertutup Solasi/Benda (Eye Aspect Ratio / EAR Check)
+          const landmarks = detection.landmarks;
+          const leftEye = landmarks.getLeftEye();
+          const rightEye = landmarks.getRightEye();
+          const nose = landmarks.getNose();
+          const mouth = landmarks.getMouth();
+
+          if (!leftEye?.length || !rightEye?.length || !nose?.length || !mouth?.length) {
+            return;
+          }
+
+          // Hitung Eye Aspect Ratio (Keterbukaan Mata)
+          // Mata normal memiliki perbandingan tinggi/lebar > 0.18. Jika ditutup solasi/merem, nilainya < 0.15
+          const getEyeOpenness = (eye: { x: number; y: number }[]) => {
+            if (eye.length < 6) return 0;
+            const height1 = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
+            const height2 = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
+            const width = Math.hypot(eye[0].x - eye[3].x, eye[0].y - eye[3].y);
+            return width > 0 ? (height1 + height2) / (2.0 * width) : 0;
+          };
+
+          const leftEAR = getEyeOpenness(leftEye);
+          const rightEAR = getEyeOpenness(rightEye);
+
+          // Jika salah satu atau kedua mata tertutup solasi / terhalang (EAR < 0.16), tolak scan
+          if (leftEAR < 0.16 || rightEAR < 0.16) {
+            return;
+          }
+          // Visual Overlay: Tampilkan HUD Box Fokus Bersih (bukan jaring-jaring titik pink/cyan)
           if (canvasRef.current && videoRef.current) {
             const displaySize = { width: videoRef.current.offsetWidth, height: videoRef.current.offsetHeight };
             faceapi.matchDimensions(canvasRef.current, displaySize);
@@ -150,7 +233,54 @@ export default function GateScanner() {
             const ctx = canvasRef.current.getContext('2d');
             if (ctx) {
               ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-              faceapi.draw.drawFaceLandmarks(canvasRef.current, resizedDetections);
+              
+              // Gambar Kotak Fokus Biometrik Halus & Elegan di sekeliling wajah
+              const box = resizedDetections.detection.box;
+              const pad = 12;
+              const x = Math.max(0, box.x - pad);
+              const y = Math.max(0, box.y - pad);
+              const w = box.width + (pad * 2);
+              const h = box.height + (pad * 2);
+              const cornerLength = Math.min(28, w / 4);
+
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = '#10b981'; // Emerald Green Theme
+              ctx.shadowColor = 'rgba(16, 185, 129, 0.6)';
+              ctx.shadowBlur = 8;
+
+              // Corner Top-Left
+              ctx.beginPath();
+              ctx.moveTo(x, y + cornerLength);
+              ctx.lineTo(x, y);
+              ctx.lineTo(x + cornerLength, y);
+              ctx.stroke();
+
+              // Corner Top-Right
+              ctx.beginPath();
+              ctx.moveTo(x + w - cornerLength, y);
+              ctx.lineTo(x + w, y);
+              ctx.lineTo(x + w, y + cornerLength);
+              ctx.stroke();
+
+              // Corner Bottom-Left
+              ctx.beginPath();
+              ctx.moveTo(x, y + h - cornerLength);
+              ctx.lineTo(x, y + h);
+              ctx.lineTo(x + cornerLength, y + h);
+              ctx.stroke();
+
+              // Corner Bottom-Right
+              ctx.beginPath();
+              ctx.moveTo(x + w - cornerLength, y + h);
+              ctx.lineTo(x + w, y + h);
+              ctx.lineTo(x + w, y + h - cornerLength);
+              ctx.stroke();
+
+              // Glow Center Tag
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = 'rgba(16, 185, 129, 0.85)';
+              ctx.font = 'bold 11px system-ui, sans-serif';
+              ctx.fillText('AI BIOMETRIC MATCH', x + 6, y - 6);
             }
           }
 
@@ -176,14 +306,13 @@ export default function GateScanner() {
             const ctx = canvasRef.current.getContext('2d');
             if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
           }
-          // Opsional: kembali ke mode idle jika beberapa detik tidak ada wajah
         }
       } catch (err) {
         console.error("Scanning error", err);
       } finally {
         isScanningRef.current = false;
       }
-    }, 500);
+    }, 200);
   };
 
   const speakWelcome = (name: string) => {
@@ -207,11 +336,11 @@ export default function GateScanner() {
       return;
     }
 
-    // Cek Spam (Cooldown 60 detik)
+    // Cek Spam (Cooldown 30 detik agar 1 orang yang berdiri di depan kamera tidak tercatat ganda)
     const now = Date.now();
     const lastScan = lastScansRef.current[member.id] || 0;
-    if (now - lastScan < 60000) {
-      // Sudah terekam beberapa detik lalu, cukup tampilkan hijau tanpa rekam database lagi
+    if (now - lastScan < 30000) {
+      // Sudah terekam beberapa detik lalu, tetap beri salam hijau tanpa menduplikasi log
       setStatusMsg(`Akses Diberikan: Selamat bersenang-senang, ${member.name}!`);
       setGateStatus('success');
       setIdentifiedUser(member);
@@ -229,10 +358,10 @@ export default function GateScanner() {
     setIdentifiedFamily(family);
 
     setViewMode('DETAIL');
-    setCooldown(7);
+    setCooldown(3);
     setIsCooldownPaused(false);
 
-    // Panggil API Backend (Bypass RLS & Kirim Email)
+    // Panggil API Backend (Validasi Kuota 1x Per Hari & Simpan Kunjungan)
     try {
       const res = await fetch('/api/gate/visits', {
         method: 'POST',
@@ -242,9 +371,26 @@ export default function GateScanner() {
           location: 'Gerbang Utama'
         })
       });
-      if (!res.ok) console.error("Failed to record visit in backend");
+
+      const resJson = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        if (resJson?.already_checked_in) {
+          // Member sudah masuk hari ini
+          setStatusMsg(`Akses Ditolak: ${member.name} sudah masuk hari ini (Kuota 1x/hari).`);
+          setGateStatus('denied');
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const deniedMsg = new SpeechSynthesisUtterance(`Maaf ${member.name}, tiket Annual Pass Anda sudah digunakan hari ini.`);
+            deniedMsg.lang = 'id-ID';
+            window.speechSynthesis.speak(deniedMsg);
+          }
+          return;
+        }
+        console.warn("Failed to record visit in backend:", resJson?.error || res.statusText);
+      }
     } catch (err) {
-      console.error("Error calling visits API:", err);
+      console.warn("Error calling visits API:", err);
     }
   };
 
@@ -298,6 +444,7 @@ export default function GateScanner() {
       background: `url('/hero-new.jpg') center center / cover no-repeat`,
       position: 'relative'
     }}>
+      <Toaster position="top-center" />
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes scanline {
           0% { top: 0%; opacity: 0; }
@@ -441,15 +588,17 @@ export default function GateScanner() {
             </div>
             <button 
               onClick={returnToGate}
-              style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(16,185,129,0.2)', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              style={{ backgroundColor: wristbandLinkedSuccess ? '#10b981' : '#64748b', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
-              Kembali ke Gate 
-              <span style={{ backgroundColor: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.8rem' }}>{cooldown}s</span>
+              {wristbandLinkedSuccess ? 'Selesai & Lanjut' : 'Lewati / Kembali'} 
+              {wristbandLinkedSuccess && (
+                <span style={{ backgroundColor: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.8rem' }}>{cooldown}s</span>
+              )}
             </button>
           </div>
 
-          <p style={{ textAlign: 'center', color: isCooldownPaused ? '#10b981' : '#64748b', marginBottom: '1.5rem', fontSize: '0.9rem', fontWeight: isCooldownPaused ? 'bold' : 'normal', transition: 'color 0.3s' }}>
-            {isCooldownPaused ? 'Waktu dijeda. Lepaskan untuk melanjutkan.' : 'Tahan (Hold) layar ini untuk menghentikan waktu mundur.'}
+          <p style={{ textAlign: 'center', color: '#64748b', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
+            {wristbandLinkedSuccess ? '✅ Gelang berhasil dikaitkan. Layar akan kembali otomatis...' : '💡 Silakan tembak scanner ke gelang Calisto, atau klik "Lewati" jika tanpa gelang.'}
           </p>
           
           <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '2rem', width: '100%', maxWidth: '1000px', margin: 'auto' }}>
@@ -506,18 +655,101 @@ export default function GateScanner() {
                     </div>
                     <div>
                       <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
-                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>{identifiedUser.nik || '-'}</p>
+                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>
+                        {identifiedUser.nik && identifiedUser.nik.length === 16
+                          ? `${identifiedUser.nik.substring(0, 6)}******${identifiedUser.nik.substring(12)}`
+                          : identifiedUser.nik || '-'}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Bagian Kanan: Info Paket & Rombongan */}
-            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.25rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flex: '1 1 40%', maxWidth: '380px', minWidth: '280px', maxHeight: '60vh', overflowY: 'auto', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)', animation: 'slideInRight 0.6s ease-out 0.2s both' }}>
+            {/* Bagian Kanan: Info Paket, Scan Gelang Calisto, & Rombongan */}
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.25rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flex: '1 1 40%', maxWidth: '420px', minWidth: '300px', maxHeight: '65vh', overflowY: 'auto', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)', animation: 'slideInRight 0.6s ease-out 0.2s both' }}>
               
+              {/* MODUL SCAN GELANG CALISTO INSTAN */}
+              <div style={{ 
+                backgroundColor: wristbandLinkedSuccess ? '#f0fdf4' : '#f8fafc', 
+                border: wristbandLinkedSuccess ? '2px solid #10b981' : '1.5px dashed #059669', 
+                borderRadius: '0.85rem', 
+                padding: '1rem', 
+                marginBottom: '1.25rem' 
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '800', color: wristbandLinkedSuccess ? '#15803d' : '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>🎟️</span> {wristbandLinkedSuccess ? 'GELANG TERKAIT HARI INI' : 'KAITKAN GELANG CALISTO'}
+                  </span>
+                  {identifiedUser?.card_uid && (
+                    <span style={{ fontSize: '0.7rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '0.15rem 0.4rem', borderRadius: '0.3rem', fontFamily: 'monospace' }}>
+                      {identifiedUser.card_uid}
+                    </span>
+                  )}
+                </div>
+
+                {wristbandLinkedSuccess ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#15803d', fontSize: '0.85rem', fontWeight: '700' }}>
+                    <span>✅</span> Gelang siap dipakai masuk & potong kuota wahana!
+                  </div>
+                ) : (
+                  <form onSubmit={(e) => { e.preventDefault(); handleLinkWristband(wristbandCode); }}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        ref={wristbandInputRef}
+                        type="text"
+                        autoFocus
+                        placeholder="Tembak scanner ke gelang Calisto..."
+                        value={wristbandCode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setWristbandCode(val);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && wristbandCode.trim()) {
+                            e.preventDefault();
+                            handleLinkWristband(wristbandCode.trim());
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 0.8rem',
+                          borderRadius: '0.5rem',
+                          border: '1.5px solid #059669',
+                          fontSize: '0.85rem',
+                          fontWeight: '700',
+                          backgroundColor: '#ffffff',
+                          color: '#0f172a',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLinkingWristband || !wristbandCode.trim()}
+                        style={{
+                          backgroundColor: '#059669',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '0.6rem 0.85rem',
+                          borderRadius: '0.5rem',
+                          fontWeight: '700',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          opacity: isLinkingWristband || !wristbandCode.trim() ? 0.6 : 1
+                        }}
+                      >
+                        {isLinkingWristband ? 'Menyimpan...' : 'Kaitkan Otomatis'}
+                      </button>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', marginTop: '0.35rem' }}>
+                      💡 Kasir cukup tembakkan barcode scanner ke gelang Calisto (otomatis terisi & tersimpan).
+                    </p>
+                  </form>
+                )}
+              </div>
+
               {/* Info Paket Tiket */}
-              <div style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
+              <div style={{ marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
                 <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Paket Tiket Terdaftar</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ backgroundColor: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '0.5rem' }}>
@@ -610,28 +842,28 @@ export default function GateScanner() {
             }}></div>
           )}
 
-          {/* Overlay Targeting Reticle */}
+          {/* Modern Smart Scanner Reticle */}
           <div style={{
             position: 'absolute',
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 'min(75%, 280px)',
-            height: 'min(85%, 360px)',
-            border: `4px solid ${borderColor}`,
-            borderRadius: '50%',
+            width: 'min(78%, 300px)',
+            height: 'min(82%, 350px)',
+            border: `2px dashed ${borderColor}`,
+            borderRadius: '1.75rem',
             pointerEvents: 'none',
-            boxShadow: '0 0 0 2000px rgba(0,0,0,0.5)',
-            transition: 'border-color 0.3s ease',
-            animation: gateStatus === 'idle' || gateStatus === 'loading' ? 'pulseBorder 2s infinite' : 'none',
+            boxShadow: '0 0 0 1000px rgba(15, 23, 42, 0.45)',
+            transition: 'all 0.3s ease',
+            animation: gateStatus === 'idle' || gateStatus === 'loading' ? 'pulseBorder 2.5s infinite' : 'none',
             zIndex: 1
-          }}></div>
-
-          {/* Corner Brackets */}
-          <div style={{ position: 'absolute', top: '15px', left: '15px', width: '40px', height: '40px', borderTop: '5px solid rgba(255,255,255,0.9)', borderLeft: '5px solid rgba(255,255,255,0.9)', borderRadius: '10px 0 0 0', zIndex: 2 }}></div>
-          <div style={{ position: 'absolute', top: '15px', right: '15px', width: '40px', height: '40px', borderTop: '5px solid rgba(255,255,255,0.9)', borderRight: '5px solid rgba(255,255,255,0.9)', borderRadius: '0 10px 0 0', zIndex: 2 }}></div>
-          <div style={{ position: 'absolute', bottom: '15px', left: '15px', width: '40px', height: '40px', borderBottom: '5px solid rgba(255,255,255,0.9)', borderLeft: '5px solid rgba(255,255,255,0.9)', borderRadius: '0 0 0 10px', zIndex: 2 }}></div>
-          <div style={{ position: 'absolute', bottom: '15px', right: '15px', width: '40px', height: '40px', borderBottom: '5px solid rgba(255,255,255,0.9)', borderRight: '5px solid rgba(255,255,255,0.9)', borderRadius: '0 0 10px 0', zIndex: 2 }}></div>
+          }}>
+            {/* 4 Corner Markers on the Box */}
+            <div style={{ position: 'absolute', top: '-2px', left: '-2px', width: '24px', height: '24px', borderTop: `4px solid ${borderColor}`, borderLeft: `4px solid ${borderColor}`, borderTopLeftRadius: '1.25rem' }}></div>
+            <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '24px', height: '24px', borderTop: `4px solid ${borderColor}`, borderRight: `4px solid ${borderColor}`, borderTopRightRadius: '1.25rem' }}></div>
+            <div style={{ position: 'absolute', bottom: '-2px', left: '-2px', width: '24px', height: '24px', borderBottom: `4px solid ${borderColor}`, borderLeft: `4px solid ${borderColor}`, borderBottomLeftRadius: '1.25rem' }}></div>
+            <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '24px', height: '24px', borderBottom: `4px solid ${borderColor}`, borderRight: `4px solid ${borderColor}`, borderBottomRightRadius: '1.25rem' }}></div>
+          </div>
         </div>
 
         {/* Instructions */}

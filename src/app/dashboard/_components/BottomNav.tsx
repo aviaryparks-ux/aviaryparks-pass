@@ -39,6 +39,15 @@ export default function BottomNav({
       </button>
       
       <button 
+        onClick={() => setCurrentTab('voucher')} 
+        className="nav-btn-mobile"
+        style={{ color: currentTab === 'voucher' ? '#059669' : '#94a3b8', display: 'flex', alignItems: 'center', background: 'transparent', border: 'none' }}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
+        <span>Voucher</span>
+      </button>
+      
+      <button 
         onClick={() => setCurrentTab('events')} 
         className="nav-btn-mobile"
         style={{ color: currentTab === 'events' ? '#059669' : '#94a3b8', display: 'flex', alignItems: 'center', background: 'transparent', border: 'none' }}

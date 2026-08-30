@@ -163,12 +163,13 @@ export default function Payment() {
         // Redirect ke halaman Duitku
         window.location.href = data.paymentUrl;
       } else {
-        toast.error('Gagal membuat tagihan pembayaran: ' + (data.error || 'Unknown Error'));
+        const errorMsg = data.error || data.message || data.details?.statusMessage || 'Terjadi kesalahan gateway';
+        toast.error('Gagal membuat tagihan: ' + errorMsg);
         setIsLoading(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Terjadi kesalahan saat memproses pembayaran.');
+      toast.error('Gagal menghubungi server: ' + (err.message || 'Error'));
       setIsLoading(false);
     }
   };

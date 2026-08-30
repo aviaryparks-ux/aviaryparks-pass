@@ -30,8 +30,8 @@ export class AuditLogger {
           const { jwtVerify } = await import('jose');
           const secret = process.env.JWT_SECRET || '';
           const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-          actorId = payload.userId as string;
-          actorName = (payload.name as string) || (payload.role as string) || 'UNKNOWN';
+          actorId = (payload.sub as string) || (payload.userId as string) || null;
+          actorName = (payload.username as string) || (payload.name as string) || (payload.role as string) || 'ADMIN';
         } catch (e) {
           console.warn('Failed to parse system_token for AuditLog');
         }

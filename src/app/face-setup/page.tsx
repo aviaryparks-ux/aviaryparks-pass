@@ -207,6 +207,17 @@ export default function FaceSetup() {
     };
   }, []);
 
+  // ── Auto-Polling Realtime: Cek status pembayaran otomatis setiap 3 detik ──
+  useEffect(() => {
+    if (!paymentPending || !groupId) return;
+
+    const pollInterval = setInterval(() => {
+      fetchMembers(groupId);
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [paymentPending, groupId]);
+
   // Memulai kamera hanya jika pembayaran sudah selesai
   useEffect(() => {
     if (isModelLoaded && !paymentPending && pendingMembers.length > 0) {
@@ -334,16 +345,22 @@ export default function FaceSetup() {
     return (
       <PageWrapper>
         <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh' }}>
-          <div className="glass-panel" style={{ maxWidth: '400px', textAlign: 'center', backgroundColor: '#fff', padding: '2rem', borderRadius: '16px' }}>
-            <h2>Menunggu Pembayaran ⏳</h2>
-            <p style={{ color: 'var(--text-secondary)', margin: '1.5rem 0' }}>
-              Sistem mendeteksi bahwa tiket Anda belum lunas atau masih dalam proses pengecekan oleh pihak bank. 
+          <div className="glass-panel" style={{ maxWidth: '420px', textAlign: 'center', backgroundColor: '#fff', padding: '2.5rem 2rem', borderRadius: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#ecfdf5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#10b981', animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite' }}></div>
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.5rem' }}>Menunggu Pembayaran</h2>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: '1.5', margin: '0 0 1.5rem 0' }}>
+              Silakan selesaikan pembayaran di aplikasi atau m-banking Anda. Halaman ini akan <strong>otomatis melanjutkan ke perekaman wajah</strong> begitu dana diterima.
             </p>
-            <button onClick={() => fetchMembers(groupId)} className="btn btn-secondary" style={{ width: '100%', marginBottom: '1rem' }}>
-              Cek Status Pembayaran (Refresh)
-            </button>
-            <button onClick={() => router.push('/payment')} className="btn btn-primary" style={{ width: '100%' }}>
-              Kembali ke Halaman Pembayaran
+            
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.5rem 1rem', borderRadius: '2rem', color: '#15803d', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
+              Memeriksa Status Otomatis...
+            </div>
+
+            <button onClick={() => router.push('/payment')} className="btn btn-secondary" style={{ width: '100%', fontSize: '0.9rem' }}>
+              Ubah Metode Pembayaran
             </button>
           </div>
         </div>

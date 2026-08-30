@@ -1,32 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import * as faceapi from 'face-api.js';
-import jsQR from 'jsqr';
 import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
+import { QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function POSPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [statusMsg, setStatusMsg] = useState('Memuat model & data...');
+  const [statusMsg, setStatusMsg] = useState('Memuat data...');
   const [identifiedUser, setIdentifiedUser] = useState<any>(null);
   const identifiedUserRef = useRef<any>(null);
   
-  const [scanMode, setScanMode] = useState<'FACE' | 'BARCODE' | 'VOUCHER'>('FACE');
   const [barcodeInput, setBarcodeInput] = useState('');
-  const [voucherInput, setVoucherInput] = useState('');
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
   
-  const [subtotal, setSubtotal] = useState<number | ''>('');
+  const [txMode, setTxMode] = useState<'TOPUP' | 'VOUCHER'>('TOPUP');
+  
+  // Topup / Voucher State
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
+  const [wahanas, setWahanas] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [selectedWahanaId, setSelectedWahanaId] = useState<string>('');
+  const [topupType, setTopupType] = useState<'SATUAN' | 'PAKET'>('SATUAN');
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
+  const [topupQuantity, setTopupQuantity] = useState<number>(1);
+  const [memberVouchers, setMemberVouchers] = useState<any[]>([]);
+  const [useVoucherQuantity, setUseVoucherQuantity] = useState<number>(1);
+  
   const [posTerminals, setPosTerminals] = useState<any[]>([]);
   const [posLocation, setPosLocation] = useState<string>('RESTO');
   const [posTerminalName, setPosTerminalName] = useState<string>('Terminal (Fallback)');
-  const [rewards, setRewards] = useState<any[]>([]);
-  const [selectedReward, setSelectedReward] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isScanningRef = useRef<boolean>(false);
 
   // Cashier Auth State
   const [cashiers, setCashiers] = useState<any[]>([]);
@@ -34,12 +38,82 @@ export default function POSPage() {
   const [selectedCashier, setSelectedCashier] = useState<any>(null);
   const [pinInput, setPinInput] = useState('');
 
+  // Receipt Modal State
+  const [lastReceipt, setLastReceipt] = useState<any>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  // QRIS Payment Modal State (100% Cashless Gateway)
+  const [qrisModal, setQrisModal] = useState(false);
+  const [qrisData, setQrisData] = useState<{
+    qrUrl?: string;
+    qrString?: string | null;
+    amount: number;
+    title: string;
+    orderId: string;
+    qty: number;
+    unitPrice?: number;
+    type: 'SATUAN' | 'PAKET';
+    targetId: string;
+  } | null>(null);
+
+  // Auto-Polling Status Pembayaran Realtime (Setiap 2.5 Detik)
+  useEffect(() => {
+    if (!qrisModal || !qrisData || !identifiedUser) return;
+
+    let isSubscribed = true;
+    const interval = setInterval(async () => {
+      try {
+        const checkRes = await fetch('/api/payment/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            groupId: identifiedUser.id, 
+            orderId: qrisData.orderId 
+          })
+        });
+        const checkData = await checkRes.json();
+
+        if (isSubscribed && checkData.success && checkData.status === 'SUCCESS') {
+          toast.success('🎉 Pembayaran QRIS Berhasil Masuk!');
+          setQrisModal(false);
+
+          setLastReceipt({
+            type: qrisData.type === 'PAKET' ? 'PAKET' : 'TOPUP',
+            title: qrisData.title,
+            memberName: identifiedUser.name,
+            nik: identifiedUser.nik,
+            amount: qrisData.amount,
+            qty: qrisData.qty,
+            unitPrice: qrisData.unitPrice,
+            cashier: cashierSession?.name || 'Kasir',
+            wahana: cashierSession?.wahana_name || 'Wahana',
+            time: new Date().toLocaleString('id-ID'),
+            invoice: qrisData.orderId
+          });
+          setShowReceiptModal(true);
+          setQrisData(null);
+          resetTransaction();
+        }
+      } catch (err) {
+        // Abaikan error polling silent
+      }
+    }, 2500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [qrisModal, qrisData, identifiedUser, cashierSession]);
+
   useEffect(() => {
     const fetchInitData = async () => {
       try {
-        const [termRes, cashRes] = await Promise.all([
+        const [termRes, cashRes, wahanasRes, pkgRes, meRes] = await Promise.all([
           fetch('/api/pos/terminals'),
-          fetch('/api/pos/cashiers')
+          fetch('/api/pos/cashiers'),
+          fetch('/api/pos/wahanas'),
+          fetch('/api/public/packages?category=TOPUP_BUNDLE'),
+          fetch('/api/auth/system-me')
         ]);
         
         const termJson = await termRes.json();
@@ -54,246 +128,294 @@ export default function POSPage() {
           setCashiers(cashJson.data);
           setSelectedCashier(cashJson.data[0]);
         }
+        
+        if (wahanasRes.ok) {
+          const wahanasData = await wahanasRes.json();
+          const activeWahanas = wahanasData.filter((w: any) => w.is_active && w.topup_price > 0);
+          setWahanas(activeWahanas);
+          if (activeWahanas.length > 0) setSelectedWahanaId(activeWahanas[0].id);
+        }
+        
+        const pkgJson = await pkgRes.json();
+        if (pkgJson.success) {
+          setPackages(pkgJson.data);
+          if (pkgJson.data.length > 0) setSelectedPackageId(pkgJson.data[0].id);
+        }
+
+        // Auto-login session if cashier already authenticated via /system-login
+        if (meRes.ok) {
+          const meJson = await meRes.json();
+          if (meJson.success && meJson.user) {
+            setCashierSession(meJson.user);
+            if (meJson.user.wahana_id) {
+              setSelectedWahanaId(meJson.user.wahana_id);
+            }
+          }
+        }
       } catch (e) { console.error(e); }
     };
     fetchInitData();
   }, []);
 
-  useEffect(() => {
-    if (cashierSession && scanMode === 'FACE') {
-      const initScanner = async () => {
-        try {
-          await Promise.all([
-            faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
-            faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-            faceapi.nets.faceRecognitionNet.loadFromUri('/models')
-          ]);
+  const performLookup = async (queryId: string) => {
+    const trimmed = queryId.trim();
+    if (!trimmed) return;
 
-          setStatusMsg('Sistem POS siap. Arahkan wajah pengunjung ke kamera.');
-          
-          if (videoRef.current) {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            videoRef.current.srcObject = stream;
-          }
-        } catch (err) {
-          console.error(err);
-          setStatusMsg('Gagal memuat sistem pemindai / kamera.');
-        }
-      };
-      
-      initScanner();
-
-      return () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-          const stream = videoRef.current.srcObject as MediaStream;
-          stream.getTracks().forEach(track => track.stop());
-        }
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      };
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-  }, [cashierSession, scanMode]);
-
-  const handleVideoPlay = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    intervalRef.current = setInterval(async () => {
-      if (!cashierSession) return; // Do not scan if locked
-      if (identifiedUserRef.current) return; // Pause scanning if user is identified
-      if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
-      if (isScanningRef.current) return;
-      
-      isScanningRef.current = true;
-
-      try {
-        const video = videoRef.current;
-        let qrFound = false;
-
-        // --- 1. QR CODE SCANNING ---
-        // Create an offscreen canvas to get image data for jsQR
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "attemptBoth",
-            });
-
-            if (code && code.data) {
-              qrFound = true;
-              console.log("QR Code detected:", code.data);
-              setStatusMsg('QR Terbaca, Memproses...');
-              const res = await fetch(`/api/pos/lookup?id=${code.data}`);
-              if (res.ok) {
-                const result = await res.json();
-                if (result.data) {
-                  setIdentifiedUser(result.data);
-                  identifiedUserRef.current = result.data;
-                  fetchRewards(result.data.id);
-                  setStatusMsg('Member Ditemukan: ' + result.data.name);
-                } else {
-                  setStatusMsg('QR Code tidak valid atau member tidak ditemukan.');
-                }
-              } else {
-                setStatusMsg('Gagal memverifikasi QR Code dari server.');
-              }
-            }
-          }
-        }
-
-        // --- 2. FACE RECOGNITION (Fallback if no QR) ---
-        if (!qrFound) {
-          const detection = await faceapi.detectSingleFace(video)
-            .withFaceLandmarks()
-            .withFaceDescriptor();
-
-          if (detection) {
-            const descriptorArray = Array.from(detection.descriptor);
-            
-            const res = await fetch('/api/gate/match', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ descriptorArray })
-            });
-            
-            if (res.ok) {
-              const result = await res.json();
-              if (result.data) {
-                setIdentifiedUser(result.data);
-                identifiedUserRef.current = result.data;
-                fetchRewards(result.data.id);
-                setStatusMsg('Wajah Dikenali: ' + result.data.name);
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Scanning error", err);
-      } finally {
-        isScanningRef.current = false;
-      }
-    }, 500); // scan every 500ms for more responsive QR
-  };
-
-  const fetchRewards = async (memberId: string) => {
     try {
-      const res = await fetch(`/api/visitor/loyalty?member_id=${memberId}`);
+      const res = await fetch(`/api/pos/lookup?id=${encodeURIComponent(trimmed)}`);
       if (res.ok) {
-        const json = await res.json();
-        if (json.data && json.data.rewards) {
-          setRewards(json.data.rewards);
-        }
-      }
-    } catch(e) {
-      console.error(e);
-    }
-  };
+        const result = await res.json();
+        if (result.data) {
+          setIdentifiedUser(result.data);
+          identifiedUserRef.current = result.data;
+          setBarcodeInput('');
+          setStatusMsg('Member Ditemukan: ' + result.data.name);
 
-  const handleBarcodeSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && barcodeInput.trim() !== '') {
-      try {
-        const res = await fetch(`/api/pos/lookup?id=${barcodeInput.trim()}`);
-        if (res.ok) {
-          const result = await res.json();
-          if (result.data) {
-            setIdentifiedUser(result.data);
-            identifiedUserRef.current = result.data;
-            fetchRewards(result.data.id);
-            setBarcodeInput('');
-          } else {
-            toast.error('Member tidak ditemukan!');
+          // Fetch vouchers
+          try {
+            const vRes = await fetch(`/api/pos/member-vouchers?member_id=${result.data.id}`);
+            if (vRes.ok) {
+              const vJson = await vRes.json();
+              if (vJson.success && vJson.data) {
+                setMemberVouchers(vJson.data);
+                const activeV = vJson.data.filter((v: any) => v.quota > 0);
+                if (activeV.length > 0) {
+                  setSelectedWahanaId(activeV[0].wahana_id);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Failed to load member vouchers', err);
           }
         } else {
           toast.error('Member tidak ditemukan!');
         }
-      } catch (err) {
-        console.error(err);
-        toast.error('Gagal mencari member');
+      } else {
+        toast.error('Member tidak ditemukan!');
       }
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal mencari member');
     }
   };
 
-  const handleVoucherSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && voucherInput.trim() !== '') {
-      setIsProcessing(true);
-      try {
-        const res = await fetch('/api/pos/voucher/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ voucher_code: voucherInput.trim() })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          toast.success(`Kupon Valid & Berhasil Digunakan!\nReward: ${data.data.reward_name}`, { duration: 5000 });
-          setVoucherInput('');
-        } else {
-          toast.error(data.message || 'Kupon tidak valid');
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error('Gagal memverifikasi kupon');
-      } finally {
-        setIsProcessing(false);
-      }
+  const handleBarcodeSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await performLookup(barcodeInput);
     }
   };
+
+  useEffect(() => {
+    if (txMode === 'VOUCHER' && memberVouchers.length > 0) {
+      const activeVouchers = memberVouchers.filter(v => v.quota > 0);
+      if (activeVouchers.length > 0) {
+        if (!selectedWahanaId || !activeVouchers.some(v => v.wahana_id === selectedWahanaId)) {
+          setSelectedWahanaId(activeVouchers[0].wahana_id);
+        }
+      }
+    }
+  }, [txMode, memberVouchers, selectedWahanaId]);
 
   const resetTransaction = () => {
     setIdentifiedUser(null);
     identifiedUserRef.current = null;
-    setSubtotal('');
     setInvoiceNumber('');
-    setSelectedReward(null);
-    setRewards([]);
-    setStatusMsg('Sistem POS siap. Arahkan wajah pengunjung ke kamera atau scan barcode.');
+    setTopupQuantity(1);
+    setUseVoucherQuantity(1);
+    setMemberVouchers([]);
+    setBarcodeInput('');
+    setStatusMsg('Sistem POS siap. Scan barcode atau ketik Member ID.');
+    
+    // Kembalikan fokus ke input barcode setelah proses selesai
+    setTimeout(() => {
+      barcodeInputRef.current?.focus();
+      barcodeInputRef.current?.select();
+    }, 100);
   };
 
-  const calculateTotal = () => {
-    let total = Number(subtotal) || 0;
-    let discount = 0;
-    if (selectedReward) {
-      if (selectedReward.reward_type === 'VOUCHER_50K') discount = 50000;
-      if (selectedReward.reward_type === 'VOUCHER_100K') discount = 100000;
+  // ── AUTO-FOCUS & GLOBAL SCANNER CAPTURE ──
+  // Menjaga fokus selalu aktif pada input barcode agar kasir tidak perlu mengklik mouse sama sekali
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Jangan intercept jika user sedang mengetik di input/select/textarea lain atau jika sistem terkunci
+      if (!cashierSession || showReceiptModal || qrisModal) return;
+
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      const activeType = (document.activeElement as HTMLInputElement)?.type?.toLowerCase();
+
+      // Jika fokus bukan di text/number input selain barcode, langsung fokuskan ke barcode scanner
+      if (document.activeElement !== barcodeInputRef.current && activeTag !== 'select' && activeTag !== 'textarea') {
+        if (e.key.length === 1 || e.key === 'Enter') {
+          barcodeInputRef.current?.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [cashierSession, showReceiptModal, qrisModal]);
+
+  // Pastikan input selalu terfokus saat halaman aktif / modal ditutup
+  useEffect(() => {
+    if (cashierSession && !showReceiptModal && !qrisModal) {
+      setTimeout(() => {
+        barcodeInputRef.current?.focus();
+      }, 150);
     }
-    return Math.max(0, total - discount);
-  };
+  }, [cashierSession, showReceiptModal, qrisModal, identifiedUser]);
 
-  const calculatePointsEarned = () => {
-    const finalTotal = calculateTotal();
-    return Math.floor(finalTotal / 10000); // using 10000 ratio
+  const calculateTopupTotal = () => {
+    if (topupType === 'PAKET') {
+      const pkg = packages.find(p => p.id === selectedPackageId);
+      if (!pkg) return 0;
+      return pkg.price;
+    } else {
+      const wahana = wahanas.find(w => w.id === selectedWahanaId);
+      if (!wahana) return 0;
+      return wahana.topup_price * topupQuantity;
+    }
   };
 
   const handleCheckout = async () => {
-    if (!identifiedUser || (subtotal === '' && !selectedReward)) return;
-    setIsProcessing(true);
+    if (!identifiedUser) return;
     
+    setIsProcessing(true);
     try {
       const auditTerminalName = `${posTerminalName} (${cashierSession?.name})`;
 
-      const res = await fetch('/api/pos/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          member_id: identifiedUser.id,
-          subtotal: Number(subtotal) || 0,
-          reward_id: selectedReward ? selectedReward.id : null,
-          location: posLocation,
-          terminal_name: auditTerminalName,
-          invoice_number: invoiceNumber
-        })
-      });
-      
-      const result = await res.json();
-      if (result.success) {
-        toast.success(`Transaksi Berhasil!\nDiskon: ${selectedReward ? selectedReward.name : '-'}\nPoin Didapat: +${result.data.points_earned} Poin`);
-        resetTransaction();
-      } else {
-        toast.error('Gagal memproses transaksi: ' + result.error);
+      if (txMode === 'TOPUP') {
+        if (topupType === 'PAKET') {
+          if (!selectedPackageId) {
+            toast.error('Data paket tidak valid');
+            setIsProcessing(false);
+            return;
+          }
+          const selectedPkg = packages.find(p => p.id === selectedPackageId);
+          const pkgAmount = Number(selectedPkg?.price || 0);
+
+          // 100% Cashless: Panggil Duitku QRIS API
+          const payRes = await fetch('/api/payment/create-wahana', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              memberId: identifiedUser.id,
+              bundleId: selectedPackageId,
+              quantity: 1,
+              customerName: identifiedUser.name,
+              customerEmail: identifiedUser.email || 'kasir@aviarypark.com',
+              customerPhone: identifiedUser.phone || '081234567890',
+              paymentMethod: 'SP' // ShopeePay / QRIS Duitku
+            })
+          });
+
+          const payData = await payRes.json();
+          if (payRes.ok && payData.success) {
+            setQrisData({
+              qrUrl: payData.paymentUrl,
+              qrString: payData.qrString,
+              amount: pkgAmount,
+              title: selectedPkg?.name || 'Paket Bundling',
+              orderId: payData.merchantOrderId,
+              qty: 1,
+              type: 'PAKET',
+              targetId: selectedPackageId
+            });
+            setQrisModal(true);
+          } else {
+            toast.error('Gagal membuat QRIS: ' + (payData.error || 'Server error'));
+          }
+          setIsProcessing(false);
+          return;
+        }
+
+        // TOPUP WAHANA SATUAN MODE — gunakan wahana terikat dari akun kasir atau wahana yang dipilih
+        const wahanaIdToUse = cashierSession?.wahana_id || selectedWahanaId;
+        if (!wahanaIdToUse || topupQuantity < 1) {
+          toast.error('Silakan pilih wahana terlebih dahulu.');
+          setIsProcessing(false);
+          return;
+        }
+
+        const activeW = wahanas.find((w: any) => w.id === wahanaIdToUse);
+        const totalAmt = (activeW?.topup_price || 0) * topupQuantity;
+
+        // 100% Cashless: Panggil Duitku QRIS API untuk Satuan
+        const payRes = await fetch('/api/payment/create-wahana', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            memberId: identifiedUser.id,
+            wahanaId: wahanaIdToUse,
+            quantity: topupQuantity,
+            customerName: identifiedUser.name,
+            customerEmail: identifiedUser.email || 'kasir@aviarypark.com',
+            customerPhone: identifiedUser.phone || '081234567890',
+            paymentMethod: 'SP' // ShopeePay / QRIS Duitku
+          })
+        });
+
+        const payData = await payRes.json();
+        if (payRes.ok && payData.success) {
+          setQrisData({
+            qrUrl: payData.paymentUrl,
+            qrString: payData.qrString,
+            amount: totalAmt,
+            title: activeW?.name || 'Wahana Satuan',
+            orderId: payData.merchantOrderId,
+            qty: topupQuantity,
+            unitPrice: activeW?.topup_price || 0,
+            type: 'SATUAN',
+            targetId: wahanaIdToUse
+          });
+          setQrisModal(true);
+        } else {
+          toast.error('Gagal membuat QRIS: ' + (payData.error || 'Server error'));
+        }
+        setIsProcessing(false);
+        return;
+      } else if (txMode === 'VOUCHER') {
+        const wahanaIdToUse = cashierSession?.wahana_id || selectedWahanaId;
+        if (!wahanaIdToUse || useVoucherQuantity < 1) {
+          toast.error('Data wahana tidak valid');
+          setIsProcessing(false);
+          return;
+        }
+
+        const activeWName = cashierSession?.wahana_name || wahanas.find((w: any) => w.id === wahanaIdToUse)?.name || memberVouchers.find((v: any) => v.wahana_id === wahanaIdToUse)?.wahanas?.name || 'Wahana';
+
+        const res = await fetch('/api/pos/use-voucher', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            member_id: identifiedUser.id,
+            wahana_id: wahanaIdToUse,
+            quantity: useVoucherQuantity,
+            terminal_name: auditTerminalName
+          })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          toast.success(`Penukaran Tiket Berhasil!\nSisa tiket: ${result.data.remaining_quota}`);
+          setLastReceipt({
+            type: 'VOUCHER',
+            title: `Tiket Masuk Wahana: ${activeWName}`,
+            memberName: identifiedUser.name,
+            nik: identifiedUser.nik,
+            amount: 0,
+            qty: useVoucherQuantity,
+            remainingQuota: result.data.remaining_quota,
+            cashier: cashierSession?.name || 'Kasir',
+            wahana: activeWName,
+            time: new Date().toLocaleString('id-ID'),
+            invoice: `TCK-${Date.now()}`
+          });
+          setShowReceiptModal(true);
+          resetTransaction();
+        } else {
+          toast.error('Gagal menggunakan tiket: ' + result.error);
+        }
       }
     } catch(e) {
       toast.error('Terjadi kesalahan.');
@@ -313,9 +435,19 @@ export default function POSPage() {
       const data = await res.json();
       
       if (res.ok && data.success) {
-        setCashierSession(data.cashier);
+        // Merge wahana info from selectedCashier (which has wahana_id & wahana_name)
+        const session = {
+          ...data.cashier,
+          wahana_id: selectedCashier.wahana_id || null,
+          wahana_name: selectedCashier.wahana_name || null
+        };
+        setCashierSession(session);
+        // Auto-set selectedWahanaId to cashier's bound wahana
+        if (selectedCashier.wahana_id) {
+          setSelectedWahanaId(selectedCashier.wahana_id);
+        }
         setPinInput('');
-        toast.success(`Selamat bekerja, ${data.cashier.name}!`);
+        toast.success(`Selamat bekerja, ${data.cashier.name}! Wahana: ${selectedCashier.wahana_name || 'Semua'}`);
       } else {
         toast.error('PIN Salah! Silakan coba lagi.');
         setPinInput('');
@@ -345,7 +477,9 @@ export default function POSPage() {
             style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', marginBottom: '1.5rem', textAlign: 'center', fontWeight: 'bold' }}
           >
             {cashiers.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>
+                {c.name} {c.wahana_name ? `(🎡 ${c.wahana_name})` : ''}
+              </option>
             ))}
           </select>
 
@@ -379,118 +513,146 @@ export default function POSPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: `url('/hero-new.jpg') center center / cover no-repeat`,
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      overflowX: 'hidden'
+    }}>
       <Toaster position="top-center" reverseOrder={false} />
-      <header style={{ background: '#022c22', color: 'white', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <img src="/logo.png" alt="Logo" style={{ height: '40px' }} />
-          <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 'bold' }}>POS Kasir & Penukaran Poin</h1>
+
+      {/* Header Panel with Gate Style */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '1.25rem 3rem', zIndex: 10 }}>
+        
+        {/* Hanging Left Logo Tab */}
+        <div style={{ 
+          position: 'absolute', 
+          left: '3rem', 
+          top: 0, 
+          padding: '1rem 2rem 1.5rem 2rem',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10
+        }}>
+          {/* 3D Trapezoid Background */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#f0fdf4',
+            transform: 'perspective(150px) rotateX(-10deg)',
+            transformOrigin: 'top',
+            borderBottomLeftRadius: '1.5rem',
+            borderBottomRightRadius: '1.5rem',
+            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+            zIndex: -1
+          }}></div>
+          <img src="/logo.png" alt="Aviary Park Indonesia" style={{ height: '55px', width: 'auto' }} />
         </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', marginLeft: '13rem', gap: '1rem' }}>
+          <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '0.4rem 1.2rem', borderRadius: '2rem', fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a' }}></div>
+            POS KASIR
+          </div>
+          {cashierSession?.wahana_name && (
+            <div style={{ backgroundColor: '#f0fdf4', color: '#059669', border: '1px solid #bbf7d0', padding: '0.4rem 1rem', borderRadius: '2rem', fontWeight: 'bold', fontSize: '0.9rem' }}>
+              {cashierSession.wahana_name}
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.1)', padding: '0.5rem 1rem', borderRadius: '2rem' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399' }}></div>
-            <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>{cashierSession.name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.9)', padding: '0.4rem 1rem', borderRadius: '2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#0f172a' }}>{cashierSession?.name}</span>
           </div>
           <button 
-            onClick={() => setCashierSession(null)}
-            style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.875rem', fontWeight: 'bold', cursor: 'pointer' }}
+            onClick={async () => {
+              try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                localStorage.removeItem('system_username');
+                localStorage.removeItem('system_role');
+                window.location.href = '/system-login';
+              } catch (e) {
+                window.location.href = '/system-login';
+              }
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fee2e2', color: '#ef4444', padding: '0.4rem 1.2rem', borderRadius: '2rem', fontWeight: 'bold', fontSize: '0.9rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
           >
-            Kunci POS (Lock)
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            Keluar (Logout)
           </button>
-          <Link href="/admin" style={{ color: '#94a3b8', textDecoration: 'none', fontWeight: '500', marginLeft: '1rem' }}>Dasbor</Link>
         </div>
-      </header>
+      </div>
 
-      <main style={{ padding: '2rem', flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <main style={{ padding: '1rem 3rem 2.5rem 3rem', flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', zIndex: 10, maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
         
         {/* Left Column: Scanner */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-          {/* Terminal Location (Always Visible) */}
-          <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Pilih Lokasi Kasir</h2>
-            <select 
-              value={`${posLocation}|${posTerminalName}`} 
-              onChange={e => {
-                const [cat, name] = e.target.value.split('|');
-                setPosLocation(cat);
-                setPosTerminalName(name);
-              }}
-              style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#f8fafc', fontWeight: '600', color: '#0f172a' }}
-            >
-              {posTerminals.length > 0 ? posTerminals.map((t: any) => (
-                <option key={t.id} value={`${t.category}|${t.name}`}>{t.name}</option>
-              )) : (
-                <>
-                  <option value="RESTO|Restoran & Cafe (F&B)">🍔 Restoran & Cafe (F&B)</option>
-                  <option value="SOUVENIR|Toko Merchandise (Souvenir)">🎁 Toko Merchandise (Souvenir)</option>
-                  <option value="WAHANA|Wahana Bermain (Wahana)">🎢 Wahana Bermain (Wahana)</option>
-                </>
-              )}
-            </select>
+          {/* Wahana Info Badge */}
+          <div style={{ background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)', borderRadius: '1.25rem', padding: '1.25rem 1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', fontWeight: 'bold' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            </div>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#064e3b', fontSize: '1.2rem' }}>
+                {cashierSession?.wahana_name || 'Wahana Bebas'}
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                {cashierSession?.wahana_id ? 'Terminal khusus wahana ini' : 'Terminal POS & Top-Up Umum'}
+              </div>
+            </div>
           </div>
 
-          <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Identifikasi Member</h2>
+          <div style={{ padding: '2rem', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)', borderRadius: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1.25rem', color: '#0f172a' }}>Identifikasi Member</h3>
             
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-              <button onClick={() => setScanMode('FACE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'FACE' ? '#0f172a' : 'white', color: scanMode === 'FACE' ? 'white' : '#64748b', cursor: 'pointer', fontSize: '0.875rem' }}>Scan Wajah</button>
-              <button onClick={() => setScanMode('BARCODE')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #cbd5e1', background: scanMode === 'BARCODE' ? '#0f172a' : 'white', color: scanMode === 'BARCODE' ? 'white' : '#64748b', cursor: 'pointer', fontSize: '0.875rem' }}>Scan ID / Gelang</button>
-              <button onClick={() => setScanMode('VOUCHER')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', fontWeight: 'bold', border: '1px solid #059669', background: scanMode === 'VOUCHER' ? '#059669' : '#ecfdf5', color: scanMode === 'VOUCHER' ? 'white' : '#059669', cursor: 'pointer', fontSize: '0.875rem' }}>Scan Voucher</button>
+            <div style={{ background: '#f8fafc', padding: '2.5rem 1.5rem', borderRadius: '1rem', border: '2px dashed #cbd5e1', textAlign: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#ecfdf5', marginBottom: '1rem' }}>
+                <QrCode size={28} color="#059669" />
+              </div>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#0f172a', fontSize: '1.05rem' }}>Identifikasi Member (Scanner / Barcode)</h4>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.5rem' }}>Arahkan scanner ke QR Code E-Card pelanggan atau ketik Member ID lalu tekan Enter.</p>
+              
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (barcodeInput.trim()) {
+                    performLookup(barcodeInput);
+                  }
+                }}
+              >
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155', fontSize: '0.9rem' }}>Scan Barcode / ID Member</label>
+                <div style={{ display: 'flex', gap: '0.5rem', maxWidth: '450px', margin: '0 auto' }}>
+                  <input 
+                    type="text" 
+                    autoFocus
+                    ref={barcodeInputRef}
+                    placeholder="Scan Barcode / Tempel ID..." 
+                    value={barcodeInput}
+                    onChange={(e) => setBarcodeInput(e.target.value)}
+                    onKeyDown={handleBarcodeSubmit}
+                    style={{ flex: 1, padding: '0.85rem 1.25rem', borderRadius: '0.75rem', border: '2px solid #10b981', textAlign: 'center', fontSize: '1.1rem', fontWeight: 'bold', outline: 'none', backgroundColor: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}
+                  />
+                  <button
+                    type="submit"
+                    style={{ padding: '0.85rem 1.25rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    Cari
+                  </button>
+                </div>
+              </form>
             </div>
-
-            {scanMode === 'FACE' ? (
-              <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', backgroundColor: 'black', aspectRatio: '4/3', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  muted 
-                  playsInline
-                  onPlay={handleVideoPlay}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                <div style={{ position: 'absolute', top: '1rem', left: '1rem', right: '1rem', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.875rem', backdropFilter: 'blur(4px)', textAlign: 'center' }}>
-                  {statusMsg}
-                </div>
-              </div>
-            ) : scanMode === 'BARCODE' ? (
-              <div style={{ background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: '1rem', padding: '3rem 1.5rem', textAlign: 'center' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" style={{ marginBottom: '1rem' }}><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
-                <h3 style={{ margin: '0 0 0.5rem 0', color: '#334155' }}>Identifikasi Member (Scanner Fisik)</h3>
-                <p style={{ margin: '0 0 1.5rem 0', color: '#64748b', fontSize: '0.875rem' }}>Arahkan scanner ke QR Code E-Card pelanggan atau ketik Member ID lalu tekan Enter.</p>
-                <input 
-                  autoFocus
-                  type="text" 
-                  value={barcodeInput}
-                  onChange={e => setBarcodeInput(e.target.value)}
-                  onKeyDown={handleBarcodeSubmit}
-                  placeholder="Scan ID disini..."
-                  style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}
-                />
-              </div>
-            ) : (
-              <div style={{ background: '#ecfdf5', border: '2px dashed #059669', borderRadius: '1rem', padding: '3rem 1.5rem', textAlign: 'center' }}>
-                <div style={{ background: 'white', display: 'inline-flex', padding: '1rem', borderRadius: '50%', marginBottom: '1rem' }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                </div>
-                <h3 style={{ margin: '0 0 0.5rem 0', color: '#065f46' }}>Validasi Voucher Reward</h3>
-                <p style={{ margin: '0 0 1.5rem 0', color: '#047857', fontSize: '0.875rem' }}>Arahkan scanner ke QR Code Voucher pengunjung atau ketik Kode Voucher (8 digit) secara manual lalu tekan Enter.</p>
-                <input 
-                  autoFocus
-                  type="text" 
-                  value={voucherInput}
-                  onChange={e => setVoucherInput(e.target.value.toUpperCase())}
-                  onKeyDown={handleVoucherSubmit}
-                  placeholder="Masukkan 8 digit Kode Voucher..."
-                  maxLength={8}
-                  style={{ width: '100%', padding: '1rem', fontSize: '1.25rem', fontWeight: 'bold', letterSpacing: '0.1em', borderRadius: '0.5rem', border: '1px solid #34d399', textAlign: 'center', color: '#065f46' }}
-                />
-              </div>
-            )}
             {identifiedUser && (
               <button 
                 onClick={resetTransaction}
-                style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{ width: '100%', marginTop: '1.25rem', padding: '0.85rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.75rem', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem' }}
               >
                 Scan Ulang
               </button>
@@ -502,129 +664,450 @@ export default function POSPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           {identifiedUser ? (
-            <div style={{ background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+            <div style={{ background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)', borderRadius: '1.25rem', padding: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
               
-              {/* Member Profile & Points */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e2e8f0' }}>
-                <div style={{ width: '50px', height: '50px', background: '#10b981', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>
+              {/* Member Profile */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', paddingBottom: '1.25rem', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ width: '56px', height: '56px', background: '#10b981', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '1.5rem', fontWeight: 'bold', boxShadow: '0 4px 6px -1px rgba(16,185,129,0.3)' }}>
                   {identifiedUser.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>{identifiedUser.name}</h3>
-                  <p style={{ margin: 0, color: '#059669', fontWeight: 'bold' }}>Saldo Poin: {identifiedUser.points_balance || 0}</p>
+                  <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 'bold', color: '#0f172a' }}>{identifiedUser.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.15rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 'bold' }}>Member Aktif</span>
+                    <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                      NIK: {identifiedUser.nik && identifiedUser.nik.length === 16 ? `${identifiedUser.nik.substring(0, 6)}******${identifiedUser.nik.substring(12)}` : identifiedUser.nik || '-'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Input Belanja */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>No. Struk / Invoice (Opsional)</label>
-                <input 
-                  type="text" 
-                  value={invoiceNumber} 
-                  onChange={e => setInvoiceNumber(e.target.value)}
-                  placeholder="Contoh: FB-001"
-                  style={{ width: '100%', padding: '1rem', fontSize: '1.25rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', marginBottom: '1rem' }}
-                />
-
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Total Nominal Transaksi (Rp)</label>
-                <input 
-                  type="number" 
-                  value={subtotal} 
-                  onChange={e => setSubtotal(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="Contoh: 150000"
-                  style={{ width: '100%', padding: '1rem', fontSize: '1.25rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}
-                />
+              {/* Transaction Mode Tabs */}
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <button 
+                  onClick={() => setTxMode('TOPUP')}
+                  style={{ flex: 1, padding: '0.85rem', borderRadius: '0.75rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', background: txMode === 'TOPUP' ? '#059669' : '#f1f5f9', color: txMode === 'TOPUP' ? 'white' : '#64748b', transition: 'all 0.2s', fontSize: '0.95rem' }}
+                >
+                  Beli Tiket
+                </button>
+                <button 
+                  onClick={() => setTxMode('VOUCHER')}
+                  style={{ flex: 1, padding: '0.85rem', borderRadius: '0.75rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', background: txMode === 'VOUCHER' ? '#d97706' : '#f1f5f9', color: txMode === 'VOUCHER' ? 'white' : '#64748b', transition: 'all 0.2s', fontSize: '0.95rem' }}
+                >
+                  Tukar Tiket
+                </button>
               </div>
 
-              {/* Promo & Rewards */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Gunakan Poin untuk Diskon</label>
-                {rewards.length === 0 ? (
-                  <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Tidak ada promo yang tersedia.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div 
-                      onClick={() => setSelectedReward(null)}
-                      style={{ padding: '0.75rem 1rem', border: '1px solid', borderColor: selectedReward === null ? '#10b981' : '#e2e8f0', background: selectedReward === null ? '#f0fdf4' : 'white', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
-                    >
-                      <span style={{ fontWeight: '500' }}>Tanpa Diskon</span>
-                    </div>
-                    {rewards.map(r => {
-                      const isEligible = (identifiedUser.points_balance || 0) >= r.points_required;
-                      return (
-                        <div 
-                          key={r.id}
-                          onClick={() => { if(isEligible) setSelectedReward(r) }}
-                          style={{ 
-                            padding: '0.75rem 1rem', 
-                            border: '1px solid', 
-                            borderColor: selectedReward?.id === r.id ? '#10b981' : '#e2e8f0', 
-                            background: selectedReward?.id === r.id ? '#f0fdf4' : 'white', 
-                            borderRadius: '0.5rem', 
-                            cursor: isEligible ? 'pointer' : 'not-allowed', 
-                            opacity: isEligible ? 1 : 0.5,
-                            display: 'flex', 
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <div>
-                            <span style={{ fontWeight: '500', display: 'block' }}>{r.name}</span>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Kurangi {r.points_required} Poin</span>
+              {txMode === 'TOPUP' && (
+                <div>
+                  {/* Top-Up Type Selection */}
+                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '600', color: '#334155' }}>
+                      <input type="radio" name="topupType" checked={topupType === 'SATUAN'} onChange={() => setTopupType('SATUAN')} style={{ width: '18px', height: '18px' }} />
+                      Wahana Satuan
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '600', color: '#334155' }}>
+                      <input type="radio" name="topupType" checked={topupType === 'PAKET'} onChange={() => setTopupType('PAKET')} style={{ width: '18px', height: '18px' }} />
+                      Paket Bundling
+                    </label>
+                  </div>
+
+                  {topupType === 'SATUAN' ? (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      {cashierSession?.wahana_id ? (
+                        <div style={{ padding: '1rem', background: '#f0fdf4', border: '2px solid #86efac', borderRadius: '0.75rem', marginBottom: '1.25rem' }}>
+                          <div style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: '600', marginBottom: '0.25rem' }}>Wahana Terminal Ini:</div>
+                          <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#166534' }}>
+                            {cashierSession.wahana_name}
                           </div>
-                          {!isEligible && <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>Poin Kurang</span>}
+                          {(() => {
+                            const w = wahanas.find((w: any) => w.id === cashierSession.wahana_id);
+                            return w ? <div style={{ fontSize: '0.85rem', color: '#15803d', marginTop: '0.25rem' }}>Tarif: <strong>Rp {w.topup_price.toLocaleString('id-ID')}</strong> / tiket</div> : null;
+                          })()}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+                      ) : (
+                        <div style={{ marginBottom: '1.25rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155' }}>Pilih Wahana Tujuan</label>
+                          <select
+                            value={selectedWahanaId}
+                            onChange={(e) => setSelectedWahanaId(e.target.value)}
+                            style={{ width: '100%', padding: '0.85rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', backgroundColor: 'white' }}
+                          >
+                            {wahanas.map(w => (
+                              <option key={w.id} value={w.id}>{w.name} - Rp {w.topup_price?.toLocaleString('id-ID') || 0}/tiket</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
 
-              {/* Total Calculation */}
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span>Subtotal</span>
-                  <span>Rp {Number(subtotal || 0).toLocaleString('id-ID')}</span>
-                </div>
-                {selectedReward && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#ef4444' }}>
-                    <span>Diskon ({selectedReward.name})</span>
-                    <span>- {selectedReward.points_required} Poin</span>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155' }}>Jumlah Tiket</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                        <button onClick={() => setTopupQuantity(Math.max(1, topupQuantity - 1))} style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', background: 'white', cursor: 'pointer', fontSize: '1.25rem', fontWeight: 'bold' }}>-</button>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 'bold', width: '3rem', textAlign: 'center' }}>{topupQuantity}</span>
+                        <button onClick={() => setTopupQuantity(topupQuantity + 1)} style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', background: 'white', cursor: 'pointer', fontSize: '1.25rem', fontWeight: 'bold' }}>+</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155' }}>Pilih Paket Bundling</label>
+                      {packages.length === 0 ? (
+                        <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #cbd5e1', color: '#64748b' }}>
+                          Tidak ada paket bundling yang aktif.
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedPackageId}
+                          onChange={(e) => setSelectedPackageId(e.target.value)}
+                          style={{ width: '100%', padding: '0.85rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', marginBottom: '1rem', backgroundColor: 'white' }}
+                        >
+                          {packages.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} - Rp {p.price.toLocaleString('id-ID')}</option>
+                          ))}
+                        </select>
+                      )}
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>*Sesuai ketentuan, Paket Bundling hanya dapat dibeli 1 paket per transaksi.</div>
+                    </div>
+                  )}
+
+                  {/* Total Calculation */}
+                  <div style={{ background: '#ecfdf5', padding: '1.5rem', borderRadius: '0.75rem', marginBottom: '1.5rem', border: '1px solid #a7f3d0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '1.15rem', color: '#065f46' }}>Total Pembayaran</span>
+                      <span style={{ fontWeight: '800', fontSize: '1.6rem', color: '#047857' }}>
+                        Rp {calculateTopupTotal().toLocaleString('id-ID')}
+                      </span>
+                    </div>
                   </div>
-                )}
-                <div style={{ borderTop: '1px solid #e2e8f0', margin: '0.5rem 0' }}></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 'bold', fontSize: '1.25rem' }}>Total Bayar</span>
-                  <span style={{ fontWeight: 'bold', fontSize: '1.5rem', color: '#0f172a' }}>
-                    Rp {calculateTotal().toLocaleString('id-ID')}
-                  </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', color: '#059669', fontSize: '0.875rem' }}>
-                  <span>Poin Didapat dari Transaksi Ini</span>
-                  <span style={{ fontWeight: 'bold' }}>+{calculatePointsEarned()} Poin</span>
+              )}
+
+              {txMode === 'VOUCHER' && (
+                <div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    {cashierSession?.wahana_id ? (
+                      <div style={{ padding: '1rem', background: '#f0fdf4', border: '2px solid #86efac', borderRadius: '0.75rem', marginBottom: '1rem' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: '600', marginBottom: '0.25rem' }}>Tukar Tiket Wahana:</div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#166534' }}>{cashierSession.wahana_name}</div>
+                      </div>
+                    ) : (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155' }}>Pilih Tiket Wahana Member</label>
+                        {memberVouchers.filter(v => v.quota > 0).length === 0 ? (
+                          <div style={{ padding: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.75rem', color: '#dc2626', fontWeight: 'bold' }}>
+                            Member tidak memiliki tiket wahana yang aktif.
+                          </div>
+                        ) : (
+                          <select
+                            value={selectedWahanaId}
+                            onChange={(e) => setSelectedWahanaId(e.target.value)}
+                            style={{ width: '100%', padding: '0.85rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', backgroundColor: 'white' }}
+                          >
+                            {memberVouchers.filter(v => v.quota > 0).map(v => (
+                              <option key={v.wahana_id} value={v.wahana_id}>
+                                {v.wahanas?.name || 'Wahana'} - Tersedia: {v.quota} Tiket
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
+
+                    {(() => {
+                      const targetWahanaId = cashierSession?.wahana_id || selectedWahanaId;
+                      const boundVoucher = memberVouchers.find(v => v.wahana_id === targetWahanaId && v.quota > 0);
+                      if (!boundVoucher) {
+                        if (cashierSession?.wahana_id) {
+                          return (
+                            <div style={{ padding: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.75rem', color: '#dc2626', fontWeight: 'bold', marginBottom: '1rem' }}>
+                              Member tidak memiliki tiket {cashierSession.wahana_name} yang aktif.
+                            </div>
+                          );
+                        }
+                        return null;
+                      }
+                      return (
+                        <>
+                          <div style={{ padding: '1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.75rem', color: '#15803d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', marginTop: '1rem' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{boundVoucher.quota} Tiket {boundVoucher.wahanas?.name || ''} Tersedia</span>
+                          </div>
+                          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155' }}>Jumlah Tiket yang Digunakan</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                            <button onClick={() => setUseVoucherQuantity(Math.max(1, useVoucherQuantity - 1))} style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', background: 'white', cursor: 'pointer', fontSize: '1.25rem', fontWeight: 'bold' }}>-</button>
+                            <span style={{ fontSize: '1.5rem', fontWeight: 'bold', width: '3rem', textAlign: 'center' }}>{useVoucherQuantity}</span>
+                            <button onClick={() => setUseVoucherQuantity(Math.min(boundVoucher.quota, useVoucherQuantity + 1))} style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', background: 'white', cursor: 'pointer', fontSize: '1.25rem', fontWeight: 'bold' }}>+</button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Checkout Action */}
-              <button 
-                onClick={handleCheckout}
-                disabled={((subtotal === '' || subtotal === 0) && !selectedReward) || isProcessing}
-                style={{ width: '100%', padding: '1rem', background: (((subtotal === '' || subtotal === 0) && !selectedReward) || isProcessing) ? '#94a3b8' : '#10b981', color: 'white', border: 'none', borderRadius: '0.5rem', fontSize: '1.25rem', fontWeight: 'bold', cursor: (((subtotal === '' || subtotal === 0) && !selectedReward) || isProcessing) ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}
-              >
-                {isProcessing ? 'Memproses...' : 'Selesaikan Transaksi & Cetak Struk'}
-              </button>
+              {(() => {
+                const targetWahanaId = cashierSession?.wahana_id || selectedWahanaId;
+                const boundVoucher = memberVouchers.find(v => v.wahana_id === targetWahanaId && v.quota > 0);
+                const isDisabled = isProcessing 
+                  || (txMode === 'TOPUP' && topupType === 'SATUAN' && (!targetWahanaId || calculateTopupTotal() === 0))
+                  || (txMode === 'TOPUP' && topupType === 'PAKET' && !selectedPackageId)
+                  || (txMode === 'VOUCHER' && (!targetWahanaId || !boundVoucher || useVoucherQuantity > boundVoucher.quota));
+                return (
+                  <button 
+                    onClick={handleCheckout}
+                    disabled={isDisabled}
+                    style={{ 
+                      width: '100%', 
+                      padding: '1rem', 
+                      background: isDisabled ? '#cbd5e1' : (txMode === 'TOPUP' ? '#059669' : '#d97706'), 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '0.75rem', 
+                      fontSize: '1.15rem', 
+                      fontWeight: 'bold', 
+                      cursor: isDisabled ? 'not-allowed' : 'pointer', 
+                      transition: 'background 0.2s',
+                      boxShadow: isDisabled ? 'none' : '0 4px 6px -1px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {isProcessing ? 'Memproses...' : (txMode === 'VOUCHER' ? 'Gunakan Tiket' : 'Selesaikan Transaksi & Cetak Struk')}
+                  </button>
+                );
+              })()}
 
             </div>
           ) : (
-            <div style={{ background: 'white', borderRadius: '1rem', padding: '3rem 2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '1rem', opacity: 0.5 }}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#334155' }}>Menunggu Member</h3>
-              <p style={{ textAlign: 'center', margin: 0 }}>Harap scan wajah pelanggan terlebih dahulu untuk memproses pesanan dan poin.</p>
+            <div style={{ background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)', borderRadius: '1.25rem', padding: '4rem 2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8c-5 0-6 3-6 4v14a2 2 0 0 0 2 2z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.5 14.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/><line x1="13" x2="17.5" y1="17.5" y2="22"/></svg>
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.25rem', fontWeight: 'bold' }}>Menunggu Member</h3>
+              <p style={{ textAlign: 'center', margin: 0, fontSize: '0.9rem', color: '#64748b' }}>Scan barcode member untuk memproses transaksi tiket {cashierSession?.wahana_name || ''}.</p>
             </div>
           )}
           
         </div>
       </main>
+
+      {/* QRIS Dynamic Payment Modal (100% Cashless Gateway) */}
+      {qrisModal && qrisData && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '1.5rem', padding: '2rem', maxWidth: '420px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', textAlign: 'center', animation: 'fadeIn 0.25s ease-out' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                <span style={{ fontWeight: 'bold', color: '#065f46', fontSize: '0.9rem' }}>QRIS RESMI AVIARY PARK</span>
+              </div>
+              <button 
+                onClick={() => { setQrisModal(false); setQrisData(null); }}
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#94a3b8', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a', margin: '0 0 0.25rem 0' }}>{qrisData.title}</h3>
+            <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '0 0 1.25rem 0' }}>Arahkan kamera HP / M-Banking ke kode QRIS di bawah</p>
+
+            {/* QRIS Image Container */}
+            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '1rem', border: '2px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ padding: '1rem', background: 'white', borderRadius: '0.75rem', border: '1px solid #cbd5e1', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <QRCodeSVG 
+                  value={qrisData.qrString || qrisData.qrUrl || `https://sandbox.duitku.com/payment/${qrisData.orderId}`} 
+                  size={220}
+                  level="M"
+                  includeMargin={true}
+                />
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '1.6rem', fontWeight: '800', color: '#059669' }}>
+                Rp {qrisData.amount.toLocaleString('id-ID')}
+              </div>
+              
+              {/* Live Status Indicator */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.75rem', background: '#ecfdf5', padding: '0.4rem 0.85rem', borderRadius: '2rem', border: '1px solid #a7f3d0' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', animation: 'pulse 1.5s infinite' }}></div>
+                <span style={{ fontSize: '0.75rem', color: '#047857', fontWeight: '600' }}>Menunggu Pembayaran (Otomatis Terdeteksi)...</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <button 
+                onClick={async () => {
+                  const loadingToast = toast.loading('Memeriksa status pembayaran dari Duitku...');
+                  try {
+                    // Panggil status inquiry real ke Payment Gateway Duitku
+                    const checkRes = await fetch('/api/payment/check', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        groupId: identifiedUser.id, 
+                        orderId: qrisData.orderId 
+                      })
+                    });
+                    const checkData = await checkRes.json();
+                    
+                    toast.dismiss(loadingToast);
+
+                    if (checkData.success && checkData.status === 'SUCCESS') {
+                      toast.success('Pembayaran QRIS Berhasil Diverifikasi!');
+                      setQrisModal(false);
+
+                      setLastReceipt({
+                        type: qrisData.type === 'PAKET' ? 'PAKET' : 'TOPUP',
+                        title: qrisData.title,
+                        memberName: identifiedUser.name,
+                        nik: identifiedUser.nik,
+                        amount: qrisData.amount,
+                        qty: qrisData.qty,
+                        unitPrice: qrisData.unitPrice,
+                        cashier: cashierSession?.name || 'Kasir',
+                        wahana: cashierSession?.wahana_name || 'Wahana',
+                        time: new Date().toLocaleString('id-ID'),
+                        invoice: qrisData.orderId
+                      });
+                      setShowReceiptModal(true);
+                      setQrisData(null);
+                      resetTransaction();
+                    } else {
+                      toast.error(checkData.message || 'Pembayaran belum diterima. Silakan scan QRIS terlebih dahulu.');
+                    }
+                  } catch (err) {
+                    toast.dismiss(loadingToast);
+                    toast.error('Gagal menghubungi gateway pembayaran');
+                  }
+                }}
+                style={{ width: '100%', padding: '0.9rem', background: '#059669', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 4px 6px -1px rgba(5,150,105,0.3)' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Cek Status Pembayaran
+              </button>
+
+              <button 
+                onClick={() => { setQrisModal(false); setQrisData(null); }}
+                style={{ width: '100%', padding: '0.7rem', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '0.75rem', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                Batal / Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Thermal Receipt Modal & Print View */}
+      {showReceiptModal && lastReceipt && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '1.25rem', padding: '2rem', maxWidth: '380px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+            
+            {/* Printable Receipt Paper Container */}
+            <div id="thermal-receipt" style={{ background: '#fdfbf7', padding: '1.5rem 1rem', borderRadius: '0.5rem', border: '1px dashed #cbd5e1', fontFamily: 'monospace', textAlign: 'left', fontSize: '0.85rem', color: '#1e293b', lineHeight: 1.4, marginBottom: '1.5rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '0.05em' }}>AVIARY PARK INDONESIA</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Bintaro Creative District, Tangerang Selatan</div>
+                <div style={{ borderBottom: '1px dashed #94a3b8', margin: '0.5rem 0' }}></div>
+                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>STRUK TRANSAKSI POS</div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>No. Invoice:</span>
+                <span style={{ fontWeight: 'bold' }}>{lastReceipt.invoice}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Waktu:</span>
+                <span>{lastReceipt.time}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Kasir:</span>
+                <span>{lastReceipt.cashier}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Member:</span>
+                <span style={{ fontWeight: 'bold' }}>{lastReceipt.memberName}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>NIK:</span>
+                <span>
+                  {lastReceipt.nik && lastReceipt.nik.length === 16 
+                    ? `${lastReceipt.nik.substring(0, 6)}******${lastReceipt.nik.substring(12)}` 
+                    : lastReceipt.nik || '-'}
+                </span>
+              </div>
+
+              <div style={{ borderBottom: '1px dashed #94a3b8', margin: '0.75rem 0' }}></div>
+
+              <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>{lastReceipt.title}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{lastReceipt.qty} x {lastReceipt.unitPrice ? `Rp ${lastReceipt.unitPrice.toLocaleString('id-ID')}` : (lastReceipt.type === 'VOUCHER' ? 'Tiket Masuk' : '')}</span>
+                <span style={{ fontWeight: 'bold' }}>
+                  {lastReceipt.amount > 0 ? `Rp ${lastReceipt.amount.toLocaleString('id-ID')}` : 'GRATIS / TUKAR'}
+                </span>
+              </div>
+
+              {lastReceipt.remainingQuota !== undefined && (
+                <div style={{ fontSize: '0.8rem', color: '#059669', marginTop: '0.25rem' }}>
+                  Sisa Kuota Tiket: {lastReceipt.remainingQuota}
+                </div>
+              )}
+
+              <div style={{ borderBottom: '1px dashed #94a3b8', margin: '0.75rem 0' }}></div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 'bold' }}>
+                <span>TOTAL:</span>
+                <span>Rp {lastReceipt.amount.toLocaleString('id-ID')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b' }}>
+                <span>Metode:</span>
+                <span style={{ fontWeight: 'bold', color: '#059669' }}>{lastReceipt.amount > 0 ? 'QRIS (CASHLESS)' : 'VOUCHER REDEEM'}</span>
+              </div>
+
+              <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.75rem', color: '#64748b' }}>
+                <div>Terima Kasih Atas Kunjungan Anda!</div>
+                <div>Simpan struk ini sebagai bukti transaksi yang sah.</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button 
+                onClick={() => setShowReceiptModal(false)}
+                style={{ flex: 1, padding: '0.75rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Tutup
+              </button>
+              <button 
+                onClick={() => window.print()}
+                style={{ flex: 1.5, padding: '0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Cetak Struk
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print CSS for 58mm / 80mm Thermal Paper */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #thermal-receipt, #thermal-receipt * {
+            visibility: visible;
+          }
+          #thermal-receipt {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            max-width: 80mm;
+            padding: 0;
+            margin: 0;
+            border: none;
+            background: white;
+            color: black;
+          }
+        }
+      `}} />
     </div>
   );
 }
