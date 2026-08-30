@@ -229,6 +229,7 @@ export default function GateWahanaScanner() {
 
   // 4. Inisialisasi Kamera & Scanner jsQR
   useEffect(() => {
+    let stream: MediaStream | null = null;
     let detector: any = null;
     if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
       try {
