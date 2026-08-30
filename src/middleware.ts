@@ -81,7 +81,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAdminRoute = (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) && !pathname.includes('/copilot');
-  const isGateRoute = pathname.startsWith('/gate') || pathname.startsWith('/api/gate');
+  const isGateRoute = (pathname.startsWith('/gate') || pathname.startsWith('/api/gate')) && pathname !== '/gate-wahana' && pathname !== '/api/gate/wahanas';
   const isPosRoute = pathname.startsWith('/pos') || pathname.startsWith('/api/pos');
   const isVisitorApiRoute = pathname.startsWith('/api/visitor');
   const isVisitorPageRoute = pathname === '/dashboard' || pathname.startsWith('/dashboard/');

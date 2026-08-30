@@ -72,13 +72,10 @@ export default function GateWahanaScanner() {
     let isMounted = true;
     const fetchWahanas = async () => {
       try {
-        let res = await fetch('/api/gate/wahanas');
-        if (!res.ok) {
-          res = await fetch('/api/pos/wahanas');
-        }
+        const res = await fetch('/api/public/wahanas');
         if (res.ok) {
-          const data = await res.json();
-          const list = Array.isArray(data) ? data : (data?.data || []);
+          const json = await res.json();
+          const list = Array.isArray(json) ? json : (json?.data || []);
           const active = list.filter((w: any) => w.is_active !== false);
           
           if (isMounted && active.length > 0) {
@@ -95,9 +92,7 @@ export default function GateWahanaScanner() {
       } catch (err) {
         console.error('Failed to load wahanas', err);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
     fetchWahanas();
@@ -302,12 +297,14 @@ export default function GateWahanaScanner() {
           videoRef.current.muted = true;
           
           await videoRef.current.play().catch(() => {});
+          setDebugInfo('Kamera Aktif | Standby Scan...');
           requestAnimationRef.current = requestAnimationFrame(scanQRCode);
         }
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
           console.error('Camera access error:', err);
-          toast.error('Gagal mengakses kamera HP. Izinkan akses kamera pada browser.');
+          setDebugInfo('Gagal Akses Kamera');
+          toast.error('Gagal mengakses kamera. Izinkan akses kamera pada browser.');
         }
       }
     };
