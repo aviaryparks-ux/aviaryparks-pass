@@ -67,14 +67,14 @@ export default function GateWahanaScanner() {
     }
   };
 
-  // 1. Ambil daftar wahana aktif dengan instant fallback
+  // 1. Ambil daftar wahana aktif
   useEffect(() => {
     let isMounted = true;
     const fetchWahanas = async () => {
       try {
-        let res = await fetch('/api/pos/wahanas');
+        let res = await fetch('/api/gate/wahanas');
         if (!res.ok) {
-          res = await fetch('/api/admin/wahanas');
+          res = await fetch('/api/pos/wahanas');
         }
         if (res.ok) {
           const data = await res.json();
