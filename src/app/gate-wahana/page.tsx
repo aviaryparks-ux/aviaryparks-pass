@@ -310,10 +310,6 @@ export default function GateWahanaScanner() {
         }
       }
     };
-          toast.error('Gagal mengakses kamera HP. Izinkan akses kamera pada browser.');
-        }
-      }
-    };
 
     if (isScanning) {
       startCamera();
