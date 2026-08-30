@@ -229,76 +229,53 @@ export default function GateWahanaScanner() {
 
   // 4. Inisialisasi Kamera & Scanner jsQR
   useEffect(() => {
-    let stream: MediaStream | null = null;
+    let detector: any = null;
+    if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+      try {
+        detector = new (window as any).BarcodeDetector({
+          formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'upc_a', 'data_matrix']
+        });
+      } catch (e) {}
+    }
 
-    const scanQRCode = () => {
+    const scanQRCode = async () => {
       if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-        const canvas = canvasRef.current;
         const video = videoRef.current;
-        if (canvas && video && video.videoWidth > 0 && video.videoHeight > 0) {
+        const canvas = canvasRef.current;
+
+        // 1. PRIORITAS UTAMA: Hardware-Accelerated BarcodeDetector (0.01 detik di HP!)
+        if (detector && !isCooldownRef.current) {
+          try {
+            const barcodes = await detector.detect(video);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+              const raw = barcodes[0].rawValue;
+              setDebugInfo(`🎯 Terbaca: ${raw.substring(0, 20)}...`);
+              processRedeemTicket(raw);
+              requestAnimationRef.current = requestAnimationFrame(scanQRCode);
+              return;
+            }
+          } catch (e) {}
+        }
+
+        // 2. FALLBACK CEPAT: jsQR dengan Frame Ringan (640px)
+        if (canvas && video.videoWidth > 0 && !isCooldownRef.current) {
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
           if (ctx) {
-            // A. Scan Native Resolusi Penuh (1280x720) Langsung dari Kamera untuk Deteksi Tercepat
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const targetW = 640;
+            const targetH = Math.floor((video.videoHeight / video.videoWidth) * 640);
+            if (canvas.width !== targetW) canvas.width = targetW;
+            if (canvas.height !== targetH) canvas.height = targetH;
             
-            const rawImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, targetW, targetH);
+            const imgData = ctx.getImageData(0, 0, targetW, targetH);
             
-            frameCountRef.current += 1;
-            if (frameCountRef.current % 25 === 0) {
-              setDebugInfo(`Kamera: ${canvas.width}x${canvas.height}px | Standby Scan...`);
-            }
-
-            // 1. Scan Standard Normal Frame
-            let code = jsQR(rawImageData.data, canvas.width, canvas.height, {
-              inversionAttempts: 'attemptBoth',
+            const code = jsQR(imgData.data, targetW, targetH, {
+              inversionAttempts: 'dontInvert',
             });
-
-            // 2. Scan Sub-Sampled 600px Frame (Resolusi paling ideal untuk algoritma jsQR)
-            if (!code) {
-              const subW = 600;
-              const subH = Math.floor((canvas.height / canvas.width) * 600);
-              const subCanvas = document.createElement('canvas');
-              subCanvas.width = subW;
-              subCanvas.height = subH;
-              const subCtx = subCanvas.getContext('2d');
-              if (subCtx) {
-                subCtx.drawImage(video, 0, 0, subW, subH);
-                const subData = subCtx.getImageData(0, 0, subW, subH);
-                code = jsQR(subData.data, subW, subH, { inversionAttempts: 'attemptBoth' });
-              }
-            }
-
-            // 3. Scan Mirrored Frame (Khusus Kamera Depan Laptop)
-            if (!code) {
-              ctx.save();
-              ctx.translate(canvas.width, 0);
-              ctx.scale(-1, 1);
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              ctx.restore();
-              const mirroredData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              code = jsQR(mirroredData.data, canvas.width, canvas.height, {
-                inversionAttempts: 'attemptBoth',
-              });
-            }
-
-            // 4. Scan Center Crop Region (Kotak tengah fokus)
-            if (!code) {
-              const cropSize = Math.floor(Math.min(canvas.width, canvas.height) * 0.7);
-              const cropX = Math.floor((canvas.width - cropSize) / 2);
-              const cropY = Math.floor((canvas.height - cropSize) / 2);
-              const centerData = ctx.getImageData(cropX, cropY, cropSize, cropSize);
-              code = jsQR(centerData.data, cropSize, cropSize, {
-                inversionAttempts: 'attemptBoth',
-              });
-            }
 
             if (code && code.data) {
               setDebugInfo(`🎯 Terbaca: ${code.data.substring(0, 20)}...`);
-              if (!isCooldownRef.current) {
-                processRedeemTicket(code.data);
-              }
+              processRedeemTicket(code.data);
             }
           }
         }
@@ -309,25 +286,30 @@ export default function GateWahanaScanner() {
     const startCamera = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: { 
+            facingMode: { ideal: 'environment' }, 
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+          },
+          audio: false
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.setAttribute('playsinline', 'true');
+          videoRef.current.setAttribute('autoplay', 'true');
+          videoRef.current.muted = true;
           
-          // Safe play execution with AbortError prevention
-          videoRef.current.onloadedmetadata = () => {
-            if (videoRef.current) {
-              videoRef.current.play().catch(e => {
-                if (e.name !== 'AbortError') console.warn('Video play error:', e);
-              });
-              requestAnimationRef.current = requestAnimationFrame(scanQRCode);
-            }
-          };
+          await videoRef.current.play().catch(() => {});
+          requestAnimationRef.current = requestAnimationFrame(scanQRCode);
         }
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
           console.error('Camera access error:', err);
+          toast.error('Gagal mengakses kamera HP. Izinkan akses kamera pada browser.');
+        }
+      }
+    };
           toast.error('Gagal mengakses kamera HP. Izinkan akses kamera pada browser.');
         }
       }
