@@ -18,5 +18,14 @@
       "sizes": "512x512",
       "type": "image/png"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Scanner Wahana",
+      "short_name": "Scanner",
+      "description": "Buka Scanner Gerbang Wahana Petugas",
+      "url": "/gate-wahana",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    }
   ]
 }

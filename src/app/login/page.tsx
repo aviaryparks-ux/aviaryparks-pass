@@ -40,7 +40,10 @@ export default function Login() {
       if (!res.ok) { setErrorMsg(data.error || 'Gagal mengirim kode. Coba lagi.'); return; }
       setStep('otp');
       setCountdown(60);
-    } catch { setErrorMsg('Terjadi kesalahan koneksi.'); }
+    } catch (err) {
+      console.error('Request OTP Error:', err);
+      setErrorMsg('Terjadi kesalahan koneksi.');
+    }
     finally { setIsLoading(false); }
   };
 
@@ -64,7 +67,10 @@ export default function Login() {
         return;
       }
       router.push(data.redirect || '/dashboard');
-    } catch { setErrorMsg('Terjadi kesalahan koneksi.'); }
+    } catch (err) {
+      console.error('Verify OTP Error:', err);
+      setErrorMsg('Terjadi kesalahan koneksi.');
+    }
     finally { setIsLoading(false); }
   };
 
@@ -83,7 +89,10 @@ export default function Login() {
       if (!res.ok) { setErrorMsg(data.error || 'Gagal mengirim ulang kode.'); return; }
       setCountdown(60);
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
-    } catch { setErrorMsg('Terjadi kesalahan koneksi.'); }
+    } catch (err) {
+      console.error('Resend OTP Error:', err);
+      setErrorMsg('Terjadi kesalahan koneksi.');
+    }
     finally { setIsLoading(false); }
   };
 

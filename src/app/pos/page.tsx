@@ -675,9 +675,14 @@ export default function POSPage() {
                   <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 'bold', color: '#0f172a' }}>{identifiedUser.name}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
                     <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.15rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 'bold' }}>Member Aktif</span>
-                    <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                      NIK: {identifiedUser.nik && identifiedUser.nik.length === 16 ? `${identifiedUser.nik.substring(0, 6)}******${identifiedUser.nik.substring(12)}` : identifiedUser.nik || '-'}
+                    <span style={{ color: '#059669', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      ID: AP-{identifiedUser.id ? identifiedUser.id.substring(0, 8).toUpperCase() : 'MEMBER'}
                     </span>
+                    {identifiedUser.phone && (
+                      <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                        • {identifiedUser.phone}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1025,11 +1030,9 @@ export default function POSPage() {
                 <span style={{ fontWeight: 'bold' }}>{lastReceipt.memberName}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>NIK:</span>
-                <span>
-                  {lastReceipt.nik && lastReceipt.nik.length === 16 
-                    ? `${lastReceipt.nik.substring(0, 6)}******${lastReceipt.nik.substring(12)}` 
-                    : lastReceipt.nik || '-'}
+                <span>Member ID:</span>
+                <span style={{ fontWeight: 'bold' }}>
+                  {lastReceipt.userId ? `AP-${lastReceipt.userId.substring(0, 8).toUpperCase()}` : (lastReceipt.nik || '-')}
                 </span>
               </div>
 

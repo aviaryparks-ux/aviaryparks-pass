@@ -182,8 +182,19 @@ export default function ProfileTab({ user, onUpdate }: { user: any, onUpdate?: (
             <input type="text" name="name" value={formData.name} onChange={handleChange} disabled={!isEditing} className="form-input notranslate" translate="no" />
           </div>
           <div className="form-group">
-            <label className="form-label">NIK / Nomor ID</label>
-            <input type="text" name="nik" value={formData.nik} onChange={handleChange} disabled={!isEditing} className="form-input" placeholder="Masukkan NIK KTP Anda" />
+            <label className="form-label">Member ID</label>
+            <div style={{ 
+              padding: '0.75rem 1rem', 
+              borderRadius: '0.5rem', 
+              background: '#ecfdf5', 
+              border: '1px solid #a7f3d0', 
+              color: '#065f46', 
+              fontWeight: '700', 
+              fontSize: '0.95rem',
+              letterSpacing: '0.5px'
+            }}>
+              {user?.id ? `AP-${user.id.substring(0, 8).toUpperCase()}` : 'AP-MEMBER'}
+            </div>
           </div>
         </div>
       </div>

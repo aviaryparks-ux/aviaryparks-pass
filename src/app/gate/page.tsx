@@ -35,6 +35,7 @@ export default function GateScanner() {
   const membersRef = useRef<any[]>([]);
   const faceMatcherRef = useRef<faceapi.FaceMatcher | null>(null);
   const lastScansRef = useRef<Record<string, number>>({}); 
+  const unknownFaceCooldownRef = useRef<number>(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isScanningRef = useRef<boolean>(false);
 
@@ -63,9 +64,9 @@ export default function GateScanner() {
       const data = await res.json();
       if (res.ok && data.success) {
         setWristbandLinkedSuccess(true);
-        setCooldown(2);
+        toast.success('Gelang Calisto berhasil dikaitkan!');
+        setCooldown(3); // Mulai countdown 3 detik untuk kembali ke gate
         setIdentifiedUser({ ...identifiedUser, card_uid: codeToLink.trim() });
-        toast.success('Gelang Calisto Berhasil Dikaitkan!', { icon: '🎟️', duration: 2500 });
         
         // Play success audio
         if ('speechSynthesis' in window) {
@@ -129,16 +130,13 @@ export default function GateScanner() {
 
         setStatusMsg('Sistem siap. Menunggu pengunjung...');
         setGateStatus('idle');
-
-        setStatusMsg('Sistem siap. Menunggu pengunjung...');
-        setGateStatus('idle');
         
-        // 4. Aktifkan Kamera
+        // 3. Aktifkan Kamera
         startCamera();
 
       } catch (err) {
         console.error(err);
-        setStatusMsg('Gagal memuat sistem pemindai.');
+        setStatusMsg('Gagal memuat model AI. Periksa koneksi internet Anda.');
         setGateStatus('denied');
       }
     };
@@ -156,7 +154,15 @@ export default function GateScanner() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Optimasi PC Ringan: Kunci resolusi 720p 30fps (Sangat jernih untuk biometrik, tapi hemat CPU ~55%)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
@@ -175,12 +181,15 @@ export default function GateScanner() {
   const handleVideoPlay = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    // Scan cepat setiap 200ms (5 FPS) agar gate responsif instan tanpa delay
+    // Scan cepat setiap 250ms (4 FPS) sangat pas untuk PC spesifikasi standar tanpa lag
     intervalRef.current = setInterval(async () => {
       if (viewModeRef.current === 'DETAIL') return; // Pause scanning if in detail mode
       if (!videoRef.current) return;
       if (videoRef.current.paused || videoRef.current.ended) return;
       
+      // Jeda cerdas jika wajah baru saja dideteksi tidak dikenal (mencegah spam CPU & database)
+      if (Date.now() < unknownFaceCooldownRef.current) return;
+
       // Mencegah penumpukan scan jika request sebelumnya masih berjalan
       if (isScanningRef.current) return;
       
@@ -399,6 +408,8 @@ export default function GateScanner() {
     setGateStatus('denied');
     setIdentifiedUser(null);
     setIdentifiedFamily([]);
+    // Berikan jeda 1.2 detik agar tidak spam CPU PC & API jika orang asing berdiri lama di depan kamera
+    unknownFaceCooldownRef.current = Date.now() + 1200;
   };
 
   const handleLogout = async () => {
@@ -556,248 +567,6 @@ export default function GateScanner() {
           </div>
         </div>
 
-        {/* Detail ID Card & Keluarga dihilangkan dari sini, dipindah ke overlay penuh */}
-
-      {/* Detail Overlay Penuh */}
-      {viewModeState === 'DETAIL' && identifiedUser && (
-        <div 
-          style={{ 
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-            backgroundColor: 'rgba(248, 250, 252, 0.95)', zIndex: 100,
-            backdropFilter: 'blur(10px)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            padding: '2rem 1rem', overflowY: 'auto',
-            animation: 'fadeIn 0.4s ease-out'
-          }}
-          onMouseDown={() => setIsCooldownPaused(true)}
-          onMouseUp={() => setIsCooldownPaused(false)}
-          onMouseLeave={() => setIsCooldownPaused(false)}
-          onTouchStart={() => setIsCooldownPaused(true)}
-          onTouchEnd={() => setIsCooldownPaused(false)}
-        >
-          {/* Header internal for Detail */}
-          <div style={{ width: '100%', maxWidth: '850px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', marginTop: '0.5rem', animation: 'fadeIn 0.6s ease-out' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ width: '50px', height: '50px', backgroundColor: '#10b981', color: 'white', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }}>
-                <svg className="animated-check" width="30" height="30" viewBox="0 0 52 52">
-                  <circle className="check-circle" cx="26" cy="26" r="25" fill="none" stroke="currentColor" strokeWidth="4" />
-                  <path className="check-path" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7 7 16-16" />
-                </svg>
-              </div>
-              <h2 style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>Akses Diberikan</h2>
-            </div>
-            <button 
-              onClick={returnToGate}
-              style={{ backgroundColor: wristbandLinkedSuccess ? '#10b981' : '#64748b', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              {wristbandLinkedSuccess ? 'Selesai & Lanjut' : 'Lewati / Kembali'} 
-              {wristbandLinkedSuccess && (
-                <span style={{ backgroundColor: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.8rem' }}>{cooldown}s</span>
-              )}
-            </button>
-          </div>
-
-          <p style={{ textAlign: 'center', color: '#64748b', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
-            {wristbandLinkedSuccess ? '✅ Gelang berhasil dikaitkan. Layar akan kembali otomatis...' : '💡 Silakan tembak scanner ke gelang Calisto, atau klik "Lewati" jika tanpa gelang.'}
-          </p>
-          
-          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '2rem', width: '100%', maxWidth: '1000px', margin: 'auto' }}>
-            
-            {/* Bagian Kiri: ID Card Virtual */}
-            <div style={{ perspective: '1000px', flex: '1 1 55%', maxWidth: '500px', minWidth: '300px', aspectRatio: '1.58 / 1', containerType: 'inline-size', animation: 'slideUpBounce 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
-              <div style={{ 
-                position: 'relative', width: '100%', height: '100%',
-                background: 'url(\'/hornbill-card-bg.png\') center right / cover no-repeat, #064e3b', 
-                borderRadius: '4cqi', 
-                color: 'white',
-                boxShadow: '0 15px 35px -5px rgba(6, 78, 59, 0.4)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                padding: '5cqi',
-                animation: 'float 5s ease-in-out infinite'
-              }}>
-                {/* Header Card */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '2cqi' }}>
-                    <img src="/logo.png" alt="Aviary Park" style={{ height: '9cqi' }} />
-                    <div style={{ height: '6cqi', width: '1px', backgroundColor: 'rgba(255,255,255,0.4)' }}></div>
-                    <span style={{ fontSize: '2.5cqi', opacity: 0.9, fontWeight: '500' }}>Annual Pass Aktif</span>
-                  </div>
-                  <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '1cqi 3cqi', borderRadius: '5cqi', fontSize: '2.2cqi', fontWeight: 'bold', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    {identifiedUser.role.toLowerCase() === 'primary' ? 'ACTIVE' : identifiedUser.role}
-                  </div>
-                </div>
-
-                {/* Main Content */}
-                <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', paddingBottom: '1cqi', maxWidth: '70%' }}>
-                  <h3 style={{ margin: 0, fontSize: '6cqi', fontWeight: '800', lineHeight: '1.1', textShadow: '0 2px 4px rgba(0,0,0,0.5)', marginBottom: '3cqi' }}>
-                    Aviary Park<br/>Annual Pass
-                  </h3>
-                  
-                  <div style={{ marginBottom: '3cqi' }}>
-                    <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>Nama Pengunjung</p>
-                    <p style={{ margin: 0, fontSize: '4cqi', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{identifiedUser.name}</p>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '5cqi' }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>Berlaku hingga</p>
-                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold', color: '#facc15' }}>
-                        {identifiedUser.activation_date ? (() => {
-                          const actDate = new Date(identifiedUser.activation_date);
-                          const expDate = new Date(actDate);
-                          expDate.setFullYear(expDate.getFullYear() + 1);
-                          return expDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-                        })() : '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
-                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>
-                        {identifiedUser.nik && identifiedUser.nik.length === 16
-                          ? `${identifiedUser.nik.substring(0, 6)}******${identifiedUser.nik.substring(12)}`
-                          : identifiedUser.nik || '-'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bagian Kanan: Info Paket, Scan Gelang Calisto, & Rombongan */}
-            <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', padding: '1.25rem', borderRadius: '1.2rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flex: '1 1 40%', maxWidth: '420px', minWidth: '300px', maxHeight: '65vh', overflowY: 'auto', boxShadow: '0 15px 35px -5px rgba(0, 0, 0, 0.05)', animation: 'slideInRight 0.6s ease-out 0.2s both' }}>
-              
-              {/* MODUL SCAN GELANG CALISTO INSTAN */}
-              <div style={{ 
-                backgroundColor: wristbandLinkedSuccess ? '#f0fdf4' : '#f8fafc', 
-                border: wristbandLinkedSuccess ? '2px solid #10b981' : '1.5px dashed #059669', 
-                borderRadius: '0.85rem', 
-                padding: '1rem', 
-                marginBottom: '1.25rem' 
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '800', color: wristbandLinkedSuccess ? '#15803d' : '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span>🎟️</span> {wristbandLinkedSuccess ? 'GELANG TERKAIT HARI INI' : 'KAITKAN GELANG CALISTO'}
-                  </span>
-                  {identifiedUser?.card_uid && (
-                    <span style={{ fontSize: '0.7rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '0.15rem 0.4rem', borderRadius: '0.3rem', fontFamily: 'monospace' }}>
-                      {identifiedUser.card_uid}
-                    </span>
-                  )}
-                </div>
-
-                {wristbandLinkedSuccess ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#15803d', fontSize: '0.85rem', fontWeight: '700' }}>
-                    <span>✅</span> Gelang siap dipakai masuk & potong kuota wahana!
-                  </div>
-                ) : (
-                  <form onSubmit={(e) => { e.preventDefault(); handleLinkWristband(wristbandCode); }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <input
-                        ref={wristbandInputRef}
-                        type="text"
-                        autoFocus
-                        placeholder="Tembak scanner ke gelang Calisto..."
-                        value={wristbandCode}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setWristbandCode(val);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && wristbandCode.trim()) {
-                            e.preventDefault();
-                            handleLinkWristband(wristbandCode.trim());
-                          }
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: '0.6rem 0.8rem',
-                          borderRadius: '0.5rem',
-                          border: '1.5px solid #059669',
-                          fontSize: '0.85rem',
-                          fontWeight: '700',
-                          backgroundColor: '#ffffff',
-                          color: '#0f172a',
-                          outline: 'none'
-                        }}
-                      />
-                      <button
-                        type="submit"
-                        disabled={isLinkingWristband || !wristbandCode.trim()}
-                        style={{
-                          backgroundColor: '#059669',
-                          color: '#fff',
-                          border: 'none',
-                          padding: '0.6rem 0.85rem',
-                          borderRadius: '0.5rem',
-                          fontWeight: '700',
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                          opacity: isLinkingWristband || !wristbandCode.trim() ? 0.6 : 1
-                        }}
-                      >
-                        {isLinkingWristband ? 'Menyimpan...' : 'Kaitkan Otomatis'}
-                      </button>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', marginTop: '0.35rem' }}>
-                      💡 Kasir cukup tembakkan barcode scanner ke gelang Calisto (otomatis terisi & tersimpan).
-                    </p>
-                  </form>
-                )}
-              </div>
-
-              {/* Info Paket Tiket */}
-              <div style={{ marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Paket Tiket Terdaftar</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ backgroundColor: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '0.5rem' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
-                  </div>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: 'bold' }}>
-                      {(() => {
-                        const userCount = identifiedFamily.length + 1;
-                        const matchedPackage = packages
-                          .filter(p => p.min_qty <= userCount && p.max_qty >= userCount)
-                          .sort((a, b) => (a.max_qty - a.min_qty) - (b.max_qty - b.min_qty))[0];
-                        return matchedPackage ? matchedPackage.name : 'Annual Pass - All Access';
-                      })()}
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#10b981', fontWeight: '600' }}>Valid & Aktif</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Rombongan */}
-              <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Anggota Keluarga / Rombongan</p>
-              
-              {identifiedFamily.length > 0 ? (
-                <>
-                  <p style={{ fontSize: '0.8rem', color: '#eab308', backgroundColor: '#fefce8', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #fef08a', marginBottom: '1rem' }}>
-                    ⚠️ Anggota rombongan harus melakukan scan wajah <b>satu per satu</b> secara bergantian.
-                  </p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', flex: 1, maxHeight: '200px' }}>
-                    {identifiedFamily.map(fam => (
-                      <li key={fam.id} style={{ fontSize: '0.95rem', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #f1f5f9' }}>
-                        <span style={{ fontWeight: '600' }}>{fam.name}</span>
-                        <span style={{ fontSize: '0.7rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '0.2rem 0.5rem', borderRadius: '1rem', fontWeight: 'bold', textTransform: 'uppercase' }}>{fam.role}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, backgroundColor: '#f8fafc', borderRadius: '0.5rem', padding: '1rem' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.5rem' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                  <p style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>Tidak ada rombongan terdaftar.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
         {/* Camera Feed */}
         <div style={{ position: 'relative', width: '100%', maxWidth: '450px', margin: '0 auto', flex: 1, maxHeight: '55vh', backgroundColor: '#e2e8f0', borderRadius: '1rem', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}>
           <video 
@@ -877,6 +646,343 @@ export default function GateScanner() {
           </p>
         </div>
       </div>
+
+      {/* Detail Overlay Penuh (Pop-up Layar Penuh Mewah & Lega) */}
+      {viewModeState === 'DETAIL' && identifiedUser && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            backgroundColor: 'rgba(15, 23, 42, 0.75)', 
+            zIndex: 9999,
+            backdropFilter: 'blur(12px)',
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            padding: '1.5rem', 
+            overflowY: 'auto',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          onMouseDown={() => setIsCooldownPaused(true)}
+          onMouseUp={() => setIsCooldownPaused(false)}
+          onMouseLeave={() => setIsCooldownPaused(false)}
+          onTouchStart={() => setIsCooldownPaused(true)}
+          onTouchEnd={() => setIsCooldownPaused(false)}
+        >
+          {/* Main Modal Card Container */}
+          <div style={{
+            width: '100%',
+            maxWidth: '1150px',
+            backgroundColor: '#ffffff',
+            borderRadius: '1.75rem',
+            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'slideUpBounce 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+
+            {/* Header Modal */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '1.5rem 2rem', 
+              borderBottom: '1px solid #f1f5f9',
+              backgroundColor: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '48px', height: '48px', backgroundColor: '#10b981', color: 'white', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(16,185,129,0.35)', flexShrink: 0 }}>
+                  <svg className="animated-check" width="28" height="28" viewBox="0 0 52 52">
+                    <circle className="check-circle" cx="26" cy="26" r="25" fill="none" stroke="currentColor" strokeWidth="4" />
+                    <path className="check-path" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7 7 16-16" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.6rem', color: '#0f172a', fontWeight: '800', margin: 0, letterSpacing: '-0.02em' }}>
+                    Akses Diberikan • Silakan Masuk
+                  </h2>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', marginTop: '0.15rem' }}>
+                    {wristbandLinkedSuccess ? '✅ Gelang Calisto berhasil dikaitkan. Layar akan kembali otomatis...' : '💡 Silakan tembakkan scanner ke gelang Calisto pengunjung, atau klik "Lewati / Kembali"'}
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={returnToGate}
+                style={{ 
+                  backgroundColor: wristbandLinkedSuccess ? '#10b981' : '#334155', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '0.75rem 1.6rem', 
+                  borderRadius: '2rem', 
+                  fontWeight: '700', 
+                  cursor: 'pointer', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)', 
+                  fontSize: '0.95rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0
+                }}
+              >
+                {wristbandLinkedSuccess ? 'Selesai & Lanjut' : 'Lewati / Kembali'} 
+                {wristbandLinkedSuccess && (
+                  <span style={{ backgroundColor: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.8rem' }}>{cooldown}s</span>
+                )}
+              </button>
+            </div>
+
+            {/* Modal Body: 2 Kolom Seimbang & Lega */}
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'row', 
+              alignItems: 'stretch', 
+              gap: '2.5rem', 
+              padding: '2rem',
+              backgroundColor: '#ffffff'
+            }}>
+              
+              {/* KOLOM KIRI: Kartu Annual Pass Gagah & Besar */}
+              <div style={{ 
+                flex: '1.2', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'center', 
+                alignItems: 'center' 
+              }}>
+                <div style={{ 
+                  perspective: '1200px', 
+                  width: '100%', 
+                  maxWidth: '540px', 
+                  aspectRatio: '1.58 / 1', 
+                  containerType: 'inline-size' 
+                }}>
+                  <div style={{ 
+                    position: 'relative', 
+                    width: '100%', 
+                    height: '100%',
+                    background: 'url(\'/hornbill-card-bg.png\') center right / cover no-repeat, #064e3b', 
+                    borderRadius: '4.5cqi', 
+                    color: 'white',
+                    boxShadow: '0 20px 45px -10px rgba(6, 78, 59, 0.45)',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '5.5cqi',
+                    animation: 'float 5s ease-in-out infinite'
+                  }}>
+                    {/* Header Card */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '2cqi' }}>
+                        <img src="/logo.png" alt="Aviary Park" style={{ height: '9.5cqi' }} />
+                        <div style={{ height: '6.5cqi', width: '1px', backgroundColor: 'rgba(255,255,255,0.4)' }}></div>
+                        <span style={{ fontSize: '2.8cqi', opacity: 0.95, fontWeight: '600' }}>Annual Pass Aktif</span>
+                      </div>
+                      <div style={{ backgroundColor: 'rgba(255,255,255,0.25)', padding: '1cqi 3.5cqi', borderRadius: '5cqi', fontSize: '2.4cqi', fontWeight: '800', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        {identifiedUser.role.toLowerCase() === 'primary' ? 'ACTIVE' : identifiedUser.role}
+                      </div>
+                    </div>
+
+                    {/* Main Content Card */}
+                    <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', paddingBottom: '1cqi', maxWidth: '75%' }}>
+                      <h3 style={{ margin: 0, fontSize: '6.5cqi', fontWeight: '900', lineHeight: '1.1', textShadow: '0 2px 5px rgba(0,0,0,0.5)', marginBottom: '3.5cqi' }}>
+                        Aviary Park<br/>Annual Pass
+                      </h3>
+                      
+                      <div style={{ marginBottom: '3.5cqi' }}>
+                        <p style={{ margin: 0, fontSize: '2.2cqi', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1.2px' }}>Nama Pengunjung</p>
+                        <p style={{ margin: 0, fontSize: '4.8cqi', fontWeight: '800', textShadow: '0 2px 4px rgba(0,0,0,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {identifiedUser.name}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '6cqi' }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '2.2cqi', opacity: 0.85, textTransform: 'uppercase' }}>Berlaku hingga</p>
+                          <p style={{ margin: 0, fontSize: '3.2cqi', fontWeight: '800', color: '#facc15' }}>
+                            {identifiedUser.activation_date ? (() => {
+                              const actDate = new Date(identifiedUser.activation_date);
+                              const expDate = new Date(actDate);
+                              expDate.setFullYear(expDate.getFullYear() + 1);
+                              return expDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                            })() : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '2.2cqi', opacity: 0.85, textTransform: 'uppercase' }}>Member ID</p>
+                          <p style={{ margin: 0, fontSize: '3.2cqi', fontWeight: '800', letterSpacing: '0.5px' }}>
+                            {identifiedUser.id ? `AP-${identifiedUser.id.substring(0, 8).toUpperCase()}` : 'AP-MEMBER'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* KOLOM KANAN: Modul Gelang Calisto, Info Paket, & Rombongan */}
+              <div style={{ 
+                flex: '1', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '1.25rem',
+                justifyContent: 'center'
+              }}>
+                
+                {/* 1. MODUL SCAN GELANG CALISTO INSTAN */}
+                <div style={{ 
+                  backgroundColor: wristbandLinkedSuccess ? '#f0fdf4' : '#f8fafc', 
+                  border: wristbandLinkedSuccess ? '2px solid #10b981' : '1.5px dashed #059669', 
+                  borderRadius: '1rem', 
+                  padding: '1.25rem',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800', color: wristbandLinkedSuccess ? '#15803d' : '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '1.1rem' }}>🎟️</span> {wristbandLinkedSuccess ? 'GELANG CALISTO TERKAIT' : 'KAITKAN GELANG CALISTO'}
+                    </span>
+                    {identifiedUser?.card_uid && (
+                      <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', fontFamily: 'monospace', fontWeight: '700' }}>
+                        {identifiedUser.card_uid}
+                      </span>
+                    )}
+                  </div>
+
+                  {wristbandLinkedSuccess ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#15803d', fontSize: '0.9rem', fontWeight: '700', padding: '0.25rem 0' }}>
+                      <span>✅</span> Gelang siap dipakai masuk & potong kuota wahana!
+                    </div>
+                  ) : (
+                    <form onSubmit={(e) => { e.preventDefault(); handleLinkWristband(wristbandCode); }}>
+                      <div style={{ display: 'flex', gap: '0.6rem' }}>
+                        <input
+                          ref={wristbandInputRef}
+                          type="text"
+                          autoFocus
+                          placeholder="Tembak barcode scanner ke gelang Calisto..."
+                          value={wristbandCode}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setWristbandCode(val);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && wristbandCode.trim()) {
+                              e.preventDefault();
+                              handleLinkWristband(wristbandCode.trim());
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '0.75rem 1rem',
+                            borderRadius: '0.65rem',
+                            border: '1.5px solid #059669',
+                            fontSize: '0.9rem',
+                            fontWeight: '700',
+                            backgroundColor: '#ffffff',
+                            color: '#0f172a',
+                            outline: 'none',
+                            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+                          }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={isLinkingWristband || !wristbandCode.trim()}
+                          style={{
+                            backgroundColor: '#059669',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '0.75rem 1.1rem',
+                            borderRadius: '0.65rem',
+                            fontWeight: '700',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            opacity: isLinkingWristband || !wristbandCode.trim() ? 0.6 : 1,
+                            boxShadow: '0 2px 6px rgba(5, 150, 105, 0.3)',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {isLinkingWristband ? 'Menyimpan...' : 'Kaitkan Otomatis'}
+                        </button>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
+                        💡 Kasir cukup tembakkan barcode scanner ke gelang Calisto (otomatis terisi & tersimpan).
+                      </p>
+                    </form>
+                  )}
+                </div>
+
+                {/* 2. Info Paket Tiket */}
+                <div style={{ 
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '1rem',
+                  padding: '1rem 1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <div style={{ backgroundColor: '#10b981', color: 'white', padding: '0.6rem', borderRadius: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Paket Tiket Terdaftar</p>
+                      <h4 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: '800' }}>
+                        {(() => {
+                          const userCount = identifiedFamily.length + 1;
+                          const matchedPackage = packages
+                            .filter(p => p.min_qty <= userCount && p.max_qty >= userCount)
+                            .sort((a, b) => (a.max_qty - a.min_qty) - (b.max_qty - b.min_qty))[0];
+                          return matchedPackage ? matchedPackage.name : 'Annual Pass - All Access';
+                        })()}
+                      </h4>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.8rem', backgroundColor: '#dcfce7', color: '#16a34a', padding: '0.35rem 0.8rem', borderRadius: '2rem', fontWeight: '800' }}>
+                    Valid & Aktif
+                  </span>
+                </div>
+
+                {/* 3. Rombongan / Anggota Keluarga */}
+                <div style={{ 
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '1rem',
+                  padding: '1.25rem',
+                  maxHeight: '180px',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.65rem 0', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Anggota Keluarga / Rombongan ({identifiedFamily.length})
+                  </p>
+                  
+                  {identifiedFamily.length > 0 ? (
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem', overflowY: 'auto' }}>
+                      {identifiedFamily.map(fam => (
+                        <li key={fam.id} style={{ fontSize: '0.9rem', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.4rem', borderBottom: '1px solid #e2e8f0' }}>
+                          <span style={{ fontWeight: '600' }}>{fam.name}</span>
+                          <span style={{ fontSize: '0.7rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '0.2rem 0.55rem', borderRadius: '1rem', fontWeight: '700', textTransform: 'uppercase' }}>{fam.role}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center', padding: '0.75rem', backgroundColor: '#ffffff', borderRadius: '0.5rem', border: '1px dashed #cbd5e1' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                      <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>Tidak ada rombongan terdaftar (Tiket Single).</span>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

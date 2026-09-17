@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       for (const member of insertData) {
         let finalNik = member.nik;
 
-        // Kosongkan NIK jika hanya string kosong (terutama untuk ANAK)
+        // Kosongkan NIK jika hanya string kosong (atau tidak ada)
         if (!finalNik || finalNik.trim() === '') {
           finalNik = null;
         }
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Cek duplikasi NIK di DB
+      // Cek duplikasi NIK di DB (hanya jika ada NIK yang diisi)
       if (niksToCheck.length > 0) {
         const { data: existingNiks, error: nikCheckError } = await supabase
           .from('members')

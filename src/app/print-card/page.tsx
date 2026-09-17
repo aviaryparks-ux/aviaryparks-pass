@@ -85,11 +85,9 @@ export default function PrintCard() {
               </p>
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: '2mm', opacity: 0.8, textTransform: 'uppercase' }}>NIK</p>
-              <p style={{ margin: 0, fontSize: '2.8mm', fontWeight: 'bold' }}>
-                {user.nik && user.nik.length === 16
-                  ? `${user.nik.substring(0, 6)}******${user.nik.substring(12)}`
-                  : user.nik || '-'}
+              <p style={{ margin: 0, fontSize: '2mm', opacity: 0.8, textTransform: 'uppercase' }}>Member ID</p>
+              <p style={{ margin: 0, fontSize: '2.8mm', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                {user.id ? `AP-${user.id.substring(0, 8).toUpperCase()}` : 'AP-MEMBER'}
               </p>
             </div>
           </div>

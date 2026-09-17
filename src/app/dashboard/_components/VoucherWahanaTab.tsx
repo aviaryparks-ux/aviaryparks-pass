@@ -68,9 +68,10 @@ export default function VoucherWahanaTab({ user }: { user: any }) {
   const fetchAvailableItems = async () => {
     try {
       // 1. Ambil wahana satuan
-      const resW = await fetch('/api/admin/wahanas');
+      const resW = await fetch('/api/public/wahanas');
       if (resW.ok) {
-        const dataW = await resW.json();
+        const payloadW = await resW.json();
+        const dataW = payloadW.data || [];
         const activeW = dataW.filter((w: any) => w.is_active && w.topup_price > 0);
         setAvailableWahanas(activeW);
         if (activeW.length > 0) setSelectedWahana(activeW[0]);

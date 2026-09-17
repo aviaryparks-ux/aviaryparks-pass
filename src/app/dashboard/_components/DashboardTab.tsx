@@ -175,11 +175,9 @@ export default function DashboardTab({
                       </p>
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>NIK / ID</p>
-                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold' }}>
-                        {activeUser.nik && activeUser.nik.length === 16
-                          ? `${activeUser.nik.substring(0, 6)}******${activeUser.nik.substring(12)}`
-                          : activeUser.nik || activeUser.id.substring(0,8).toUpperCase()}
+                      <p style={{ margin: 0, fontSize: '2cqi', opacity: 0.8, textTransform: 'uppercase' }}>Member ID</p>
+                      <p style={{ margin: 0, fontSize: '2.8cqi', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                        {activeUser.id ? `AP-${activeUser.id.substring(0, 8).toUpperCase()}` : 'AP-MEMBER'}
                       </p>
                     </div>
                   </div>

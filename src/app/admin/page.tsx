@@ -21,32 +21,67 @@ const PROVINCE_MAP: Record<string, string> = {
   '91': 'Papua Barat', '94': 'Papua'
 };
 
-const extractDemographics = (nik: string) => {
-  if (!nik || nik.length !== 16) return { gender: 'Unknown', age: 'Unknown', birthDate: '-', province: 'Lainnya' };
-  
-  const provCode = nik.substring(0, 2);
-  const province = PROVINCE_MAP[provCode] || 'Lainnya';
-  
-  const dd = parseInt(nik.substring(6, 8));
-  const mm = parseInt(nik.substring(8, 10));
-  const yy = parseInt(nik.substring(10, 12));
-  
-  if (isNaN(dd) || isNaN(mm) || isNaN(yy)) return { gender: 'Unknown', age: 'Unknown', birthDate: '-', province };
+const extractDemographics = (userOrNik: any) => {
+  // Dukung jika dipanggil dengan objek user lengkap atau hanya string NIK
+  const user = typeof userOrNik === 'object' && userOrNik !== null ? userOrNik : { nik: userOrNik };
+  const nik = user.nik || '';
+  const birthDateStr = user.birth_date;
+  const address = (user.address || '').trim();
 
-  let gender = 'Laki-laki';
-  let date = dd;
-  if (dd > 40) {
-    gender = 'Perempuan';
-    date = dd - 40;
+  let gender = user.gender || 'Unknown';
+  let age: number | string = 'Unknown';
+  let birthDateDisplay = '-';
+  let location = 'Lainnya';
+
+  // 1. Ekstraksi Lokasi / Kota / Provinsi
+  if (address) {
+    // Coba ambil kota dari address (contoh: "Jl. ABC, Kota Tangerang Selatan" -> "Kota Tangerang Selatan")
+    const parts = address.split(',');
+    location = parts[parts.length - 1].trim() || 'Lainnya';
+  } else if (nik && nik.length === 16) {
+    const provCode = nik.substring(0, 2);
+    location = PROVINCE_MAP[provCode] || 'Lainnya';
   }
-  
-  const currentYear = new Date().getFullYear();
-  const currentYY = parseInt(currentYear.toString().substring(2));
-  
-  const fullYear = yy > currentYY ? 1900 + yy : 2000 + yy;
-  const age = currentYear - fullYear;
-  
-  return { gender, age, birthDate: `${date}/${mm}/${fullYear}`, province };
+
+  // 2. Ekstraksi Tanggal Lahir & Usia dari birth_date (Member Baru)
+  if (birthDateStr) {
+    const bDate = new Date(birthDateStr);
+    if (!isNaN(bDate.getTime())) {
+      const now = new Date();
+      let calculatedAge = now.getFullYear() - bDate.getFullYear();
+      const m = now.getMonth() - bDate.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < bDate.getDate())) {
+        calculatedAge--;
+      }
+      age = calculatedAge >= 0 ? calculatedAge : 0;
+      birthDateDisplay = bDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+  }
+
+  // 3. Fallback ke NIK (Untuk Akun Lama yang belum punya birth_date terpisah)
+  if (age === 'Unknown' && nik && nik.length === 16) {
+    const dd = parseInt(nik.substring(6, 8));
+    const mm = parseInt(nik.substring(8, 10));
+    const yy = parseInt(nik.substring(10, 12));
+
+    if (!isNaN(dd) && !isNaN(mm) && !isNaN(yy)) {
+      let date = dd;
+      if (dd > 40) {
+        gender = 'Perempuan';
+        date = dd - 40;
+      } else {
+        gender = 'Laki-laki';
+      }
+
+      const currentYear = new Date().getFullYear();
+      const currentYY = parseInt(currentYear.toString().substring(2));
+      const fullYear = yy > currentYY ? 1900 + yy : 2000 + yy;
+      age = currentYear - fullYear;
+      birthDateDisplay = `${date}/${mm}/${fullYear}`;
+    }
+  }
+
+  return { gender, age, birthDate: birthDateDisplay, province: location };
 };
 
 const getRFMTag = (visitsCount: number, totalSpend: number, lastVisitDate: string | null) => {
@@ -980,7 +1015,7 @@ export default function AdminDashboard() {
   const ageGroupMap: Record<string, number> = { '<20': 0, '21-35': 0, '36-50': 0, '>50': 0 };
 
   users.forEach(u => {
-    const demo = extractDemographics(u.nik);
+    const demo = extractDemographics(u);
     if (demo.province && demo.province !== 'Unknown' && demo.province !== 'Lainnya') {
       provinceMap[demo.province] = (provinceMap[demo.province] || 0) + 1;
     }
@@ -1172,7 +1207,7 @@ export default function AdminDashboard() {
   ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
 
   const handleExportCSV = () => {
-    const headers = ['Nama', 'NIK', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Usia', 'Jenis Kelamin', 'Asal Daerah'];
+    const headers = ['Nama', 'Member ID', 'Tipe', 'Email', 'Telepon', 'Status', 'Masa Aktif', 'Kunjungan', 'Total Belanja', 'Kategori CRM', 'Tgl Lahir', 'Usia', 'Jenis Kelamin', 'Domisili / Kota'];
     const csvRows = [headers.join(';')];
 
     users.forEach(u => {
@@ -1184,11 +1219,12 @@ export default function AdminDashboard() {
       const lastVisit = userVisits.length > 0 ? userVisits[0].visited_at : null;
 
       const rfm = getRFMTag(visitsCount, totalSpend, lastVisit);
-      const demo = extractDemographics(u.nik);
+      const demo = extractDemographics(u);
+      const memberId = u.id ? `AP-${u.id.substring(0, 8).toUpperCase()}` : '-';
 
       const row = [
         `"${u.name}"`,
-        `'${u.nik}'`,
+        `"${memberId}"`,
         `"${u.role}"`,
         `"${u.email || ''}"`,
         `'${u.phone || ''}'`,
@@ -1197,6 +1233,7 @@ export default function AdminDashboard() {
         visitsCount,
         totalSpend,
         `"${rfm.label}"`,
+        `"${demo.birthDate}"`,
         demo.age,
         `"${demo.gender}"`,
         `"${demo.province}"`
@@ -1757,7 +1794,7 @@ export default function AdminDashboard() {
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                     <th style={{ padding: '1rem' }}>Nama</th>
-                    <th style={{ padding: '1rem' }}>NIK</th>
+                    <th style={{ padding: '1rem' }}>Member ID</th>
                     <th style={{ padding: '1rem' }}>Segmen CRM & Demografi</th>
                     <th style={{ padding: '1rem' }}>Visits</th>
                     <th style={{ padding: '1rem' }}>F&B / Wahana</th>
@@ -1812,10 +1849,8 @@ export default function AdminDashboard() {
                               )}
                             </div>
                           </td>
-                          <td style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>
-                            {u.nik && u.nik.length === 16 
-                              ? `${u.nik.substring(0, 6)}******${u.nik.substring(12)}` 
-                              : u.nik || '-'}
+                          <td style={{ padding: '1rem', color: '#059669', fontSize: '0.85rem', fontWeight: '700', letterSpacing: '0.5px' }}>
+                            {u.id ? `AP-${u.id.substring(0, 8).toUpperCase()}` : (u.nik || '-')}
                           </td>
                           <td style={{ padding: '1rem' }}>
                             {(() => {
@@ -1824,13 +1859,15 @@ export default function AdminDashboard() {
                               const uVisits = rawVisits.filter(v => v.member_id === u.id || (u.role === 'PRIMARY' && v.member_id === u.group_id)).sort((a,b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime());
                               const lVisit = uVisits.length > 0 ? uVisits[0].visited_at : null;
                               const rfm = getRFMTag(vCount, tSpend, lVisit);
-                              const demo = extractDemographics(u.nik);
+                              const demo = extractDemographics(u);
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                   <span style={{ backgroundColor: rfm.bg, color: rfm.color, padding: '0.15rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '600', width: 'fit-content' }}>
                                     {rfm.label}
                                   </span>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{demo.gender}, {demo.age} thn, {demo.province}</span>
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    {demo.gender !== 'Unknown' ? `${demo.gender}, ` : ''}{demo.age !== 'Unknown' ? `${demo.age} thn, ` : ''}{demo.province}
+                                  </span>
                                 </div>
                               );
                             })()}

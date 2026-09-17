@@ -320,98 +320,174 @@ export default function GateWahanaScanner() {
   }, [isScanning, processRedeemTicket]);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', color: '#0f172a', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
       <Toaster position="top-center" />
       
-      {/* Top Header Bar */}
-      <header style={{ padding: '1rem', backgroundColor: '#1e293b', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#10b981', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span>🎢</span> GATE WAHANA SCANNER
-          </h1>
-          <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>Petugas Operasional Aviary Park</p>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          {!isAppInstalled && (
-            <button
-              onClick={handleInstallApp}
-              style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '0.45rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', boxShadow: '0 2px 4px rgba(5, 150, 105, 0.3)' }}
-            >
-              <span>📲</span> Install App
-            </button>
-          )}
-
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Total Hari Ini</span>
-            <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#38bdf8' }}>{todayScannedCount} <span style={{ fontSize: '0.75rem' }}>Pax</span></div>
+      {/* Top Header Bar - Clean White & Emerald Header */}
+      <header style={{ padding: '0.9rem 1.25rem', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#065f46', margin: 0, letterSpacing: '0.5px' }}>
+              GATE WAHANA SCANNER
+            </h1>
+            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
+              Petugas Operasional Aviary Park
+            </p>
           </div>
-          
-          <button
-            onClick={async () => {
-              await fetch('/api/auth/logout', { method: 'POST' });
-              window.location.href = '/system-login';
-            }}
-            style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.45rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}
-          >
-            Keluar
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {!isAppInstalled && (
+              <button
+                onClick={handleInstallApp}
+                style={{ 
+                  backgroundColor: '#059669', 
+                  color: '#fff', 
+                  border: 'none', 
+                  padding: '0.45rem 0.85rem', 
+                  borderRadius: '2rem', 
+                  fontSize: '0.75rem', 
+                  fontWeight: '700', 
+                  cursor: 'pointer', 
+                  boxShadow: '0 2px 5px rgba(5, 150, 105, 0.25)' 
+                }}
+              >
+                Install App
+              </button>
+            )}
+            
+            <button
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/system-login';
+              }}
+              style={{ 
+                backgroundColor: '#fee2e2', 
+                color: '#ef4444', 
+                border: 'none', 
+                padding: '0.45rem 0.85rem', 
+                borderRadius: '2rem', 
+                fontSize: '0.75rem', 
+                fontWeight: '700', 
+                cursor: 'pointer' 
+              }}
+            >
+              Keluar
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
+      <main style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '480px', margin: '0 auto', width: '100%' }}>
         
-        {/* Selector Wahana */}
-        <div style={{ backgroundColor: '#1e293b', padding: '0.85rem 1rem', borderRadius: '0.75rem', border: '1px solid #334155' }}>
-          <label style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: '600', marginBottom: '0.35rem', display: 'block' }}>
-            Posisi Wahana Yang Dijaga:
-          </label>
-          <select 
-            value={selectedWahanaId} 
-            onChange={(e) => handleWahanaChange(e.target.value)}
-            style={{ width: '100%', padding: '0.75rem 1rem', backgroundColor: '#0f172a', color: '#f8fafc', border: '1px solid #475569', borderRadius: '0.5rem', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', outline: 'none' }}
-          >
-            {wahanas.length === 0 ? (
-              <option value="" style={{ backgroundColor: '#0f172a', color: '#94a3b8' }}>Memuat daftar wahana...</option>
-            ) : (
-              wahanas.map(w => (
-                <option key={w.id} value={w.id} style={{ backgroundColor: '#1e293b', color: '#f8fafc', padding: '0.5rem' }}>
-                  {w.name}
-                </option>
-              ))
-            )}
-          </select>
+        {/* Ringkasan Petugas & Selector Wahana (Clean Card) */}
+        <div style={{ backgroundColor: '#ffffff', padding: '1.1rem', borderRadius: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.6rem', borderBottom: '1px solid #f1f5f9' }}>
+            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Tiket Terpotong Hari Ini
+            </span>
+            <div style={{ fontSize: '1.3rem', fontWeight: '900', color: '#059669' }}>
+              {todayScannedCount} <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: '600' }}>Pax</span>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.75rem', color: '#475569', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.4rem', display: 'block' }}>
+              Posisi Wahana:
+            </label>
+            <select 
+              value={selectedWahanaId} 
+              onChange={(e) => handleWahanaChange(e.target.value)}
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem 1rem', 
+                backgroundColor: '#f8fafc', 
+                color: '#0f172a', 
+                border: '1.5px solid #cbd5e1', 
+                borderRadius: '0.75rem', 
+                fontSize: '0.95rem', 
+                fontWeight: '700', 
+                cursor: 'pointer', 
+                outline: 'none' 
+              }}
+            >
+              {wahanas.length === 0 ? (
+                <option value="" style={{ backgroundColor: '#ffffff', color: '#94a3b8' }}>Memuat daftar wahana...</option>
+              ) : (
+                wahanas.map(w => (
+                  <option key={w.id} value={w.id} style={{ backgroundColor: '#ffffff', color: '#0f172a', padding: '0.5rem' }}>
+                    {w.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
         </div>
 
         {/* Video Viewport & Scanner View */}
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#000', borderRadius: '1rem', overflow: 'hidden', border: scanResult.status === 'SUCCESS' ? '4px solid #10b981' : (scanResult.status === 'ERROR' ? '4px solid #ef4444' : '2px solid #334155') }}>
+        <div style={{ 
+          position: 'relative', 
+          width: '100%', 
+          aspectRatio: '1/1', 
+          backgroundColor: '#0f172a', 
+          borderRadius: '1.25rem', 
+          overflow: 'hidden', 
+          border: scanResult.status === 'SUCCESS' ? '4px solid #10b981' : (scanResult.status === 'ERROR' ? '4px solid #ef4444' : '2px solid #e2e8f0'),
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+        }}>
           <video 
             ref={videoRef} 
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
           />
           <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-          {/* Live Debug Info Badge */}
-          <div style={{ position: 'absolute', top: '10px', left: '10px', right: '10px', backgroundColor: 'rgba(15, 23, 42, 0.85)', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
-            <span style={{ fontSize: '0.75rem', color: '#38bdf8', fontFamily: 'monospace', fontWeight: 'bold' }}>
-              📟 {debugInfo}
+          {/* Live Debug Info Badge - Bersih & Rapi */}
+          <div style={{ 
+            position: 'absolute', 
+            top: '12px', 
+            left: '12px', 
+            right: '12px', 
+            backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+            backdropFilter: 'blur(8px)',
+            padding: '0.45rem 0.85rem', 
+            borderRadius: '0.6rem', 
+            border: '1px solid rgba(0,0,0,0.06)', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            zIndex: 10 
+          }}>
+            <span style={{ fontSize: '0.75rem', color: '#0f172a', fontWeight: '700' }}>
+              {debugInfo}
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 'bold' }}>
-              ● LIVE
+            <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ width: '6px', height: '6px', backgroundColor: '#10b981', borderRadius: '50%', display: 'inline-block' }}></span> LIVE
             </span>
           </div>
 
           {/* Scanner Reticle Overlay */}
-          <div style={{ position: 'absolute', top: '15%', left: '15%', width: '70%', height: '70%', border: '2px dashed rgba(255,255,255,0.7)', borderRadius: '1rem', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', height: '2px', backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981', position: 'absolute', animation: 'scanLine 2s infinite linear' }} />
+          <div style={{ 
+            position: 'absolute', 
+            top: '15%', 
+            left: '15%', 
+            width: '70%', 
+            height: '70%', 
+            border: '2px dashed rgba(255,255,255,0.7)', 
+            borderRadius: '1rem', 
+            pointerEvents: 'none', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center' 
+          }}>
+            <div style={{ width: '100%', height: '2px', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981', position: 'absolute', animation: 'scanLine 2s infinite linear' }} />
           </div>
 
           {/* Processing Indicator */}
           {isProcessing && (
-            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
               <div style={{ width: '36px', height: '36px', border: '4px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-              <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff' }}>Memvalidasi Tiket...</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#065f46' }}>Memvalidasi Tiket...</span>
             </div>
           )}
         </div>
@@ -419,42 +495,43 @@ export default function GateWahanaScanner() {
         {/* Dynamic Scan Result Modal/Card */}
         {scanResult.status !== 'IDLE' && (
           <div style={{ 
-            backgroundColor: scanResult.status === 'SUCCESS' ? '#064e3b' : '#7f1d1d', 
+            backgroundColor: scanResult.status === 'SUCCESS' ? '#f0fdf4' : '#fef2f2', 
             border: `2px solid ${scanResult.status === 'SUCCESS' ? '#10b981' : '#ef4444'}`,
             padding: '1.25rem', 
-            borderRadius: '1rem',
-            textAlign: 'center'
+            borderRadius: '1.25rem', 
+            textAlign: 'center',
+            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)'
           }}>
             <div style={{ fontSize: '2.5rem', marginBottom: '0.25rem' }}>
               {scanResult.status === 'SUCCESS' ? '✅' : '❌'}
             </div>
             
-            <h2 style={{ fontSize: '1.2rem', fontWeight: '900', color: scanResult.status === 'SUCCESS' ? '#34d399' : '#fca5a5', margin: '0 0 0.5rem 0' }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: '900', color: scanResult.status === 'SUCCESS' ? '#065f46' : '#991b1b', margin: '0 0 0.5rem 0' }}>
               {scanResult.status === 'SUCCESS' ? 'TIKET VALID / SILAKAN MASUK' : 'TIKET TIDAK VALID / DITOLAK'}
             </h2>
 
             {scanResult.memberName && (
-              <p style={{ fontSize: '1rem', fontWeight: '700', margin: '0.2rem 0', color: '#fff' }}>
+              <p style={{ fontSize: '1rem', fontWeight: '700', margin: '0.2rem 0', color: '#1e293b' }}>
                 Pengunjung: <span style={{ textDecoration: 'underline' }}>{scanResult.memberName}</span>
               </p>
             )}
 
             {scanResult.status === 'SUCCESS' && (
-              <div style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '0.5rem', marginTop: '0.5rem', display: 'inline-block' }}>
-                <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>Sisa Kuota Tiket: </span>
-                <span style={{ fontSize: '1.1rem', fontWeight: '900', color: '#fbbf24' }}>{scanResult.remainingQuota} Tiket</span>
+              <div style={{ backgroundColor: '#ffffff', border: '1px solid #bbf7d0', padding: '0.5rem 1rem', borderRadius: '0.75rem', marginTop: '0.5rem', display: 'inline-block' }}>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Sisa Kuota: </span>
+                <span style={{ fontSize: '1.1rem', fontWeight: '900', color: '#059669' }}>{scanResult.remainingQuota} Tiket</span>
               </div>
             )}
 
-            <p style={{ fontSize: '0.85rem', color: '#e2e8f0', margin: '0.5rem 0 0 0' }}>
+            <p style={{ fontSize: '0.85rem', color: scanResult.status === 'SUCCESS' ? '#047857' : '#b91c1c', margin: '0.5rem 0 0 0' }}>
               {scanResult.message}
             </p>
           </div>
         )}
 
         {/* Manual Input Fallback */}
-        <div style={{ backgroundColor: '#1e293b', padding: '1rem', borderRadius: '0.75rem', border: '1px solid #334155' }}>
-          <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 0.5rem 0' }}>Kamera bermasalah? Masukkan ID / NIK Member manual:</p>
+        <div style={{ backgroundColor: '#ffffff', padding: '1.1rem', borderRadius: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem 0', fontWeight: '600' }}>Kamera bermasalah? Masukkan Member ID atau No. WhatsApp:</p>
           <form 
             onSubmit={(e) => {
               e.preventDefault();
@@ -464,26 +541,19 @@ export default function GateWahanaScanner() {
           >
             <input 
               type="text" 
-              placeholder="Ketik NIK / ID Member..."
+              placeholder="Contoh: AP-4A30C4C7 atau 0812xxxx..."
               value={manualCode}
               onChange={(e) => setManualCode(e.target.value)}
-              style={{ flex: 1, padding: '0.65rem 0.85rem', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #475569', borderRadius: '0.5rem', fontSize: '0.9rem' }}
+              style={{ flex: 1, padding: '0.7rem 0.9rem', backgroundColor: '#f8fafc', color: '#0f172a', border: '1.5px solid #cbd5e1', borderRadius: '0.65rem', fontSize: '0.9rem', outline: 'none' }}
             />
             <button 
               type="submit"
               disabled={isProcessing}
-              style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '0.65rem 1rem', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}
+              style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '0.7rem 1.1rem', borderRadius: '0.65rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 2px 5px rgba(5, 150, 105, 0.25)' }}
             >
               Potong
             </button>
           </form>
-        </div>
-
-        {/* Footer Navigation */}
-        <div style={{ textAlign: 'center', marginTop: 'auto', paddingTop: '1rem' }}>
-          <Link href="/admin" style={{ color: '#64748b', fontSize: '0.8rem', textDecoration: 'none' }}>
-            ← Kembali ke Panel Admin
-          </Link>
         </div>
       </main>
 

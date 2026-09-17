@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'id is required' }, { status: 400 });
     }
 
-    const cleanId = id.trim();
+    let cleanId = id.trim();
+    if (cleanId.toUpperCase().startsWith('AP-')) {
+      cleanId = cleanId.substring(3).trim(); // Remove 'AP-' prefix
+    }
     let targetMemberId = cleanId;
 
     // 1. Cek apakah cleanId adalah Barcode Gelang Calisto di Memory Map
@@ -25,8 +28,11 @@ export async function GET(request: NextRequest) {
 
     if (isUUID) {
       query = query.or(`id.eq.${targetMemberId},group_id.eq.${targetMemberId},nik.eq.${targetMemberId}`);
+    } else if (targetMemberId.length === 8 && /^[0-9a-fA-F]{8}$/.test(targetMemberId)) {
+      // Pencarian berdasarkan 8 karakter awal Member ID (AP-XXXXXXXX)
+      query = query.or(`id.ilike.${targetMemberId}%,phone.eq.${targetMemberId}`);
     } else {
-      query = query.or(`nik.eq.${targetMemberId},phone.eq.${targetMemberId},id.eq.${targetMemberId}`);
+      query = query.or(`phone.eq.${targetMemberId},nik.eq.${targetMemberId},card_uid.eq.${targetMemberId}`);
     }
 
     let { data, error } = await query.single();

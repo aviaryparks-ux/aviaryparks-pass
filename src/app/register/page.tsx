@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { validateNikFormat, checkNikDuplicate } from '@/lib/nikValidator';
 import { Infinity, ScanFace, Tag, Gift, User, Users, Plus, ChevronRight, Info, Lock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import LanguageSelector from '../_components/LanguageSelector';
+
+import indonesianCities from '@/lib/indonesian-cities.json';
 
 const generateUUID = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -27,14 +28,25 @@ export default function Register() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // NIK validation errors: key = 'primary' | 'member-0' | 'member-1' etc
-  const [nikErrors, setNikErrors] = useState<Record<string, string>>({});
-  const [nikChecking, setNikChecking] = useState<Record<string, boolean>>({});
+  // Consent states & Modals
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   
-  const [primary, setPrimary] = useState({ name: '', nik: '', phone: '', email: '', address: '' });
-  const [members, setMembers] = useState<{name: string, nik: string, category: 'DEWASA' | 'ANAK'}[]>([]);
+  const [primary, setPrimary] = useState({ name: '', birth_date: '', city: '', address: '', phone: '', email: '' });
+  const [members, setMembers] = useState<{name: string, birth_date: string, category: 'DEWASA' | 'ANAK'}[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [selectedPkg, setSelectedPkg] = useState<any>(null);
+
+  // Rekomendasi Kota Populer Jabodetabek & Sekitarnya
+  const popularCities = [
+    "Tangerang Selatan", "Kota Tangerang", "Kabupaten Tangerang", 
+    "Jakarta Selatan", "Jakarta Barat", "Jakarta Pusat", "Jakarta Timur", "Jakarta Utara",
+    "Kota Depok", "Kota Bogor", "Kabupaten Bogor", "Kota Bekasi", "Kabupaten Bekasi",
+    "Kota Bandung", "Kota Serang", "Kota Cilegon"
+  ];
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -60,48 +72,20 @@ export default function Register() {
       return;
     }
     if (members.length >= selectedPkg.max_qty - 1) {
-      toast.error(`Kapasitas maksimal untuk ${selectedPkg.name} adalah ${selectedPkg.max_qty} orang.`);
+      toast.error(`Maksimal anggota untuk paket ${selectedPkg.name} adalah ${selectedPkg.max_qty - 1} orang tambahan.`);
       return;
     }
-    setMembers([...members, { name: '', nik: '', category: 'DEWASA' }]);
+    setMembers([...members, { name: '', birth_date: '', category: 'DEWASA' }]);
   };
 
   const removeMember = (index: number) => {
-    const newMembers = [...members];
-    newMembers.splice(index, 1);
-    setMembers(newMembers);
+    setMembers(members.filter((_, i) => i !== index));
   };
 
-  const handleMemberChange = (index: number, field: 'name'|'nik'|'category', value: string) => {
-    const newMembers = [...members];
-    (newMembers[index] as any)[field] = value;
-    setMembers(newMembers);
-  };
-
-  const validateNikOnBlur = async (key: string, nik: string) => {
-    if (!nik) return;
-    // Format check
-    const formatResult = validateNikFormat(nik);
-    if (!formatResult.valid) {
-      setNikErrors(prev => ({ ...prev, [key]: formatResult.error! }));
-      return;
-    }
-    // Duplicate check
-    setNikChecking(prev => ({ ...prev, [key]: true }));
-    const isDuplicate = await checkNikDuplicate(nik);
-    setNikChecking(prev => ({ ...prev, [key]: false }));
-    if (isDuplicate) {
-      setNikErrors(prev => ({ ...prev, [key]: 'NIK ini sudah terdaftar dalam sistem.' }));
-    } else {
-      setNikErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
-    }
-  };
-
-  const handleNikChange = (key: string, value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 16);
-    // Clear error on change
-    setNikErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
-    return digits;
+  const handleMemberChange = (index: number, field: string, value: string) => {
+    const updated = [...members];
+    updated[index] = { ...updated[index], [field]: value };
+    setMembers(updated);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,27 +99,13 @@ export default function Register() {
         return;
       }
 
-      // Validate all NIKs before sending OTP
-      const allNiks: { key: string; nik: string }[] = [
-        { key: 'primary', nik: primary.nik },
-        ...members.filter(m => m.category === 'DEWASA').map((m, i) => ({ key: `member-${i}`, nik: m.nik }))
-      ];
-
-      const newErrors: Record<string, string> = {};
-      for (const { key, nik } of allNiks) {
-        const fmt = validateNikFormat(nik);
-        if (!fmt.valid) { newErrors[key] = fmt.error!; continue; }
-        const dup = await checkNikDuplicate(nik);
-        if (dup) newErrors[key] = 'NIK ini sudah terdaftar dalam sistem.';
-      }
-
-      if (Object.keys(newErrors).length > 0) {
-        setNikErrors(newErrors);
+      if (!agreedTerms || !agreedPrivacy) {
+        toast.error('Harap setujui Syarat & Ketentuan serta Kebijakan Privasi.');
         setIsLoading(false);
         return;
       }
 
-      // Kirim OTP ke email, jangan insert ke DB dulu
+      // Kirim OTP ke email/WhatsApp
       const res = await fetch('/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,25 +150,28 @@ export default function Register() {
     setOtpError('');
 
     try {
+      // Gabungkan alamat & kota
+      const fullAddress = primary.city ? `${primary.address ? primary.address + ', ' : ''}${primary.city}` : primary.address;
+
       // Siapkan data untuk insert di backend
       const groupId = generateUUID();
       const insertData = [
         {
           name: primary.name,
-          nik: primary.nik,
+          birth_date: primary.birth_date || null,
           phone: primary.phone,
           email: primary.email,
-          address: primary.address,
+          address: fullAddress,
           status: 'PENDING_PAYMENT',
           group_id: groupId,
           role: 'PRIMARY'
         },
         ...members.map(m => ({
           name: m.name,
-          nik: m.nik,
+          birth_date: m.birth_date || null,
           phone: primary.phone,
           email: primary.email,
-          address: primary.address,
+          address: fullAddress,
           status: 'PENDING_PAYMENT',
           group_id: groupId,
           role: m.category === 'ANAK' ? 'CHILD' : 'MEMBER'
@@ -506,31 +479,7 @@ export default function Register() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Nama Lengkap</label>
-                  <input type="text" placeholder="Masukkan nama lengkap sesuai KTP" required style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} value={primary.name} onChange={(e) => setPrimary({ ...primary, name: e.target.value })} />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Nomor KTP (NIK)</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Masukkan 16 digit nomor KTP"
-                    required
-                    maxLength={16}
-                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: nikErrors['primary'] ? '1.5px solid #ef4444' : '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669', boxSizing: 'border-box' }}
-                    value={primary.nik}
-                    onChange={(e) => setPrimary({ ...primary, nik: handleNikChange('primary', e.target.value) })}
-                    onBlur={() => validateNikOnBlur('primary', primary.nik)}
-                  />
-                  {nikErrors['primary'] ? (
-                    <p style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '0.4rem' }}>⚠ {nikErrors['primary']}</p>
-                  ) : nikChecking['primary'] ? (
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>Memeriksa NIK...</p>
-                  ) : primary.nik.length === 16 ? (
-                    <p style={{ fontSize: '0.8rem', color: '#059669', marginTop: '0.4rem' }}>✓ Format NIK valid</p>
-                  ) : (
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>Pastikan nomor KTP yang Anda masukkan benar ({primary.nik.length}/16).</p>
-                  )}
+                  <input type="text" placeholder="Masukkan nama lengkap Anda" required style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} value={primary.name} onChange={(e) => setPrimary({ ...primary, name: e.target.value })} />
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -544,9 +493,94 @@ export default function Register() {
                   </div>
                 </div>
 
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Tanggal Lahir</label>
+                    <input 
+                      type="date" 
+                      required 
+                      style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} 
+                      value={primary.birth_date} 
+                      onChange={(e) => setPrimary({ ...primary, birth_date: e.target.value })} 
+                    />
+                  </div>
+                  <div style={{ flex: '1 1 200px', position: 'relative' }}>
+                    <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Kota Domisili</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ketik nama kota..." 
+                      required 
+                      autoComplete="off"
+                      style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} 
+                      value={primary.city} 
+                      onChange={(e) => {
+                        setPrimary({ ...primary, city: e.target.value });
+                        setShowCitySuggestions(true);
+                      }} 
+                      onFocus={() => {
+                        if (primary.city.trim().length > 0) setShowCitySuggestions(true);
+                      }}
+                      onBlur={() => {
+                        // Delay sedikit agar klik pada suggestion sempat teregister
+                        setTimeout(() => setShowCitySuggestions(false), 200);
+                      }}
+                    />
+                    
+                    {/* Saran Kota - Hanya muncul jika user mulai mengetik */}
+                    {showCitySuggestions && primary.city.trim().length > 0 && (
+                      (() => {
+                        const query = primary.city.toLowerCase().trim();
+                        const filtered = (indonesianCities as string[])
+                          .filter(c => c.toLowerCase().includes(query))
+                          .slice(0, 8); // Tampilkan maksimal 8 saran terdekat agar tetap ringan & rapi
+
+                        if (filtered.length === 0) return null;
+                        return (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            marginTop: '0.35rem',
+                            backgroundColor: '#ffffff',
+                            borderRadius: '0.75rem',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                            maxHeight: '220px',
+                            overflowY: 'auto',
+                            zIndex: 50
+                          }}>
+                            {filtered.map((city, cIdx) => (
+                              <div
+                                key={cIdx}
+                                onMouseDown={() => {
+                                  setPrimary({ ...primary, city });
+                                  setShowCitySuggestions(false);
+                                }}
+                                style={{
+                                  padding: '0.65rem 1rem',
+                                  fontSize: '0.9rem',
+                                  color: '#1e293b',
+                                  cursor: 'pointer',
+                                  borderBottom: cIdx === filtered.length - 1 ? 'none' : '1px solid #f1f5f9',
+                                  transition: 'background 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#ecfdf5')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                              >
+                                {city}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                </div>
+
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Alamat Lengkap</label>
-                  <textarea placeholder="Masukkan alamat lengkap sesuai KTP" rows={3} required style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669', resize: 'vertical' }} value={primary.address} onChange={(e) => setPrimary({ ...primary, address: e.target.value })} />
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>Alamat Detail</label>
+                  <input type="text" placeholder="Jalan, Nomor Rumah / Komplek" required style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', outlineColor: '#059669' }} value={primary.address} onChange={(e) => setPrimary({ ...primary, address: e.target.value })} />
                 </div>
               </div>
             </div>
@@ -586,32 +620,16 @@ export default function Register() {
                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>Kategori</label>
                         <select style={{ width: '100%', padding: '0.7rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: 'white' }} value={m.category} onChange={(e) => handleMemberChange(i, 'category', e.target.value)}>
                           <option value="DEWASA">Dewasa</option>
-                          <option value="ANAK">Anak/Bayi</option>
+                          <option value="ANAK">Anak / Bayi</option>
                         </select>
                       </div>
-                      <div style={{ flex: '1 1 150px' }}>
+                      <div style={{ flex: '2 1 180px' }}>
                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>Nama Anggota {i+1}</label>
-                        <input type="text" placeholder="Nama Lengkap" required style={{ width: '100%', padding: '0.7rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} value={m.name} onChange={(e) => handleMemberChange(i, 'name', e.target.value)} />
+                        <input type="text" placeholder="Masukkan nama lengkap" required style={{ width: '100%', padding: '0.7rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} value={m.name} onChange={(e) => handleMemberChange(i, 'name', e.target.value)} />
                       </div>
-                      <div style={{ flex: '1 1 150px' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>NIK KTP {m.category === 'ANAK' && '(Opsional)'}</label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="16 Digit NIK"
-                          required={m.category === 'DEWASA'}
-                          maxLength={16}
-                          style={{ width: '100%', padding: '0.7rem', borderRadius: '0.5rem', border: nikErrors[`member-${i}`] ? '1.5px solid #ef4444' : '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                          value={m.nik}
-                          onChange={(e) => handleMemberChange(i, 'nik', handleNikChange(`member-${i}`, e.target.value))}
-                          onBlur={() => m.category === 'DEWASA' && m.nik && validateNikOnBlur(`member-${i}`, m.nik)}
-                        />
-                        {nikErrors[`member-${i}`] && (
-                          <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem' }}>⚠ {nikErrors[`member-${i}`]}</p>
-                        )}
-                        {nikChecking[`member-${i}`] && (
-                          <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>Memeriksa...</p>
-                        )}
+                      <div style={{ flex: '1.5 1 150px' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>Tanggal Lahir</label>
+                        <input type="date" required style={{ width: '100%', padding: '0.7rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} value={m.birth_date} onChange={(e) => handleMemberChange(i, 'birth_date', e.target.value)} />
                       </div>
                       <button type="button" onClick={() => removeMember(i)} style={{ padding: '0.7rem', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
                     </div>
@@ -629,8 +647,75 @@ export default function Register() {
               </div>
             </div>
 
+            {/* Section 3: Persetujuan (ISO 27001 / UU PDP Compliance) */}
+            <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>Persetujuan Ketentuan Layanan</h4>
+              
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={agreedTerms} 
+                  onChange={(e) => setAgreedTerms(e.target.checked)} 
+                  required 
+                  style={{ marginTop: '0.2rem', accentColor: '#059669', width: '17px', height: '17px', flexShrink: 0 }}
+                />
+                <span>
+                  Saya menyetujui{' '}
+                  <button 
+                    type="button" 
+                    onClick={() => setShowTermsModal(true)} 
+                    style={{ background: 'none', border: 'none', padding: 0, color: '#059669', fontWeight: '700', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit' }}
+                  >
+                    Syarat & Ketentuan
+                  </button>{' '}
+                  Annual Pass Aviary Park (kartu bersifat personal & tidak dapat dipindahtangankan).
+                </span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={agreedPrivacy} 
+                  onChange={(e) => setAgreedPrivacy(e.target.checked)} 
+                  required 
+                  style={{ marginTop: '0.2rem', accentColor: '#059669', width: '17px', height: '17px', flexShrink: 0 }}
+                />
+                <span>
+                  Saya menyetujui{' '}
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPrivacyModal(true)} 
+                    style={{ background: 'none', border: 'none', padding: 0, color: '#059669', fontWeight: '700', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit' }}
+                  >
+                    Kebijakan Privasi
+                  </button>{' '}
+                  terkait enkripsi data & pemrosesan biometrik wajah untuk verifikasi gate masuk.
+                </span>
+              </label>
+            </div>
+
             {/* Submit Button */}
-            <button type="submit" disabled={isLoading} style={{ width: '100%', padding: '1.2rem', backgroundColor: '#059669', color: '#ffffff', borderRadius: '0.5rem', border: 'none', fontWeight: '700', fontSize: '1rem', cursor: isLoading ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', opacity: isLoading ? 0.7 : 1 }}>
+            <button 
+              type="submit" 
+              disabled={isLoading || !agreedTerms || !agreedPrivacy} 
+              style={{ 
+                width: '100%', 
+                padding: '1.2rem', 
+                backgroundColor: '#059669', 
+                color: '#ffffff', 
+                borderRadius: '0.5rem', 
+                border: 'none', 
+                fontWeight: '700', 
+                fontSize: '1rem', 
+                cursor: (isLoading || !agreedTerms || !agreedPrivacy) ? 'not-allowed' : 'pointer', 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: '0.5rem', 
+                marginTop: '0.5rem', 
+                opacity: (isLoading || !agreedTerms || !agreedPrivacy) ? 0.6 : 1 
+              }}
+            >
               {isLoading ? 'Memproses...' : `Lanjut ke Pembayaran (${members.length + 1} Orang)`}
               {!isLoading && <ArrowRight size={18} />}
             </button>
@@ -697,6 +782,158 @@ export default function Register() {
         </div>
 
       </main>
+
+      {/* Modal Syarat & Ketentuan */}
+      {showTermsModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10000,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '20px',
+            maxWidth: '560px',
+            width: '100%',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>Syarat & Ketentuan Membership</h3>
+              <button 
+                onClick={() => setShowTermsModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#64748b', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem', overflowY: 'auto', fontSize: '0.9rem', color: '#334155', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <strong style={{ color: '#0f172a' }}>1. Kepemilikan & Sifat Personal</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Kartu Annual Pass Aviary Park bersifat <strong>personal, mengikat data biometrik individu, dan tidak dapat dipindahtangankan</strong> atau dipinjamkan kepada orang lain dengan alasan apa pun.
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#0f172a' }}>2. Masa Berlaku</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Keanggotaan berlaku selama 365 hari (1 tahun penuh) sejak tanggal transaksi pembayaran berhasil diverifikasi oleh sistem.
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#0f172a' }}>3. Akses Wahana & Fasilitas</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Akses masuk ke area Aviary Park bebas setiap hari operasional. Kuota tiket wahana gratis (misal: Mini Train, Bird Feeding) akan diberikan sesuai paket membership yang dipilih.
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#0f172a' }}>4. Ketentuan Pengembalian (Refund)</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Biaya keanggotaan Annual Pass yang telah dibayarkan tidak dapat dikembalikan (non-refundable) baik sebagian maupun seluruhnya.
+                </p>
+              </div>
+            </div>
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f8fafc' }}>
+              <button
+                onClick={() => { setShowTermsModal(false); setAgreedTerms(true); }}
+                style={{
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.65rem 1.5rem',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Saya Mengerti & Setuju
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Kebijakan Privasi */}
+      {showPrivacyModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10000,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '20px',
+            maxWidth: '560px',
+            width: '100%',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>Kebijakan Privasi & Perlindungan Data</h3>
+              <button 
+                onClick={() => setShowPrivacyModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#64748b', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem', overflowY: 'auto', fontSize: '0.9rem', color: '#334155', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <strong style={{ color: '#0f172a' }}>1. Standar Keamanan (ISO 27001 & UU PDP)</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Kami berkomitmen melindungi privasi pengunjung sesuai dengan <strong>UU Perlindungan Data Pribadi (UU PDP No. 27/2022)</strong> dan standar ISO/IEC 27001. Kami menerapkan prinsip minimalisasi data (tanpa mewajibkan nomor KTP/NIK).
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#0f172a' }}>2. Pemrosesan Biometrik Wajah</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Foto wajah yang Anda daftarkan hanya dikonversi menjadi representasi vektor numerik matematis (vektor 512 dimensi terenkripsi) untuk tujuan pencocokan akses otomatis pada gerbang masuk (turnstile gate).
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#0f172a' }}>3. Keamanan & Kerahasiaan Data</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Data profil Anda (nama, nomor kontak WhatsApp, dan tanggal lahir) disimpan dengan enkripsi tingkat tinggi dan tidak akan pernah dijual atau dibagikan kepada pihak ketiga di luar kepatuhan hukum yang berlaku.
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#0f172a' }}>4. Hak Subjek Data</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#475569' }}>
+                  Anda berhak meminta pembaruan informasi profil atau penonaktifan data biometrik Anda kapan saja melalui permohonan resmi ke Customer Service Aviary Park.
+                </p>
+              </div>
+            </div>
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f8fafc' }}>
+              <button
+                onClick={() => { setShowPrivacyModal(false); setAgreedPrivacy(true); }}
+                style={{
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.65rem 1.5rem',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Saya Mengerti & Setuju
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
